@@ -627,19 +627,19 @@ function mapaConstruirSvg(datos) {
   // --- Zona de paso: dos líneas de cota pequeñas y anidadas ("mix pecho" /
   // "mix cabeza", ± 3 tonos del passaggio) con el mismo lenguaje visual que
   // el resto de zonas, y debajo la etiqueta general en negrita. Sus dos
-  // fronteras (± 3 tonos) se marcan además con una línea que sube desde ahí
-  // hasta la BASE de su propia tecla (hasta abajo si es blanca, solo hasta
-  // donde termina si es negra) — no hasta arriba del todo, para no cruzar
-  // los colores sin necesidad. --------------------------------------------
+  // fronteras (± 3 tonos) se marcan además con una línea que baja desde la
+  // tecla en el teclado hasta SU PROPIA cota de "Mix pecho"/"Mix cabeza" del
+  // todo abajo (yMix) -- cruza por encima de "Voz de cabeza" a propósito,
+  // para que se vea de un vistazo qué tecla exacta corresponde a cada
+  // frontera de la zona de paso (antes se cortaba en la base del teclado y
+  // quedaba un hueco sin conectar con su propia cota).
   cuerpo += mapaBracketSvg(pos, mixPechoDesde, datos.passaggio - 1, yMix, MAPA_COLORES.mixPecho.borde, "Mix pecho", 7, pos.anchoTotal);
   cuerpo += mapaBracketSvg(pos, datos.passaggio + 1, mixCabezaHasta, yMix, MAPA_COLORES.mixCabeza.borde, "Mix cabeza", 7, pos.anchoTotal);
   const [zpX1] = mapaBordes(pos, mixPechoDesde, mixPechoDesde);
   const [, zpX2] = mapaBordes(pos, mixCabezaHasta, mixCabezaHasta);
   cuerpo += `<text x="${(zpX1 + zpX2) / 2}" y="${yZonaPasoTexto}" text-anchor="middle" font-size="10" font-weight="700" fill="#2a2320" font-family="'Work Sans', sans-serif">ZONA DE PASO</text>`;
-  const baseZp1 = yKeyboard + (pos.posiciones[mixPechoDesde].negra ? ALTO_NEGRA : ALTO_BLANCA);
-  const baseZp2 = yKeyboard + (pos.posiciones[mixCabezaHasta].negra ? ALTO_NEGRA : ALTO_BLANCA);
-  cuerpo += `<line x1="${zpX1}" y1="${yKeyboard}" x2="${zpX1}" y2="${baseZp1}" stroke="${MAPA_COLORES.mixPecho.borde}" stroke-width="1.5" stroke-dasharray="3,2" />`;
-  cuerpo += `<line x1="${zpX2}" y1="${yKeyboard}" x2="${zpX2}" y2="${baseZp2}" stroke="${MAPA_COLORES.mixCabeza.borde}" stroke-width="1.5" stroke-dasharray="3,2" />`;
+  cuerpo += `<line x1="${zpX1}" y1="${yKeyboard}" x2="${zpX1}" y2="${yMix}" stroke="${MAPA_COLORES.mixPecho.borde}" stroke-width="1.5" stroke-dasharray="3,2" />`;
+  cuerpo += `<line x1="${zpX2}" y1="${yKeyboard}" x2="${zpX2}" y2="${yMix}" stroke="${MAPA_COLORES.mixCabeza.borde}" stroke-width="1.5" stroke-dasharray="3,2" />`;
 
   // --- Guías verticales: nombre en HORIZONTAL sobre la franja oscura,
   // nunca inclinado. Cada grupo va en una sola fila; `mapaAcomodarFila` ya
