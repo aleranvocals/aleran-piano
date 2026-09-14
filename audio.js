@@ -139,6 +139,27 @@ async function renderizarOffline(eventos, volumen) {
   return resultado.audioBuffer;
 }
 
+// lamejs.iife.js pesa 169 KB (la librería más pesada del sitio) y solo hace falta
+// si el alumno pulsa "Descargar MP3" -- se carga bajo demanda en vez de en cada
+// visita a piano.html, para no penalizar a quien solo quiere tocar/escuchar.
+let lamejsCargaPromesa = null;
+function cargarLamejs() {
+  if (window.lamejs) return Promise.resolve();
+  if (!lamejsCargaPromesa) {
+    lamejsCargaPromesa = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "lamejs.iife.js";
+      script.onload = () => resolve();
+      script.onerror = () => {
+        lamejsCargaPromesa = null;
+        reject(new Error("No se pudo cargar el codificador MP3. Comprueba tu conexión e inténtalo de nuevo."));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return lamejsCargaPromesa;
+}
+
 function audioBufferAMp3(buffer, kbps = 128) {
   const canal = buffer.getChannelData(0);
   const muestras = new Int16Array(canal.length);
@@ -160,7 +181,7 @@ function audioBufferAMp3(buffer, kbps = 128) {
 }
 
 async function exportarMp3(eventos, volumen, nombreArchivo) {
-  const buffer = await renderizarOffline(eventos, volumen);
+  const [buffer] = await Promise.all([renderizarOffline(eventos, volumen), cargarLamejs()]);
   const blob = audioBufferAMp3(buffer);
   const url = URL.createObjectURL(blob);
   const enlace = document.createElement("a");
