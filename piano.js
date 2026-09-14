@@ -102,10 +102,34 @@ function detenerMetronomoSiHaceFalta() {
   metronomoEnMarcha = false;
   el("btnMetronomoIniciar").disabled = false;
   el("btnMetronomoDetener").disabled = true;
+  el("metroFlotToggle").textContent = "▶";
+  el("metroFlotToggle").classList.remove("en-marcha");
+}
+
+/** Aplica un BPM nuevo a los dos sitios donde se puede tocar (la pestaña
+ * detallada y la barra compacta), al motor si está sonando, y a la
+ * duración de nota si está vinculada al tempo. */
+function fijarBpm(bpm) {
+  el("bpmSlider").value = bpm;
+  el("bpmValor").textContent = bpm;
+  el("metroFlotBpm").value = bpm;
+  el("metroFlotBpmValor").textContent = bpm;
+  if (metronomoEnMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(bpm);
+  if (el("sincronizarTempo").checked) {
+    actualizarDuracionCalculada();
+    invalidarSecuencia();
+  }
+}
+
+function fijarVolumenMetronomo(volumen) {
+  el("metroFlotVolumen").value = volumen;
+  if (window.MetronomoEngine) window.MetronomoEngine.ajustarVolumen(volumen);
 }
 
 function cambiarModo(modo) {
-  if (modoActual === "metronomo" && modo !== "metronomo") detenerMetronomoSiHaceFalta();
+  // El metrónomo YA NO se para al cambiar de pestaña -- sigue sonando de
+  // fondo, mezclado con lo que suene en cualquier otro modo, y se controla
+  // desde la barra compacta (metronomoFlotante) visible en todas ellas.
   if (modo !== modoActual) cancelarCantoSiHaceFalta();
   modoActual = modo;
 
@@ -134,7 +158,11 @@ function cambiarModo(modo) {
   // (con una sola nota es exactamente lo mismo que "Cantar y calificar").
   el("btnImitar").hidden = esMetronomo || modo === "individual";
 
-  el("campoPausa").hidden = modo === "individual"; // una sola nota no necesita pausa
+  // La barra compacta del metrónomo es redundante con el panel detallado
+  // cuando ya se está en la pestaña Metrónomo -- se oculta solo ahí.
+  el("metronomoFlotante").hidden = esMetronomo;
+
+  actualizarVisibilidadDuracion(); // también decide si "pausa" tiene sentido en este modo
   el("resultado").hidden = true;
   el("estado").textContent = "";
   invalidarSecuencia();
@@ -173,6 +201,10 @@ function actualizarVisibilidadDuracion() {
   const sincronizado = el("sincronizarTempo").checked;
   el("campoFiguraRitmica").hidden = !sincronizado;
   el("campoDuracionManual").hidden = sincronizado;
+  // Con la duración vinculada al tempo, el espacio entre notas ya lo marca
+  // el propio pulso -- una pausa adicional encima no tiene sentido y solo
+  // desincroniza la secuencia del metrónomo.
+  el("campoPausa").hidden = sincronizado || modoActual === "individual";
   if (sincronizado) actualizarDuracionCalculada();
 }
 
@@ -194,7 +226,7 @@ function actualizarNotaSeleccionadaUI() {
 
 function generarResultado() {
   const duracionNota = duracionNotaActual();
-  const pausa = parseFloat(el("pausa").value);
+  const pausa = el("sincronizarTempo").checked ? 0 : parseFloat(el("pausa").value);
 
   if (modoActual === "individual") {
     return {
@@ -498,21 +530,20 @@ async function escucharEImitar() {
 
 function inicializarMetronomo() {
   const bpmSlider = el("bpmSlider");
-  const bpmValor = el("bpmValor");
   const acentoSelect = el("metronomoAcento");
   const punto = el("metronomoPunto");
+  const puntoMini = el("metronomoPuntoMini");
   const btnIniciar = el("btnMetronomoIniciar");
   const btnDetener = el("btnMetronomoDetener");
+  const metroFlotBpm = el("metroFlotBpm");
+  const metroFlotBpmValor = el("metroFlotBpmValor");
+  const metroFlotVolumen = el("metroFlotVolumen");
+  const metroFlotToggle = el("metroFlotToggle");
 
-  bpmSlider.addEventListener("input", () => {
-    bpmValor.textContent = bpmSlider.value;
-    if (metronomoEnMarcha && window.MetronomoEngine) {
-      window.MetronomoEngine.ajustarBpm(parseInt(bpmSlider.value, 10));
-    }
-    if (el("sincronizarTempo").checked) {
-      actualizarDuracionCalculada();
-      invalidarSecuencia();
-    }
+  bpmSlider.addEventListener("input", () => fijarBpm(parseInt(bpmSlider.value, 10)));
+  metroFlotBpm.addEventListener("input", () => {
+    metroFlotBpmValor.textContent = metroFlotBpm.value;
+    fijarBpm(parseInt(metroFlotBpm.value, 10));
   });
 
   acentoSelect.addEventListener("change", () => {
@@ -521,20 +552,32 @@ function inicializarMetronomo() {
     }
   });
 
-  btnIniciar.addEventListener("click", () => {
-    if (!window.MetronomoEngine) return;
+  metroFlotVolumen.addEventListener("input", () => fijarVolumenMetronomo(parseFloat(metroFlotVolumen.value)));
+
+  function iniciar() {
+    if (!window.MetronomoEngine || metronomoEnMarcha) return;
     metronomoEnMarcha = true;
     btnIniciar.disabled = true;
     btnDetener.disabled = false;
+    metroFlotToggle.textContent = "⏹";
+    metroFlotToggle.classList.add("en-marcha");
+    window.MetronomoEngine.ajustarVolumen(parseFloat(metroFlotVolumen.value));
     window.MetronomoEngine.iniciar(parseInt(bpmSlider.value, 10), parseInt(acentoSelect.value, 10), (acento) => {
-      punto.classList.remove("pulso", "acento");
-      void punto.offsetWidth; // fuerza reflow para reiniciar la animación en cada pulso
-      punto.classList.add("pulso");
-      if (acento) punto.classList.add("acento");
+      [punto, puntoMini].forEach((p) => {
+        p.classList.remove("pulso", "acento");
+        void p.offsetWidth; // fuerza reflow para reiniciar la animación en cada pulso
+        p.classList.add("pulso");
+        if (acento) p.classList.add("acento");
+      });
     });
-  });
+  }
 
+  btnIniciar.addEventListener("click", iniciar);
   btnDetener.addEventListener("click", detenerMetronomoSiHaceFalta);
+  metroFlotToggle.addEventListener("click", () => {
+    if (metronomoEnMarcha) detenerMetronomoSiHaceFalta();
+    else iniciar();
+  });
 }
 
 function inicializar() {

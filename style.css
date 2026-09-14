@@ -597,6 +597,56 @@ textarea {
   background: #ffb347;
 }
 
+.metronomo-punto.mini {
+  width: 12px;
+  height: 12px;
+  border-width: 1px;
+  flex-shrink: 0;
+}
+
+/* Barra compacta: el metrónomo se puede iniciar/parar y ajustar desde
+   cualquier pestaña de la página, no solo desde la pestaña "Metrónomo". */
+.metronomo-flotante {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin: 0 0 1.25rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.metronomo-flotante .campo-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.metronomo-flotante input[type="range"] {
+  width: 90px;
+  accent-color: var(--crimson-bright);
+}
+
+.metronomo-flotante output {
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+}
+
+.metronomo-flotante .boton {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.metronomo-flotante .boton.en-marcha {
+  background: var(--crimson);
+  border-color: var(--crimson);
+  color: var(--bone);
+}
+
 input[type="text"]:focus,
 input[type="number"]:focus,
 select:focus,

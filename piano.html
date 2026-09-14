@@ -56,6 +56,19 @@
     <div class="afinometro-texto" id="afinometroTexto">—</div>
   </div>
 
+  <div class="metronomo-flotante" id="metronomoFlotante">
+    <button id="metroFlotToggle" class="boton" title="Iniciar/detener metrónomo" aria-label="Iniciar/detener metrónomo">▶</button>
+    <span class="metronomo-punto mini" id="metronomoPuntoMini" aria-hidden="true"></span>
+    <label class="campo-inline">
+      <input type="range" id="metroFlotBpm" min="50" max="350" step="1" value="100" aria-label="Tempo del metrónomo" />
+      <output id="metroFlotBpmValor">100</output> BPM
+    </label>
+    <label class="campo-inline">
+      <span aria-hidden="true">🔊</span>
+      <input type="range" id="metroFlotVolumen" min="0" max="1" step="0.05" value="0.7" aria-label="Volumen del metrónomo" />
+    </label>
+  </div>
+
   <div class="tabs" role="tablist">
     <button class="tab activo" data-modo="individual" role="tab" aria-selected="true">Nota individual</button>
     <button class="tab" data-modo="aleatorio" role="tab" aria-selected="false">Notas aleatorias</button>

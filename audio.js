@@ -229,6 +229,7 @@ const METRONOMO_INTERVALO_MS = 25; // cada cuánto se revisa si toca programar m
 let metronomoActivo = false;
 let metronomoBpm = 100;
 let metronomoAcentoCada = 4; // 0 = sin acento
+let metronomoVolumen = 0.7;
 let metronomoSiguienteTiempo = 0;
 let metronomoContadorPulso = 0;
 let metronomoTimerId = null;
@@ -237,15 +238,19 @@ function reproducirClicMetronomo(ctx, tiempo, acento) {
   const osc = ctx.createOscillator();
   osc.type = "square";
   osc.frequency.value = acento ? 1600 : 1000;
+  const pico = (acento ? 0.55 : 0.32) * metronomoVolumen;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.0001, tiempo);
-  gain.gain.exponentialRampToValueAtTime(acento ? 0.55 : 0.32, tiempo + 0.002);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, pico), tiempo + 0.002);
   gain.gain.exponentialRampToValueAtTime(0.0001, tiempo + 0.045);
   osc.connect(gain).connect(ctx.destination);
   osc.start(tiempo);
   osc.stop(tiempo + 0.06);
 }
 
+// No se conecta a un piano ni depende de qué pestaña esté abierta -- una vez
+// iniciado, sigue sonando (mezclado con lo que sea que suene en el piano)
+// aunque el alumno cambie de modo/pestaña dentro de la página.
 function iniciarMetronomo(bpm, acentoCada, onPulso) {
   detenerMetronomo();
   const ctx = obtenerContexto();
@@ -280,12 +285,20 @@ function detenerMetronomo() {
   metronomoTimerId = null;
 }
 
+function metronomoEnMarchaMotor() {
+  return metronomoActivo;
+}
+
 function ajustarBpmMetronomo(bpm) {
   metronomoBpm = bpm;
 }
 
 function ajustarAcentoMetronomo(acentoCada) {
   metronomoAcentoCada = acentoCada;
+}
+
+function ajustarVolumenMetronomo(volumen) {
+  metronomoVolumen = Math.max(0, Math.min(1, volumen));
 }
 
 // --- Micrófono / detección de afinación ---------------------------------
@@ -399,8 +412,10 @@ window.PianoEngine = { reproducirSecuencia, detenerReproduccion, exportarMp3 };
 window.MetronomoEngine = {
   iniciar: iniciarMetronomo,
   detener: detenerMetronomo,
+  enMarcha: metronomoEnMarchaMotor,
   ajustarBpm: ajustarBpmMetronomo,
   ajustarAcento: ajustarAcentoMetronomo,
+  ajustarVolumen: ajustarVolumenMetronomo,
 };
 window.MicrofonoEngine = {
   disponible: microfonoDisponible,
