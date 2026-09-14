@@ -78,6 +78,23 @@
     </a>
   </div>
 
+  <div class="captura-lead">
+    <h2>Regalo: rutina de calentamiento de 10 minutos</h2>
+    <p>El PDF con el orden exacto de ejercicios antes de cantar, para no quedarte afónico a media sesión. Te lo mando gratis, solo dime dónde.</p>
+    <form id="formCapturaLead" novalidate>
+      <label class="campo-honeypot" aria-hidden="true">
+        Empresa
+        <input type="text" id="capturaEmpresa" name="empresa" tabindex="-1" autocomplete="off" />
+      </label>
+      <input type="email" id="capturaEmail" name="email" placeholder="tu@email.com" required autocomplete="email" />
+      <button type="submit" class="boton principal">Quiero el PDF</button>
+    </form>
+    <p id="capturaEstado" class="captura-estado" role="status"></p>
+    <p id="capturaDescarga" class="captura-descarga" hidden>
+      Listo. <a href="recursos/Rutina-Calentamiento-Aleran.pdf" target="_blank" rel="noopener">Descarga aquí tu rutina de calentamiento (PDF) →</a>
+    </p>
+  </div>
+
   <div class="cta-clases">
     <p>¿Quieres pasar de practicar solo a progresar con feedback real de un vocal coach? <a href="https://agenda.aleranvocals.es/reservar" target="_blank" rel="noopener">Reserva tu primera clase →</a></p>
   </div>
@@ -88,5 +105,6 @@
 </div>
 <script src="tema.js"></script>
 <script src="pwa.js"></script>
+<script src="lead.js"></script>
 </body>
 </html>
