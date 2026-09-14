@@ -1,0 +1,17 @@
+{
+  "name": "Áleran Vocals — Herramientas de práctica vocal",
+  "short_name": "Áleran Vocals",
+  "description": "Piano real, entrenamiento con micrófono, oído, rutina y mapa vocal. Gratis, sin registro.",
+  "start_url": "index.html",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0808",
+  "theme_color": "#93172c",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
