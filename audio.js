@@ -368,4 +368,9 @@ window.MicrofonoEngine = {
   // falta crear un segundo analizador, el mismo sirve para pitch y espectro.
   obtenerAnalizador: () => analizadorMicrofono,
 };
+
+// El micrófono se queda abierto entre ejercicios de la misma página a propósito
+// (evita que el navegador pida permiso de nuevo cada vez que el alumno cambia
+// de ejercicio) — solo se libera de verdad al salir de la página.
+window.addEventListener("pagehide", detenerMicrofono);
 window.dispatchEvent(new Event("piano-engine-listo"));

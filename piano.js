@@ -388,7 +388,6 @@ async function cantarYCalificar() {
     }
   }
 
-  window.MicrofonoEngine.detener();
   cantoEnCurso = false;
   fijarEstadoBotones({ escuchando: false });
 
@@ -482,7 +481,6 @@ async function escucharEImitar() {
     }
   }
 
-  window.MicrofonoEngine.detener();
   cantoEnCurso = false;
   fijarEstadoBotones({ escuchando: false });
 

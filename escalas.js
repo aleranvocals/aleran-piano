@@ -8,6 +8,19 @@
 // Atajo compartido por todas las páginas (se carga primero en todas).
 const el = (id) => document.getElementById(id);
 
+// Fecha de "hoy" en el huso horario LOCAL del alumno, como YYYY-MM-DD.
+// OJO: nunca uses date.toISOString().slice(0,10) para esto — toISOString()
+// da la fecha en UTC, así que para cualquiera al oeste de UTC (toda
+// Latinoamérica, el público real de la app) el "día" cambiaría de fecha
+// 4-8 horas antes de medianoche local, rompiendo la racha de práctica sin
+// que el alumno entienda por qué.
+function fechaLocalISO(fecha = new Date()) {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, "0");
+  const d = String(fecha.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 const NOMBRES_NOTA = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
 const ALIAS_BEMOL = { Reb: 1, Mib: 3, Solb: 6, Lab: 8, Sib: 10 };
 

@@ -104,7 +104,6 @@ function finalizarRango(mostrarResultado) {
   entrenEnCurso = false;
   if (window.MicrofonoEngine) {
     window.MicrofonoEngine.detenerContinuo();
-    window.MicrofonoEngine.detener();
   }
   if (rangoTeclaAnterior !== null) {
     marcarTeclaActiva(rangoTeclaAnterior, false);
@@ -200,7 +199,6 @@ function finalizarSovt(mostrarResultado) {
   entrenEnCurso = false;
   if (window.MicrofonoEngine) {
     window.MicrofonoEngine.detenerContinuo();
-    window.MicrofonoEngine.detener();
   }
   if (sovtTeclaAnterior !== null) {
     marcarTeclaActiva(sovtTeclaAnterior, false);
@@ -354,7 +352,6 @@ function finalizarSostenida(mostrarResultado) {
   }
   if (window.MicrofonoEngine) {
     window.MicrofonoEngine.detenerContinuo();
-    window.MicrofonoEngine.detener();
   }
   el("btnSostenidaIniciar").disabled = false;
   el("btnSostenidaDetener").disabled = true;
@@ -504,7 +501,6 @@ function finalizarMessa(mostrarResultado) {
   }
   if (window.MicrofonoEngine) {
     window.MicrofonoEngine.detenerContinuo();
-    window.MicrofonoEngine.detener();
   }
   el("btnMessaIniciar").disabled = false;
   el("btnMessaDetener").disabled = true;
@@ -650,7 +646,6 @@ function finalizarAire(mostrarResultado) {
     clearInterval(aireTemporizadorId);
     aireTemporizadorId = null;
   }
-  if (window.MicrofonoEngine) window.MicrofonoEngine.detener();
   el("btnAireIniciar").disabled = false;
   el("btnAireDetener").disabled = true;
   if (!mostrarResultado) return;
@@ -817,7 +812,6 @@ function finalizarEspectro() {
     cancelAnimationFrame(espectroAnimId);
     espectroAnimId = null;
   }
-  if (window.MicrofonoEngine) window.MicrofonoEngine.detener();
   el("btnEspectroIniciar").disabled = false;
   el("btnEspectroDetener").disabled = true;
   actualizarMedidorBrillo(null);

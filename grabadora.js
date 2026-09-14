@@ -13,6 +13,10 @@ const GRABADORA_ALMACEN = "tomas";
 let grabadoraDB = null;
 let grabadoraStream = null;
 let grabadoraMediaRecorder = null;
+// URLs de blob creadas para el <audio> de cada toma en el render actual — hay
+// que revocarlas antes de volver a renderizar, si no el navegador mantiene ese
+// audio en memoria indefinidamente aunque el <audio> ya no esté en el DOM.
+let grabadoraUrlsActivas = [];
 let grabadoraTrozos = [];
 let grabadoraInicioMs = null;
 
@@ -91,6 +95,8 @@ async function renderizarTomas() {
     cont.innerHTML = "";
     return;
   }
+  grabadoraUrlsActivas.forEach((url) => URL.revokeObjectURL(url));
+  grabadoraUrlsActivas = [];
   cont.innerHTML = "";
   if (tomas.length === 0) {
     cont.innerHTML = '<p class="descripcion">Todavía no has grabado ninguna toma — la primera que grabes aparecerá aquí.</p>';
@@ -108,7 +114,9 @@ async function renderizarTomas() {
     const audio = document.createElement("audio");
     audio.controls = true;
     audio.preload = "none";
-    audio.src = URL.createObjectURL(toma.blob);
+    const url = URL.createObjectURL(toma.blob);
+    grabadoraUrlsActivas.push(url);
+    audio.src = url;
 
     const btnBorrar = document.createElement("button");
     btnBorrar.className = "boton";
@@ -180,6 +188,19 @@ function detenerGrabacion() {
   el("btnGrabarIniciar").disabled = false;
   el("btnGrabarDetener").disabled = true;
 }
+
+// Si el alumno cierra la pestaña o navega fuera a mitad de una grabación, el
+// stream crudo del micrófono no queda liberado hasta que el navegador destruye
+// el contexto por su cuenta — mejor pararlo explícitamente, como ya se hace
+// para el motor de afinación en audio.js.
+window.addEventListener("pagehide", () => {
+  if (grabadoraMediaRecorder && grabadoraMediaRecorder.state !== "inactive") {
+    grabadoraMediaRecorder.stop();
+  } else if (grabadoraStream) {
+    grabadoraStream.getTracks().forEach((t) => t.stop());
+    grabadoraStream = null;
+  }
+});
 
 function inicializarGrabadora() {
   el("btnGrabarIniciar").addEventListener("click", iniciarGrabacion);

@@ -51,7 +51,7 @@ function renderizarCalendarioRacha() {
 
   const SEMANAS = 18;
   const hoy = new Date();
-  const hoyIso = hoy.toISOString().slice(0, 10);
+  const hoyIso = fechaLocalISO(hoy);
   // Ancla la última columna al domingo de la semana actual (domingo = 0).
   const finSemana = new Date(hoy);
   finSemana.setDate(finSemana.getDate() + (6 - finSemana.getDay()));
@@ -65,7 +65,7 @@ function renderizarCalendarioRacha() {
     const columna = document.createElement("div");
     columna.className = "calendario-semana";
     for (let dia = 0; dia < 7; dia++) {
-      const iso = cursor.toISOString().slice(0, 10);
+      const iso = fechaLocalISO(cursor);
       const celda = document.createElement("div");
       celda.className = "calendario-dia";
       if (historial.has(iso)) celda.classList.add("completado");

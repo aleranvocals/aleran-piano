@@ -400,6 +400,11 @@ function mapaConstruirSvg(datos) {
   if (datos.silbidoInicio !== null) notasRango.push(datos.silbidoInicio, datos.silbidoFinal);
   if (datos.mongolInicio !== null) notasRango.push(datos.mongolInicio, datos.mongolFinal);
   if (datos.belting !== null) notasRango.push(datos.belting);
+  // Si pecho y cabeza se solapan, el cálculo de la diagonal más abajo lee
+  // cabezaInicio-1 (mapaLimite) — sin esto, cuando cabezaInicio ya es la nota
+  // más grave del mapa, esa tecla queda fuera del teclado dibujado y revienta
+  // con "Cannot read properties of undefined (reading 'x')".
+  if (datos.cabezaInicio <= datos.pechoFinal) notasRango.push(datos.cabezaInicio - 1);
 
   const [midiMin, midiMax] = mapaRedondearRango(Math.min(...notasRango), Math.max(...notasRango));
   const pos = mapaConstruirPosiciones(midiMin, midiMax, ANCHO_BLANCA);

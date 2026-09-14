@@ -17,7 +17,7 @@ function hashCadena(str) {
 }
 
 function generarRutina(varianteExtra) {
-  const fecha = new Date().toISOString().slice(0, 10);
+  const fecha = fechaLocalISO();
   const rng = crearRng(hashCadena(`${fecha}:${varianteExtra}`));
   return RUTINA_CATEGORIAS.map((categoria) => {
     const opciones = Object.entries(PATRONES).filter(([, p]) => p.categoria === categoria);
@@ -41,7 +41,7 @@ function diasEntre(fechaA, fechaB) {
 const RUTINA_HISTORIAL_MAX_DIAS = 371; // ~53 semanas: de sobra para el calendario de racha
 
 function marcarRutinaCompletadaHoy() {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaLocalISO();
   const ultima = Progreso.obtener("rutinaUltimaFecha", null);
   if (ultima === hoy) return;
   let racha = Progreso.obtener("rutinaRachaDias", 0);
