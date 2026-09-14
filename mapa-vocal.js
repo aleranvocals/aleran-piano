@@ -164,21 +164,44 @@ function mapaAnchoTexto(texto, tamanoFuente) {
  * franja de color sin escribir texto encima de colores que se superponen.
  * Si la franja es más angosta que su propio nombre, el texto se pega al
  * borde del SVG en vez de centrarse y salirse del dibujo. */
-function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg) {
+function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs) {
   const [x1, x2] = mapaBordes(pos, desdeMidi, hastaMidi);
   const centro = (x1 + x2) / 2;
   const fuente = tamanoFuente || 11;
   const margen = 2;
   const anchoTexto = mapaAnchoTexto(etiqueta, fuente);
-  let anclaX = centro;
-  let anclaTipo = "middle";
-  if (centro - anchoTexto / 2 < margen) {
-    anclaX = margen;
-    anclaTipo = "start";
-  } else if (anchoSvg !== undefined && centro + anchoTexto / 2 > anchoSvg - margen) {
-    anclaX = anchoSvg - margen;
-    anclaTipo = "end";
-  }
+
+  // Tres posiciones candidatas para el texto: centrada (la de siempre), y
+  // pegada a cada extremo de ESTA MISMA cota -- nunca fuera de x1/x2, para
+  // no invadir la cota vecina. Se elige la primera que no quede tachada por
+  // ninguna de las líneas verticales de "zona de paso" que le pasen cerca
+  // (si las hay) y que además quepa dentro del SVG.
+  const candidatos = [
+    { anclaX: centro, anclaTipo: "middle" },
+    { anclaX: x1 + margen, anclaTipo: "start" },
+    { anclaX: x2 - margen, anclaTipo: "end" },
+  ];
+  const rangoDe = ({ anclaX, anclaTipo }) => {
+    if (anclaTipo === "start") return [anclaX, anclaX + anchoTexto];
+    if (anclaTipo === "end") return [anclaX - anchoTexto, anclaX];
+    return [anclaX - anchoTexto / 2, anclaX + anchoTexto / 2];
+  };
+  const holguraColision = 4;
+  const chocaConLinea = (c) => {
+    if (!evitarXs) return false;
+    const [izq, der] = rangoDe(c);
+    return evitarXs.some((ex) => ex !== undefined && ex > izq - holguraColision && ex < der + holguraColision);
+  };
+  const seSaleDelSvg = (c) => {
+    const [izq, der] = rangoDe(c);
+    return izq < margen || (anchoSvg !== undefined && der > anchoSvg - margen);
+  };
+
+  const elegido =
+    candidatos.find((c) => !chocaConLinea(c) && !seSaleDelSvg(c)) ||
+    candidatos.find((c) => !seSaleDelSvg(c)) ||
+    candidatos[0];
+  const { anclaX, anclaTipo } = elegido;
   return `
     <line x1="${x1}" y1="${yLinea}" x2="${x2}" y2="${yLinea}" stroke="${color}" stroke-width="2" />
     <line x1="${x1}" y1="${yLinea - 5}" x2="${x1}" y2="${yLinea + 5}" stroke="${color}" stroke-width="2" />
@@ -451,6 +474,12 @@ function mapaConstruirSvg(datos) {
   // aparte, sin relación con dónde el profesor puso cabezaInicio de verdad.
   const mixPechoDesde = Math.max(midiMin, datos.passaggio - 6);
   const mixCabezaHasta = Math.min(midiMax, datos.passaggio + 6);
+  // x de las dos líneas que van a bajar desde estas teclas hasta la cota de
+  // "Mix pecho"/"Mix cabeza" -- se calculan ya aquí porque las etiquetas de
+  // "Voz de pecho"/"Voz de cabeza" de abajo necesitan saber por dónde van a
+  // pasar, para poder correrse a un lado y no quedar tachadas por ellas.
+  const [zpX1] = mapaBordes(pos, mixPechoDesde, mixPechoDesde);
+  const [, zpX2] = mapaBordes(pos, mixCabezaHasta, mixCabezaHasta);
 
   // --- Guías de arriba: las notas "importantes" (passaggio y central, con
   // su nombre en dos líneas) en su propia fila, y el inicio/final de cada
@@ -618,10 +647,14 @@ function mapaConstruirSvg(datos) {
   // --- Líneas de cota con el nombre de cada zona, DEBAJO del teclado,
   // pegadas a él. Solo pecho y cabeza (el único solapamiento real) usan
   // alturas distintas; mongol comparte la fila de pecho y silbido la de
-  // cabeza, porque nunca se pisan con ellas. ------------------------------
+  // cabeza, porque nunca se pisan con ellas. Se les pasa zpX1/zpX2 para que
+  // la etiqueta ("Voz de pecho"/"Voz de cabeza"...) se corra a un lado si
+  // alguna de las dos líneas de la zona de paso le pasa por encima -- sin
+  // salirse nunca de su propia cota (mapaBracketSvg no la deja cruzar
+  // desde/hasta). ------------------------------------------------------
   zonas.forEach((zona) => {
     const yLinea = yBrackets + 8 + zona.fila * FILA_ALTO;
-    cuerpo += mapaBracketSvg(pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal);
+    cuerpo += mapaBracketSvg(pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal, [zpX1, zpX2]);
   });
 
   // --- Zona de paso: dos líneas de cota pequeñas y anidadas ("mix pecho" /
@@ -635,8 +668,6 @@ function mapaConstruirSvg(datos) {
   // quedaba un hueco sin conectar con su propia cota).
   cuerpo += mapaBracketSvg(pos, mixPechoDesde, datos.passaggio - 1, yMix, MAPA_COLORES.mixPecho.borde, "Mix pecho", 7, pos.anchoTotal);
   cuerpo += mapaBracketSvg(pos, datos.passaggio + 1, mixCabezaHasta, yMix, MAPA_COLORES.mixCabeza.borde, "Mix cabeza", 7, pos.anchoTotal);
-  const [zpX1] = mapaBordes(pos, mixPechoDesde, mixPechoDesde);
-  const [, zpX2] = mapaBordes(pos, mixCabezaHasta, mixCabezaHasta);
   cuerpo += `<text x="${(zpX1 + zpX2) / 2}" y="${yZonaPasoTexto}" text-anchor="middle" font-size="10" font-weight="700" fill="#2a2320" font-family="'Work Sans', sans-serif">ZONA DE PASO</text>`;
   cuerpo += `<line x1="${zpX1}" y1="${yKeyboard}" x2="${zpX1}" y2="${yMix}" stroke="${MAPA_COLORES.mixPecho.borde}" stroke-width="1.5" stroke-dasharray="3,2" />`;
   cuerpo += `<line x1="${zpX2}" y1="${yKeyboard}" x2="${zpX2}" y2="${yMix}" stroke="${MAPA_COLORES.mixCabeza.borde}" stroke-width="1.5" stroke-dasharray="3,2" />`;
