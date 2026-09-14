@@ -154,6 +154,31 @@ function mapaZonaPorTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlan
   return partes;
 }
 
+/** El corte diagonal de la zona mixta (pecho/cabeza solapados), pero TECLA
+ * POR TECLA: es la misma línea recta de siempre (de `(xDesde,yPie)` a
+ * `(xHasta,yTope)`, la misma en todas las teclas de la zona), pero cada nota
+ * se recorta a su propia forma real (`mapaFormaTecla`) antes de pintarle los
+ * dos triángulos. Antes, dos triángulos gigantes de punta a punta ignoraban
+ * las teclas negras que caían en medio de la zona mixta (la diagonal las
+ * partía sin respetar su forma) y además no coincidían exactamente con el
+ * filo real de la última tecla sólida de pecho, dejando una costura donde
+ * empezaba el degradado. Recortando cada tecla a su forma antes de pintar,
+ * el degradado se sigue viendo igual de diagonal (la línea no cambia), pero
+ * cada nota solo se colorea dentro de su propio contorno real. */
+function mapaDiagonalPorTeclas(pos, desdeMidi, hastaMidi, xDesde, xHasta, yTope, yPie, altoNegra, altoBlanca, colorPecho, colorCabeza, opacidad, idBase) {
+  let partes = "";
+  for (let midi = desdeMidi; midi <= hastaMidi; midi++) {
+    if (!pos.posiciones[midi]) continue;
+    const idClip = `${idBase}-${midi}`;
+    partes += `<clipPath id="${idClip}"><polygon points="${mapaFormaTecla(pos, midi, yTope, altoNegra, altoBlanca)}" /></clipPath>`;
+    partes += `<g clip-path="url(#${idClip})">`;
+    partes += `<polygon points="${xDesde},${yTope} ${xHasta},${yTope} ${xDesde},${yPie}" fill="${colorPecho}" fill-opacity="${opacidad}" />`;
+    partes += `<polygon points="${xDesde},${yPie} ${xHasta},${yPie} ${xHasta},${yTope}" fill="${colorCabeza}" fill-opacity="${opacidad}" />`;
+    partes += `</g>`;
+  }
+  return partes;
+}
+
 /** Una franja de color translúcida SOBRE el teclado — varias de estas se
  * superponen en la misma columna cuando los registros se pisan
  * (pecho/cabeza), como acetatos de color puestos encima de las teclas. */
@@ -605,10 +630,14 @@ function mapaConstruirSvg(datos) {
   // esa columna se pinta en diagonal; el ancho de esa diagonal cambia según
   // qué tan grave sea cabezaInicio, así que su ángulo no es siempre el
   // mismo. Si no llegan a tocarse, cada uno es sólido y no hay diagonal.
-  // El propio corte diagonal SÍ sigue usando un único límite promediado en
-  // vez de tecla por tecla: es un degradado visual deliberado entre dos
-  // registros que de verdad se solapan, no una frontera dura entre dos
-  // registros que no se tocan (que es el caso que sí había que arreglar).
+  // El corte diagonal SIGUE siendo una única línea recta (mismo ángulo que
+  // antes, calculado igual): sigue siendo un degradado visual deliberado
+  // entre dos registros que de verdad se solapan, no una frontera dura. Lo
+  // que cambia es que ya no se pinta con 2 triángulos gigantes de punta a
+  // punta ignorando lo que hay en medio -- se recorta tecla por tecla
+  // (`mapaDiagonalPorTeclas`), así ni dejan hueco/costura con la última
+  // tecla sólida de pecho, ni ignoran la forma de las teclas negras que
+  // caen dentro de la propia zona mixta.
   const hayColapso = datos.cabezaInicio <= datos.pechoFinal;
 
   // El diagonal para justo en el borde real de la nota vecina al passaggio
@@ -623,10 +652,12 @@ function mapaConstruirSvg(datos) {
     if (datos.pechoInicio <= pechoSolidoHasta) {
       cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, pechoSolidoHasta, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45);
     }
-    // Corte diagonal limpio: pecho abajo a la izquierda, cabeza arriba a la
-    // derecha, SIN línea divisoria ni relleno doble.
-    cuerpo += `<polygon points="${limitePechoDiagonal},${yTope} ${limiteDiagonalPassaggio},${yTope} ${limitePechoDiagonal},${yPie}" fill="${MAPA_COLORES.pecho}" fill-opacity="0.45" />`;
-    cuerpo += `<polygon points="${limitePechoDiagonal},${yPie} ${limiteDiagonalPassaggio},${yPie} ${limiteDiagonalPassaggio},${yTope}" fill="${MAPA_COLORES.cabeza}" fill-opacity="0.45" />`;
+    cuerpo += mapaDiagonalPorTeclas(
+      pos, datos.cabezaInicio, datos.pechoFinal,
+      limitePechoDiagonal, limiteDiagonalPassaggio,
+      yTope, yPie, ALTO_NEGRA, ALTO_BLANCA,
+      MAPA_COLORES.pecho, MAPA_COLORES.cabeza, 0.45, "mapaRecorteDiagonal"
+    );
   } else {
     // No se tocan: la voz de pecho es sólida en todo su rango, sin diagonal.
     cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, datos.pechoFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45);
