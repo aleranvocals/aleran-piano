@@ -164,8 +164,16 @@ function mapaAnchoTexto(texto, tamanoFuente) {
  * franja de color sin escribir texto encima de colores que se superponen.
  * Si la franja es más angosta que su propio nombre, el texto se pega al
  * borde del SVG en vez de centrarse y salirse del dibujo. */
-function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs) {
-  const [x1, x2] = mapaBordes(pos, desdeMidi, hastaMidi);
+function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs, anclarAlCentroDeTecla) {
+  // Por defecto la cota va de borde a borde (todo el ancho de la primera y
+  // la última tecla, igual que la franja de color de arriba). Pero para las
+  // zonas con guía arriba (Voz de pecho/cabeza, canto mongol, silbido) el
+  // profesor pidió que la cota empiece/termine justo en el CENTRO de esas
+  // teclas, para coincidir con la línea punteada que ya marca esa nota en el
+  // centro -- no se toca la guía de arriba, se ajusta la cota de abajo.
+  const [x1, x2] = anclarAlCentroDeTecla
+    ? [pos.posiciones[desdeMidi].x + pos.posiciones[desdeMidi].ancho / 2, pos.posiciones[hastaMidi].x + pos.posiciones[hastaMidi].ancho / 2]
+    : mapaBordes(pos, desdeMidi, hastaMidi);
   const centro = (x1 + x2) / 2;
   const fuente = tamanoFuente || 11;
   const margen = 2;
@@ -654,7 +662,7 @@ function mapaConstruirSvg(datos) {
   // desde/hasta). ------------------------------------------------------
   zonas.forEach((zona) => {
     const yLinea = yBrackets + 8 + zona.fila * FILA_ALTO;
-    cuerpo += mapaBracketSvg(pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal, [zpX1, zpX2]);
+    cuerpo += mapaBracketSvg(pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal, [zpX1, zpX2], true);
   });
 
   // --- Zona de paso: dos líneas de cota pequeñas y anidadas ("mix pecho" /
