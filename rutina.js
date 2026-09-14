@@ -112,9 +112,51 @@ function renderizarRutina() {
   });
 }
 
+/** Metrónomo de fondo para marcar el pulso mientras se hace la rutina --
+ * mismo motor (audio.js) y misma barra compacta que en Piano, aquí como
+ * único control (no hay pestaña detallada que abrir en esta página). */
+function inicializarMetronomoFlotante() {
+  const toggle = el("metroFlotToggle");
+  const bpm = el("metroFlotBpm");
+  const bpmValor = el("metroFlotBpmValor");
+  const volumen = el("metroFlotVolumen");
+  const punto = el("metronomoPuntoMini");
+  let enMarcha = false;
+
+  bpm.addEventListener("input", () => {
+    bpmValor.textContent = bpm.value;
+    if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(parseInt(bpm.value, 10));
+  });
+
+  volumen.addEventListener("input", () => {
+    if (window.MetronomoEngine) window.MetronomoEngine.ajustarVolumen(parseFloat(volumen.value));
+  });
+
+  toggle.addEventListener("click", () => {
+    if (!window.MetronomoEngine) return;
+    if (enMarcha) {
+      window.MetronomoEngine.detener();
+      enMarcha = false;
+      toggle.textContent = "▶";
+      toggle.classList.remove("en-marcha");
+      return;
+    }
+    enMarcha = true;
+    toggle.textContent = "⏹";
+    toggle.classList.add("en-marcha");
+    window.MetronomoEngine.ajustarVolumen(parseFloat(volumen.value));
+    window.MetronomoEngine.iniciar(parseInt(bpm.value, 10), 4, () => {
+      punto.classList.remove("pulso");
+      void punto.offsetWidth; // fuerza reflow para reiniciar la animación en cada pulso
+      punto.classList.add("pulso");
+    });
+  });
+}
+
 function inicializarRutina() {
   if (window.Progreso) Progreso.marcarHerramientaUsada("rutina");
   inicializarPiano(); // teclado.js: sin callback propio, tocar una tecla solo la previsualiza
+  inicializarMetronomoFlotante();
   rutinaEjercicios = generarRutina(rutinaVarianteExtra);
   renderizarRutina();
   el("rutinaRacha").textContent = Progreso.obtener("rutinaRachaDias", 0);
