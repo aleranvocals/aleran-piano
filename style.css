@@ -991,6 +991,31 @@ input[type="checkbox"] {
   margin: 0;
 }
 
+.cta-clases {
+  margin: 1.75rem 0 0;
+  padding: 0.9rem 1.1rem;
+  background: var(--panel-2);
+  border: 1px solid var(--crimson);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.cta-clases p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--bone-dim);
+}
+
+.cta-clases a {
+  color: var(--crimson-bright);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cta-clases a:hover {
+  text-decoration: underline;
+}
+
 .boton-tema {
   appearance: none;
   position: absolute;
