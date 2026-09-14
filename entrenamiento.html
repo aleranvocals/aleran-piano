@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Entrenamiento — Áleran Vocals</title>
+<meta name="description" content="Entrenamiento con micrófono: medidor de rango vocal, SOVT/sirena libre, cronómetro de nota sostenida con análisis de vibrato en vivo, messa di voce, control de aire, espectrograma en vivo y grabadora de práctica." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🎤 Entrenamiento</h1>
+    <p class="subtitulo">Rango vocal, SOVT/sirena libre, nota sostenida, messa di voce, control de aire, espectro en vivo y grabadora de práctica — todo con el micrófono de tu dispositivo.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <a href="index.html">🏠 Inicio</a>
+    <a href="piano.html">🎹 Piano</a>
+    <a href="entrenamiento.html" class="activo">🎤 Entrenamiento</a>
+    <a href="oido.html">🧠 Oído</a>
+    <a href="rutina.html">📋 Rutina</a>
+    <a href="progreso.html">📈 Progreso</a>
+    <a href="guia.html">🧭 Guía</a>
+    <a href="catalogo.html">🎼 Catálogo</a>
+    <a href="glosario.html">📖 Glosario</a>
+    <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+  </nav>
+
+  <div class="piano-contenedor" id="pianoContenedor">
+    <div class="piano" id="piano"></div>
+  </div>
+  <input type="range" id="pianoDesplazamiento" class="piano-slider" min="0" max="1000" value="0" aria-label="Desplazar el teclado" />
+  <div class="piano-zoom">
+    <span aria-hidden="true">🔍−</span>
+    <input type="range" id="pianoZoom" min="18" max="60" step="2" value="34" aria-label="Tamaño de las teclas" />
+    <span aria-hidden="true">🔍+</span>
+  </div>
+  <div class="afinometro" id="afinometro" hidden>
+    <div class="afinometro-arco"><div class="afinometro-aguja" id="afinometroAguja"></div></div>
+    <div class="afinometro-texto" id="afinometroTexto">—</div>
+  </div>
+  <label class="campo campo-volumen">
+    <span>Volumen</span>
+    <input type="range" id="volumen" min="0.1" max="1" step="0.05" value="0.85" />
+  </label>
+
+  <div class="tabs" role="tablist">
+    <button class="subtab activo" data-entren="rango" role="tab" aria-selected="true">Rango vocal</button>
+    <button class="subtab" data-entren="sovt" role="tab" aria-selected="false">SOVT / Sirena</button>
+    <button class="subtab" data-entren="sostenida" role="tab" aria-selected="false">Nota sostenida</button>
+    <button class="subtab" data-entren="messa" role="tab" aria-selected="false">Messa di voce</button>
+    <button class="subtab" data-entren="aire" role="tab" aria-selected="false">Control de aire</button>
+    <button class="subtab" data-entren="espectro" role="tab" aria-selected="false">Espectro en vivo</button>
+    <button class="subtab" data-entren="grabadora" role="tab" aria-selected="false">Grabadora</button>
+  </div>
+
+  <section id="panel-rango" class="panel">
+    <p class="descripcion">
+      Canta cómodamente desde tu nota más grave hasta tu nota más aguda (y viceversa
+      las veces que quieras). Cuando termines, pulsa "Detener" para ver tu rango.
+    </p>
+    <div class="nota-grande" id="rangoNotaActual">—</div>
+    <p class="descripcion" id="rangoResultado"></p>
+    <div class="acciones">
+      <button id="btnRangoIniciar" class="boton principal">🎤 Empezar</button>
+      <button id="btnRangoDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section id="panel-sovt" class="panel" hidden>
+    <p class="descripcion">
+      Desliza libremente de grave a agudo y de vuelta mientras haces la
+      técnica que elijas — no hace falta sonar "bonito", solo mantener el
+      sonido mientras te mueves por tu rango. Ideal para calentar antes de
+      cantar o para enfriar la voz al terminar.
+    </p>
+    <label class="campo">
+      <span>Técnica</span>
+      <select id="sovtTecnica">
+        <option value="voz">Solo voz (sirena)</option>
+        <option value="trino">Trino de labios</option>
+        <option value="pajita">Pajita (straw phonation)</option>
+        <option value="zumbido">Zumbido (humming)</option>
+      </select>
+    </label>
+    <div class="nota-grande" id="sovtNotaActual">—</div>
+    <p class="marcador" id="sovtTiempo"></p>
+    <div class="acciones">
+      <button id="btnSovtIniciar" class="boton principal">🎤 Empezar</button>
+      <button id="btnSovtDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section id="panel-sostenida" class="panel" hidden>
+    <p class="descripcion">
+      Elige una nota en el piano de arriba (opcional) y sostenla el mayor tiempo
+      posible y lo más estable que puedas. Si no eliges ninguna, se mide la
+      primera nota que cantes.
+    </p>
+    <div class="nota-grande" id="sostenidaTiempo">0.0s</div>
+    <p class="marcador" id="sostenidaVibratoEnVivo"></p>
+    <canvas id="sostenidaGrafico" width="600" height="120" class="grafico-pitch"></canvas>
+    <p class="descripcion" id="sostenidaResultado"></p>
+    <div class="acciones">
+      <button id="btnSostenidaIniciar" class="boton principal">🎤 Empezar</button>
+      <button id="btnSostenidaDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section id="panel-messa" class="panel" hidden>
+    <p class="descripcion">
+      Elige una nota (opcional) y sostenla mientras haces un "globo": empieza
+      muy suave, crece hasta el máximo volumen que puedas sin forzar, y baja
+      de nuevo a un hilo de voz — todo en la misma nota y la misma
+      respiración. Es un clásico control de aire y volumen.
+    </p>
+    <canvas id="messaGrafico" width="600" height="120" class="grafico-pitch"></canvas>
+    <p class="descripcion" id="messaResultado"></p>
+    <div class="acciones">
+      <button id="btnMessaIniciar" class="boton principal">🎤 Empezar</button>
+      <button id="btnMessaDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section id="panel-aire" class="panel" hidden>
+    <p class="descripcion">
+      Sin usar las cuerdas vocales: haz una "sss" o "fff" larga y pareja, lo
+      más constante posible, y aguanta el máximo tiempo con el aire que
+      tengas. Mide tu control de la respiración, no tu voz.
+    </p>
+    <div class="nota-grande" id="aireTiempo">0.0s</div>
+    <canvas id="aireGrafico" width="600" height="120" class="grafico-pitch"></canvas>
+    <p class="descripcion" id="aireResultado"></p>
+    <div class="acciones">
+      <button id="btnAireIniciar" class="boton principal">💨 Empezar</button>
+      <button id="btnAireDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section id="panel-espectro" class="panel" hidden>
+    <p class="descripcion">
+      Canta o vocaliza y observa en vivo el espectro de frecuencias de tu
+      voz (útil para ver armónicos, brillo y resonancia). El eje vertical
+      va de 0 a 4000 Hz; más brillante = más energía en esa frecuencia.
+    </p>
+    <canvas id="espectroGrafico" width="600" height="160" class="grafico-pitch"></canvas>
+
+    <div class="brillo-medidor">
+      <div class="brillo-etiqueta">
+        <span>💡 Índice de brillo / proyección (aproximado)</span>
+        <span id="brilloValor">—</span>
+      </div>
+      <div class="brillo-pista"><div class="brillo-barra" id="brilloBarra"></div></div>
+      <p class="descripcion" style="margin-top:0.5rem">
+        Compara la energía en 2.5–3.5 kHz (donde suele proyectar una voz
+        entrenada, el "formante del cantante") frente al resto del rango
+        vocal. <strong>No es una medición clínica:</strong> cambia según el
+        micrófono y la vocal que cantes, así que úsalo para comparar dentro
+        de la misma sesión ("¿subió al darle más 'ping' al sonido?"), no
+        como una puntuación absoluta ni entre sesiones distintas.
+      </p>
+    </div>
+
+    <div class="acciones">
+      <button id="btnEspectroIniciar" class="boton principal">🎤 Empezar</button>
+      <button id="btnEspectroDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section id="panel-grabadora" class="panel" hidden>
+    <p class="descripcion">
+      Graba tomas cortas de práctica y guárdalas para escucharlas más
+      tarde: compara cómo sonabas antes con cómo suenas ahora. Las
+      grabaciones se guardan solo en este navegador.
+    </p>
+    <label class="campo">
+      <span>Nombre de la toma (opcional, ej: "antes", "después de calentar")</span>
+      <input type="text" id="grabacionEtiqueta" placeholder="Toma sin nombre" maxlength="60" />
+    </label>
+    <div class="acciones">
+      <button id="btnGrabarIniciar" class="boton principal">🔴 Grabar</button>
+      <button id="btnGrabarDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+    <div class="grabaciones-lista" id="listaGrabaciones"></div>
+  </section>
+
+  <p id="estadoEntrenamiento" class="estado" aria-live="polite"></p>
+
+  <footer class="pie">
+    <p>El micrófono requiere tu permiso y una conexión HTTPS (o http://localhost en pruebas locales). Nada de audio se sube a ningún sitio: el análisis ocurre enteramente en tu navegador.</p>
+  </footer>
+</div>
+
+<script src="smplr.iife.js"></script>
+<script src="pitchy.iife.js"></script>
+<script src="escalas.js"></script>
+<script src="audio.js"></script>
+<script src="progreso.js"></script>
+<script src="teclado.js"></script>
+<script src="entrenamiento.js"></script>
+<script src="grabadora.js"></script>
+<script src="tema.js"></script>
+</body>
+</html>

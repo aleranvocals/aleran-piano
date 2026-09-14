@@ -1,0 +1,371 @@
+/*
+ * audio.js — motor de sonido, ahora sobre muestras reales de piano (Steinway,
+ * "SplendidGrandPiano") vía la librería smplr, en vez de síntesis aditiva.
+ *
+ * Esto es lo que soluciona la afinación: cada nota es una grabación real
+ * reproducida a la velocidad exacta (2^((nota-muestra)/12)) para dar el tono
+ * pedido, en vez de una aproximación sintética. El ataque percusivo real del
+ * martillo también es lo que evita que notas seguidas suenen a "glissando".
+ *
+ * smplr viene empaquetado localmente en smplr.iife.js (ver ese archivo) como
+ * script clásico -- no como módulo ES -- para que funcione tanto abriendo
+ * index.html con doble clic (file://, donde los módulos ES no cargan) como
+ * en cualquier hosting, sin depender de que un CDN externo responda a tiempo.
+ * Las muestras de audio en sí (los .mp3/.ogg del piano) sí se siguen
+ * descargando de internet la primera vez que se reproduce una nota.
+ */
+const { SplendidGrandPiano, renderOffline, SampleLoader } = smplrLib;
+// DO1_MIDI / DO6_MIDI ya están declaradas por escalas.js (se carga antes).
+
+// Sin esto, SplendidGrandPiano carga las 5 capas de velocidad completas del
+// piano entero (~200+ archivos de audio decodificados en memoria a la vez),
+// que es lo que saturó la RAM y colgó el equipo. Limitamos a las notas que
+// de verdad usamos (Do1-Do6) y a una sola capa de velocidad.
+const NOTAS_A_CARGAR = Array.from({ length: DO6_MIDI - DO1_MIDI + 1 }, (_, i) => DO1_MIDI + i);
+const OPCIONES_PIANO = { notesToLoad: { notes: NOTAS_A_CARGAR, velocityRange: [85, 100] } };
+
+let contextoAudio = null;
+let pianoEnVivo = null;
+let cargadorCompartido = null;
+let tokenReproduccion = 0;
+
+function obtenerContexto() {
+  if (!contextoAudio) contextoAudio = new (window.AudioContext || window.webkitAudioContext)();
+  if (contextoAudio.state === "suspended") contextoAudio.resume();
+  return contextoAudio;
+}
+
+function obtenerCargador() {
+  if (!cargadorCompartido) cargadorCompartido = SampleLoader(obtenerContexto());
+  return cargadorCompartido;
+}
+
+function obtenerPianoEnVivo() {
+  if (!pianoEnVivo) {
+    pianoEnVivo = SplendidGrandPiano(obtenerContexto(), { ...OPCIONES_PIANO, loader: obtenerCargador() });
+  }
+  return pianoEnVivo;
+}
+
+function duracionTotal(eventos) {
+  return eventos.reduce((acc, e) => acc + e.duracion, 0);
+}
+
+function clampMidi(midi) {
+  return Math.max(DO1_MIDI, Math.min(DO6_MIDI, midi));
+}
+
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Reproduce la secuencia en tiempo real, nota a nota (no la programa toda de
+ * golpe): así "Detener" funciona de verdad -- basta con invalidar el token
+ * para que el bucle no arranque ninguna nota más, y piano.stop() calla la
+ * que esté sonando en ese instante. También permite avisar a la interfaz
+ * qué nota suena en cada momento (para resaltarla en el teclado visual).
+ *
+ * callbacks admite: onCargando(bool), onNotaInicio(midi), onNotaFin(midi), onTerminar().
+ */
+async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
+  const { onCargando, onNotaInicio, onNotaFin, onTerminar } = callbacks;
+  const miToken = ++tokenReproduccion;
+  const piano = obtenerPianoEnVivo();
+  piano.stop();
+
+  const yaListo = piano.loadProgress && piano.loadProgress.loaded >= piano.loadProgress.total;
+  if (onCargando) onCargando(!yaListo);
+  await piano.ready;
+  if (tokenReproduccion !== miToken) return; // se pidió detener mientras cargaba
+  if (onCargando) onCargando(false);
+
+  piano.output.volume = Math.round(Math.max(0, Math.min(1, volumen)) * 127);
+
+  for (const { midi, duracion } of eventos) {
+    if (tokenReproduccion !== miToken) return;
+    if (midi !== -1) {
+      piano.start({ note: clampMidi(midi), duration: duracion });
+      if (onNotaInicio) onNotaInicio(midi);
+    }
+    await esperar(duracion * 1000);
+    if (tokenReproduccion !== miToken) return;
+    if (midi !== -1 && onNotaFin) onNotaFin(midi);
+  }
+  if (tokenReproduccion === miToken && onTerminar) onTerminar();
+}
+
+function detenerReproduccion() {
+  tokenReproduccion++; // invalida cualquier reproducción en curso: no se programará ninguna nota más
+  if (pianoEnVivo) pianoEnVivo.stop(); // corta en seco lo que esté sonando ahora mismo
+  escuchaMicrofonoCancelada = true; // si había una escucha de "cantar y calificar" en curso, se corta ya
+}
+
+function ultimaDuracionNota(eventos) {
+  for (let i = eventos.length - 1; i >= 0; i--) {
+    if (eventos[i].midi !== -1) return eventos[i].duracion;
+  }
+  return 0.5;
+}
+
+/**
+ * Renderiza la secuencia completa fuera de tiempo real; devuelve un AudioBuffer.
+ *
+ * El corte abrupto que se oía en los MP3 exportados era porque el buffer
+ * offline medía exactamente la suma de duraciones, sin dejar sitio para la
+ * cola de decaimiento natural del piano (el "release" que suena después de
+ * soltar la tecla) -- ese decaimiento se recortaba en seco al llegar al final
+ * del buffer. Ahora se reserva una cola proporcional a la duración de la
+ * última nota (notas largas -> fundido más largo, como pidió el usuario).
+ */
+async function renderizarOffline(eventos, volumen) {
+  const margen = 0.05;
+  const decayTime = Math.min(1.8, Math.max(0.3, ultimaDuracionNota(eventos) * 0.25));
+  const colaFinal = decayTime + 0.4;
+  const total = duracionTotal(eventos) + margen + colaFinal;
+  const resultado = await renderOffline(
+    async (ctx) => {
+      const piano = SplendidGrandPiano(ctx, { ...OPCIONES_PIANO, loader: obtenerCargador(), decayTime });
+      await piano.ready;
+      piano.output.volume = Math.round(Math.max(0, Math.min(1, volumen)) * 127);
+      let t = margen;
+      for (const { midi, duracion } of eventos) {
+        if (midi !== -1) piano.start({ note: clampMidi(midi), time: t, duration: duracion });
+        t += duracion;
+      }
+    },
+    { duration: total, channels: 1 }
+  );
+  return resultado.audioBuffer;
+}
+
+function audioBufferAMp3(buffer, kbps = 128) {
+  const canal = buffer.getChannelData(0);
+  const muestras = new Int16Array(canal.length);
+  for (let i = 0; i < canal.length; i++) {
+    const s = Math.max(-1, Math.min(1, canal[i]));
+    muestras[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  const encoder = new lamejs.Mp3Encoder(1, buffer.sampleRate, kbps);
+  const tamanoBloque = 1152;
+  const partes = [];
+  for (let i = 0; i < muestras.length; i += tamanoBloque) {
+    const trozo = muestras.subarray(i, i + tamanoBloque);
+    const mp3buf = encoder.encodeBuffer(trozo);
+    if (mp3buf.length > 0) partes.push(mp3buf);
+  }
+  const cierre = encoder.flush();
+  if (cierre.length > 0) partes.push(cierre);
+  return new Blob(partes, { type: "audio/mp3" });
+}
+
+async function exportarMp3(eventos, volumen, nombreArchivo) {
+  const buffer = await renderizarOffline(eventos, volumen);
+  const blob = audioBufferAMp3(buffer);
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// --- Metrónomo (50-350 bpm) --------------------------------------------
+// Patrón estándar de "lookahead scheduler": en vez de disparar cada clic con
+// un setTimeout (que se desincroniza con el tiempo real), se programan con
+// antelación en el propio AudioContext y solo se revisa cada poco si hay que
+// programar el siguiente. Así el tempo no se acumula ni se desvía.
+
+const METRONOMO_ANTICIPO_S = 0.12; // cuánto se programa por delante
+const METRONOMO_INTERVALO_MS = 25; // cada cuánto se revisa si toca programar más
+
+let metronomoActivo = false;
+let metronomoBpm = 100;
+let metronomoAcentoCada = 4; // 0 = sin acento
+let metronomoSiguienteTiempo = 0;
+let metronomoContadorPulso = 0;
+let metronomoTimerId = null;
+
+function reproducirClicMetronomo(ctx, tiempo, acento) {
+  const osc = ctx.createOscillator();
+  osc.type = "square";
+  osc.frequency.value = acento ? 1600 : 1000;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, tiempo);
+  gain.gain.exponentialRampToValueAtTime(acento ? 0.55 : 0.32, tiempo + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.0001, tiempo + 0.045);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(tiempo);
+  osc.stop(tiempo + 0.06);
+}
+
+function iniciarMetronomo(bpm, acentoCada, onPulso) {
+  detenerMetronomo();
+  const ctx = obtenerContexto();
+  metronomoBpm = bpm;
+  metronomoAcentoCada = acentoCada;
+  metronomoActivo = true;
+  metronomoContadorPulso = 0;
+  metronomoSiguienteTiempo = ctx.currentTime + 0.05;
+
+  function programar() {
+    if (!metronomoActivo) return;
+    while (metronomoSiguienteTiempo < ctx.currentTime + METRONOMO_ANTICIPO_S) {
+      const acento = metronomoAcentoCada > 0 && metronomoContadorPulso % metronomoAcentoCada === 0;
+      reproducirClicMetronomo(ctx, metronomoSiguienteTiempo, acento);
+      if (onPulso) {
+        const retrasoMs = Math.max(0, (metronomoSiguienteTiempo - ctx.currentTime) * 1000);
+        setTimeout(() => {
+          if (metronomoActivo) onPulso(acento);
+        }, retrasoMs);
+      }
+      metronomoSiguienteTiempo += 60 / metronomoBpm;
+      metronomoContadorPulso++;
+    }
+    metronomoTimerId = setTimeout(programar, METRONOMO_INTERVALO_MS);
+  }
+  programar();
+}
+
+function detenerMetronomo() {
+  metronomoActivo = false;
+  if (metronomoTimerId) clearTimeout(metronomoTimerId);
+  metronomoTimerId = null;
+}
+
+function ajustarBpmMetronomo(bpm) {
+  metronomoBpm = bpm;
+}
+
+function ajustarAcentoMetronomo(acentoCada) {
+  metronomoAcentoCada = acentoCada;
+}
+
+// --- Micrófono / detección de afinación ---------------------------------
+// Usa `pitchy` (algoritmo McLeod Pitch Method, el mismo tipo que usan los
+// afinadores profesionales), empaquetado localmente en pitchy.iife.js igual
+// que smplr/lamejs -- sin CDN externo, sin servicio de pago, 100% en el
+// navegador. Requiere HTTPS o localhost (exigencia del propio navegador para
+// dar acceso al micrófono) y que el alumno conceda el permiso.
+
+const PITCH_FFT_SIZE = 2048;
+const PITCH_CLARIDAD_MINIMA = 0.9; // por debajo de esto, pitchy no está seguro (ruido/silencio)
+const PITCH_FREC_MIN = 55; // ~La1, por debajo es casi seguro ruido de fondo
+const PITCH_FREC_MAX = 1500; // ~Fa#6, por encima no es una voz cantando
+
+let streamMicrofono = null;
+let analizadorMicrofono = null;
+let detectorPitch = null;
+let bufferPitch = null;
+let escuchaMicrofonoCancelada = false;
+
+function microfonoDisponible() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+async function iniciarMicrofono() {
+  if (streamMicrofono) return;
+  if (!microfonoDisponible()) {
+    throw new Error("Este navegador no permite usar el micrófono aquí (¿estás en HTTP sin https?).");
+  }
+  streamMicrofono = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  });
+  const ctx = obtenerContexto();
+  const fuente = ctx.createMediaStreamSource(streamMicrofono);
+  analizadorMicrofono = ctx.createAnalyser();
+  analizadorMicrofono.fftSize = PITCH_FFT_SIZE;
+  fuente.connect(analizadorMicrofono);
+  detectorPitch = pitchyLib.PitchDetector.forFloat32Array(PITCH_FFT_SIZE);
+  bufferPitch = new Float32Array(PITCH_FFT_SIZE);
+}
+
+function detenerMicrofono() {
+  if (streamMicrofono) streamMicrofono.getTracks().forEach((t) => t.stop());
+  streamMicrofono = null;
+  analizadorMicrofono = null;
+  detectorPitch = null;
+}
+
+/** Una lectura instantánea del micrófono, o null si no hay una nota clara
+ * (silencio, ruido, o el alumno todavía no ha respirado para cantar). */
+function leerPitchInstantaneo() {
+  if (!analizadorMicrofono || !detectorPitch) return null;
+  analizadorMicrofono.getFloatTimeDomainData(bufferPitch);
+  const [frecuencia, claridad] = detectorPitch.findPitch(bufferPitch, obtenerContexto().sampleRate);
+  if (claridad < PITCH_CLARIDAD_MINIMA || frecuencia < PITCH_FREC_MIN || frecuencia > PITCH_FREC_MAX) {
+    return null;
+  }
+  return { frecuencia, claridad };
+}
+
+/** Escucha el micrófono durante `segundos` comparando lo que canta el
+ * alumno contra `midiObjetivo`, y devuelve el promedio de desviación en
+ * "cents" (100 cents = 1 semitono) durante todas las lecturas válidas. */
+async function escucharYPuntuar(midiObjetivo, segundos, onLectura) {
+  const frecuenciaObjetivo = midiAFrecuencia(midiObjetivo);
+  const inicio = performance.now();
+  const centavos = [];
+  escuchaMicrofonoCancelada = false;
+  while (performance.now() - inicio < segundos * 1000) {
+    if (escuchaMicrofonoCancelada) break;
+    const lectura = leerPitchInstantaneo();
+    if (lectura) {
+      const cents = 1200 * Math.log2(lectura.frecuencia / frecuenciaObjetivo);
+      centavos.push(cents);
+      if (onLectura) onLectura(cents, lectura.frecuencia);
+    } else if (onLectura) {
+      onLectura(null, null);
+    }
+    await esperar(40); // ~25 lecturas/seg -- de sobra para el vibrato de una voz
+  }
+  if (centavos.length === 0) return { detectado: false };
+  const centsPromedio = centavos.reduce((a, b) => a + b, 0) / centavos.length;
+  return { detectado: true, centsPromedio, numLecturas: centavos.length };
+}
+
+function frecuenciaAMidi(freq) {
+  return 69 + 12 * Math.log2(freq / 440);
+}
+
+let escuchaContinuaActiva = false;
+
+/** Escucha el micrófono de forma continua (sin nota objetivo ni límite de
+ * tiempo) hasta que se llame a detenerEscuchaContinua(). La usan el medidor
+ * de rango vocal y el cronómetro de nota sostenida. `onLectura` recibe
+ * `{ frecuencia, midiExacto, claridad }` o `null` cuando no hay voz clara. */
+async function escucharContinuo(onLectura) {
+  escuchaContinuaActiva = true;
+  escuchaMicrofonoCancelada = false;
+  while (escuchaContinuaActiva && !escuchaMicrofonoCancelada) {
+    const lectura = leerPitchInstantaneo();
+    onLectura(lectura ? { ...lectura, midiExacto: frecuenciaAMidi(lectura.frecuencia) } : null);
+    await esperar(40); // ~25 lecturas/seg
+  }
+}
+
+function detenerEscuchaContinua() {
+  escuchaContinuaActiva = false;
+}
+
+window.PianoEngine = { reproducirSecuencia, detenerReproduccion, exportarMp3 };
+window.MetronomoEngine = {
+  iniciar: iniciarMetronomo,
+  detener: detenerMetronomo,
+  ajustarBpm: ajustarBpmMetronomo,
+  ajustarAcento: ajustarAcentoMetronomo,
+};
+window.MicrofonoEngine = {
+  disponible: microfonoDisponible,
+  iniciar: iniciarMicrofono,
+  detener: detenerMicrofono,
+  escucharYPuntuar,
+  escucharContinuo,
+  detenerContinuo: detenerEscuchaContinua,
+  // Da acceso al AnalyserNode crudo (para el espectrograma en vivo); no hace
+  // falta crear un segundo analizador, el mismo sirve para pitch y espectro.
+  obtenerAnalizador: () => analizadorMicrofono,
+};
+window.dispatchEvent(new Event("piano-engine-listo"));

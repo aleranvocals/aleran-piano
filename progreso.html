@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Progreso — Áleran Vocals</title>
+<meta name="description" content="Tus récords de práctica vocal guardados en este navegador: rango vocal, nota sostenida, aciertos de oído y rachas." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>📈 Progreso</h1>
+    <p class="subtitulo">Tus récords, guardados solo en este navegador.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <a href="index.html">🏠 Inicio</a>
+    <a href="piano.html">🎹 Piano</a>
+    <a href="entrenamiento.html">🎤 Entrenamiento</a>
+    <a href="oido.html">🧠 Oído</a>
+    <a href="rutina.html">📋 Rutina</a>
+    <a href="progreso.html" class="activo">📈 Progreso</a>
+    <a href="guia.html">🧭 Guía</a>
+    <a href="catalogo.html">🎼 Catálogo</a>
+    <a href="glosario.html">📖 Glosario</a>
+    <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+  </nav>
+
+  <section class="panel">
+    <p class="descripcion">Tus récords se guardan en este navegador (no se comparten ni se suben a ningún sitio).</p>
+    <div class="tarjetas-progreso" id="tarjetasProgreso"></div>
+
+    <h2 class="titulo-seccion">Racha de práctica diaria</h2>
+    <div class="calendario-racha" id="calendarioRacha"></div>
+
+    <h2 class="titulo-seccion">🏅 Insignias</h2>
+    <div class="logros-lista" id="logrosLista"></div>
+
+    <div class="acciones">
+      <button id="btnProgresoCompartir" class="boton principal">📤 Descargar tarjeta de progreso</button>
+      <button id="btnProgresoReiniciar" class="boton">🗑 Borrar todo mi progreso</button>
+    </div>
+  </section>
+
+  <footer class="pie">
+    <p>Si cambias de navegador o de dispositivo, o borras los datos del sitio, estos récords no se conservan (no hay cuenta ni servidor).</p>
+  </footer>
+</div>
+
+<script src="escalas.js"></script>
+<script src="progreso.js"></script>
+<script src="progreso-vista.js"></script>
+<script src="tema.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Oído — Áleran Vocals</title>
+<meta name="description" content="Juegos de entrenamiento auditivo: adivina el intervalo, adivina la nota en el piano, y Simon dice. No necesitan micrófono." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🧠 Oído</h1>
+    <p class="subtitulo">Intervalos, adivina la nota y Simon dice — entrenamiento auditivo, sin micrófono.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <a href="index.html">🏠 Inicio</a>
+    <a href="piano.html">🎹 Piano</a>
+    <a href="entrenamiento.html">🎤 Entrenamiento</a>
+    <a href="oido.html" class="activo">🧠 Oído</a>
+    <a href="rutina.html">📋 Rutina</a>
+    <a href="progreso.html">📈 Progreso</a>
+    <a href="guia.html">🧭 Guía</a>
+    <a href="catalogo.html">🎼 Catálogo</a>
+    <a href="glosario.html">📖 Glosario</a>
+    <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+  </nav>
+
+  <div class="piano-contenedor" id="pianoContenedor">
+    <div class="piano" id="piano"></div>
+  </div>
+  <input type="range" id="pianoDesplazamiento" class="piano-slider" min="0" max="1000" value="0" aria-label="Desplazar el teclado" />
+  <div class="piano-zoom">
+    <span aria-hidden="true">🔍−</span>
+    <input type="range" id="pianoZoom" min="18" max="60" step="2" value="34" aria-label="Tamaño de las teclas" />
+    <span aria-hidden="true">🔍+</span>
+  </div>
+  <label class="campo campo-volumen">
+    <span>Volumen</span>
+    <input type="range" id="volumen" min="0.1" max="1" step="0.05" value="0.85" />
+  </label>
+
+  <div class="tabs" role="tablist">
+    <button class="subtab activo" data-oido="intervalos" role="tab" aria-selected="true">Intervalos</button>
+    <button class="subtab" data-oido="notas" role="tab" aria-selected="false">Adivina la nota</button>
+    <button class="subtab" data-oido="simon" role="tab" aria-selected="false">Simon dice</button>
+  </div>
+
+  <section id="panel-intervalos" class="panel">
+    <p class="descripcion">Suenan dos notas seguidas. ¿Qué intervalo es?</p>
+    <p class="marcador">Aciertos: <strong id="intervalosAciertos">0</strong> / <span id="intervalosTotal">0</span> · Racha: <strong id="intervalosRacha">0</strong></p>
+    <div class="acciones">
+      <button id="btnIntervaloNueva" class="boton principal">🔊 Nueva pregunta</button>
+      <button id="btnIntervaloRepetir" class="boton" disabled>🔁 Repetir sonido</button>
+    </div>
+    <div id="intervalosOpciones" class="opciones-quiz"></div>
+    <p id="intervalosFeedback" class="estado" aria-live="polite"></p>
+  </section>
+
+  <section id="panel-notasquiz" class="panel" hidden>
+    <p class="descripcion">Suena una nota. Tócala en el piano de arriba.</p>
+    <p class="marcador">Aciertos: <strong id="notasquizAciertos">0</strong> / <span id="notasquizTotal">0</span> · Racha: <strong id="notasquizRacha">0</strong></p>
+    <label class="campo">
+      <span>Rango de práctica</span>
+      <select id="notasquizRango">
+        <option value="tenor">Cómodo (rango de Tenor, Do3–Do5)</option>
+        <option value="completo">Todo el teclado (Do1–Do6)</option>
+      </select>
+    </label>
+    <div class="acciones">
+      <button id="btnNotaquizNueva" class="boton principal">🔊 Nueva pregunta</button>
+      <button id="btnNotaquizRepetir" class="boton" disabled>🔁 Repetir sonido</button>
+    </div>
+    <p id="notasquizFeedback" class="estado" aria-live="polite"></p>
+  </section>
+
+  <section id="panel-simon" class="panel" hidden>
+    <p class="descripcion">
+      El piano toca una secuencia que crece cada ronda. Repítela tocando las
+      mismas teclas en el mismo orden.
+    </p>
+    <p class="marcador">Nivel: <strong id="simonNivel">0</strong> · Récord: <strong id="simonRecord">0</strong></p>
+    <div class="acciones">
+      <button id="btnSimonEmpezar" class="boton principal">▶ Empezar</button>
+    </div>
+    <p id="simonFeedback" class="estado" aria-live="polite"></p>
+  </section>
+
+  <footer class="pie">
+    <p>Los récords de estos juegos se guardan solo en este navegador.</p>
+  </footer>
+</div>
+
+<script src="smplr.iife.js"></script>
+<script src="escalas.js"></script>
+<script src="audio.js"></script>
+<script src="progreso.js"></script>
+<script src="teclado.js"></script>
+<script src="oido.js"></script>
+<script src="tema.js"></script>
+</body>
+</html>

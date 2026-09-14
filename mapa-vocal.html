@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mapa vocal — Áleran Vocals</title>
+<meta name="description" content="Genera un mapa de registros vocales (voz de pecho, voz de cabeza, passaggio, zona de paso, voz de silbido, emulación de canto mongol, belting) a partir de las notas que escribas, listo para descargar como imagen." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🗺️ Mapa vocal</h1>
+    <p class="subtitulo">Escribe las notas de los registros de un alumno y genera un mapa de rango vocal listo para descargar.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <a href="index.html">🏠 Inicio</a>
+    <a href="piano.html">🎹 Piano</a>
+    <a href="entrenamiento.html">🎤 Entrenamiento</a>
+    <a href="oido.html">🧠 Oído</a>
+    <a href="rutina.html">📋 Rutina</a>
+    <a href="progreso.html">📈 Progreso</a>
+    <a href="guia.html">🧭 Guía</a>
+    <a href="catalogo.html">🎼 Catálogo</a>
+    <a href="glosario.html">📖 Glosario</a>
+    <a href="mapa-vocal.html" class="activo">🗺️ Mapa vocal</a>
+  </nav>
+
+  <section class="panel">
+    <p class="descripcion">
+      Rellena las notas que conozcas (formato "Do3", "Fa#4", "Sib2"...). El
+      inicio de pecho, el passaggio, el inicio de cabeza y el final de
+      cabeza son necesarios; silbido, canto mongol y belting son opcionales.
+    </p>
+    <div class="campos-mapa">
+      <label class="campo">
+        <span>Inicio voz de pecho</span>
+        <input type="text" id="mapaPechoInicio" placeholder="Do1" value="Sol2" />
+      </label>
+      <label class="campo">
+        <span>Passaggio</span>
+        <input type="text" id="mapaPassaggio" placeholder="La4" value="La4" />
+      </label>
+      <label class="campo">
+        <span>Inicio voz de cabeza</span>
+        <input type="text" id="mapaCabezaInicio" placeholder="Re#4" value="La3" />
+      </label>
+      <label class="campo">
+        <span>Final voz de cabeza</span>
+        <input type="text" id="mapaCabezaFinal" placeholder="Do6" value="Do6" />
+      </label>
+      <label class="campo checkbox">
+        <input type="checkbox" id="mapaTieneSilbido" checked />
+        <span>¿Tiene voz de silbido?</span>
+      </label>
+      <label class="campo">
+        <span>Hasta dónde sube el silbido</span>
+        <input type="text" id="mapaSilbidoFinal" placeholder="Sol6" value="Sol6" />
+      </label>
+      <label class="campo checkbox">
+        <input type="checkbox" id="mapaTieneMongol" checked />
+        <span>¿Tiene emulación de canto mongol?</span>
+      </label>
+      <label class="campo">
+        <span>Hasta dónde baja el canto mongol</span>
+        <input type="text" id="mapaMongolInicio" placeholder="Mi1" value="Mi2" />
+      </label>
+    </div>
+    <p class="descripcion">
+      La voz de pecho siempre termina un semitono antes del passaggio (nunca
+      lo toca), así que ese "final" no se pregunta. El inicio de la voz de
+      cabeza sí es tuyo: de ahí depende dónde y cuánto se solapa con el
+      pecho — cuanto más grave lo pongas, más ancha sale la diagonal de la
+      mezcla.
+    </p>
+    <p class="descripcion">
+      El silbido siempre empieza justo donde termina la voz de cabeza, y el
+      canto mongol siempre termina justo donde empieza la voz de pecho — no
+      se pueden solapar, así que solo hace falta decir hasta dónde llegan.
+    </p>
+    <label class="campo">
+      <span>Nota de belting (opcional)</span>
+      <input type="text" id="mapaBeltingNota" placeholder="Si4" value="Si4" />
+    </label>
+
+    <div class="acciones">
+      <button id="btnMapaGenerar" class="boton principal">🗺️ Generar mapa</button>
+      <button id="btnMapaDescargar" class="boton" hidden>📥 Descargar imagen (PNG)</button>
+    </div>
+    <p id="estadoMapa" class="estado" aria-live="polite"></p>
+    <div id="mapaContenedor" class="mapa-vocal-contenedor"></div>
+  </section>
+
+  <footer class="pie">
+    <p>El mapa se genera y se descarga enteramente en tu navegador — no se sube a ningún sitio.</p>
+  </footer>
+</div>
+
+<script src="escalas.js"></script>
+<script src="mapa-vocal.js"></script>
+<script src="tema.js"></script>
+</body>
+</html>

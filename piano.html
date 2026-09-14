@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Piano — Áleran Vocals</title>
+<meta name="description" content="Piano real (Do1–Do6): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🎹 Piano</h1>
+    <p class="subtitulo">Una nota suelta, notas al azar, escalas vocales reales o tus propias notas — más un metrónomo de 50 a 350 BPM.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <a href="index.html">🏠 Inicio</a>
+    <a href="piano.html" class="activo">🎹 Piano</a>
+    <a href="entrenamiento.html">🎤 Entrenamiento</a>
+    <a href="oido.html">🧠 Oído</a>
+    <a href="rutina.html">📋 Rutina</a>
+    <a href="progreso.html">📈 Progreso</a>
+    <a href="guia.html">🧭 Guía</a>
+    <a href="catalogo.html">🎼 Catálogo</a>
+    <a href="glosario.html">📖 Glosario</a>
+    <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+  </nav>
+
+  <div class="piano-contenedor" id="pianoContenedor">
+    <div class="piano" id="piano"></div>
+  </div>
+  <input type="range" id="pianoDesplazamiento" class="piano-slider" min="0" max="1000" value="0" aria-label="Desplazar el teclado" />
+  <div class="piano-zoom">
+    <span aria-hidden="true">🔍−</span>
+    <input type="range" id="pianoZoom" min="18" max="60" step="2" value="34" aria-label="Tamaño de las teclas" />
+    <span aria-hidden="true">🔍+</span>
+  </div>
+  <div class="afinometro" id="afinometro" hidden>
+    <div class="afinometro-arco"><div class="afinometro-aguja" id="afinometroAguja"></div></div>
+    <div class="afinometro-texto" id="afinometroTexto">—</div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab activo" data-modo="individual" role="tab" aria-selected="true">Nota individual</button>
+    <button class="tab" data-modo="aleatorio" role="tab" aria-selected="false">Notas aleatorias</button>
+    <button class="tab" data-modo="escala" role="tab" aria-selected="false">Escala vocal</button>
+    <button class="tab" data-modo="personalizada" role="tab" aria-selected="false">Personalizada</button>
+    <button class="tab" data-modo="solfeo" role="tab" aria-selected="false">Solfeo</button>
+    <button class="tab" data-modo="metronomo" role="tab" aria-selected="false">Metrónomo</button>
+  </div>
+
+  <section id="panel-individual" class="panel">
+    <p class="descripcion">
+      Toca una tecla del piano de arriba para elegir la nota. Nota seleccionada:
+      <strong id="notaSeleccionadaTexto">Do3</strong>.
+    </p>
+  </section>
+
+  <section id="panel-aleatorio" class="panel" hidden>
+    <label class="campo">
+      <span>Número de notas: <output id="numNotasValor">20</output></span>
+      <input type="range" id="numNotas" min="4" max="60" step="1" value="20" />
+    </label>
+    <label class="campo">
+      <span>Semilla (opcional — misma semilla = misma secuencia)</span>
+      <input type="number" id="semilla" placeholder="vacío = aleatorio cada vez" />
+    </label>
+  </section>
+
+  <section id="panel-escala" class="panel" hidden>
+    <label class="campo">
+      <span>Tipo de voz</span>
+      <select id="voz"></select>
+    </label>
+    <label class="campo">
+      <span>Patrón / escala</span>
+      <select id="patron"></select>
+    </label>
+    <p id="descripcionPatron" class="descripcion"></p>
+
+    <label class="campo checkbox">
+      <input type="checkbox" id="escalera" checked />
+      <span>Recorrer todo el rango de la voz (escalera por semitonos)</span>
+    </label>
+    <label class="campo" id="campoNotaInicial" hidden>
+      <span>Nota inicial (ej: Do3)</span>
+      <input type="text" id="notaInicial" placeholder="Do3" />
+    </label>
+
+    <details class="avanzado">
+      <summary>Opciones avanzadas</summary>
+      <label class="campo">
+        <span>Paso entre repeticiones (semitonos)</span>
+        <input type="number" id="pasoSemitonos" min="1" max="12" value="1" />
+      </label>
+      <label class="campo checkbox">
+        <input type="checkbox" id="soloSubida" />
+        <span>Solo subida (no repetir bajando)</span>
+      </label>
+    </details>
+  </section>
+
+  <section id="panel-personalizada" class="panel" hidden>
+    <label class="campo">
+      <span>Escribe las notas separadas por espacios, comas o saltos de línea</span>
+      <textarea id="notasPersonalizadas" rows="3" placeholder="Do3 Re#3 Mi3 Fa#3 Sol3"></textarea>
+    </label>
+    <p class="descripcion">Ejemplo: <code>Do3 Re#3 Mi3 Fa#3</code>. Se reproducen en ese orden exacto, con la duración y pausa de abajo.</p>
+  </section>
+
+  <section id="panel-solfeo" class="panel" hidden>
+    <label class="campo">
+      <span>Nota que hace de "Do" (tónica movible)</span>
+      <select id="solfeoTonica"></select>
+    </label>
+    <label class="campo">
+      <span>Patrón de solfeo</span>
+      <select id="solfeoPatron"></select>
+    </label>
+    <p class="descripcion">Se canta con las sílabas de solfeo (Do, Re, Mi...) relativas a la tónica elegida arriba, en vez de con los nombres absolutos de las notas. Solo escalas mayores por ahora.</p>
+  </section>
+
+  <section id="panel-metronomo" class="panel" hidden>
+    <label class="campo">
+      <span>Tempo: <output id="bpmValor">100</output> BPM</span>
+      <input type="range" id="bpmSlider" min="50" max="350" step="1" value="100" />
+    </label>
+    <label class="campo">
+      <span>Acentuar cada</span>
+      <select id="metronomoAcento">
+        <option value="0">Sin acento</option>
+        <option value="2">2 pulsos</option>
+        <option value="3">3 pulsos</option>
+        <option value="4" selected>4 pulsos</option>
+        <option value="6">6 pulsos</option>
+      </select>
+    </label>
+    <div class="metronomo-visual"><div class="metronomo-punto" id="metronomoPunto"></div></div>
+    <div class="acciones">
+      <button id="btnMetronomoIniciar" class="boton principal">▶ Iniciar</button>
+      <button id="btnMetronomoDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section class="panel comunes" id="panelComunes">
+    <label class="campo checkbox">
+      <input type="checkbox" id="sincronizarTempo" />
+      <span>Vincular la duración al tempo del metrónomo (en vez del slider de segundos)</span>
+    </label>
+    <label class="campo" id="campoFiguraRitmica" hidden>
+      <span>A este tempo (<output id="tempoSincronizadoBpm">100</output> BPM), cada nota dura: <output id="duracionCalculadaTexto">0.60s</output></span>
+      <select id="figuraRitmica">
+        <option value="4">Redonda</option>
+        <option value="2">Blanca</option>
+        <option value="1" selected>Negra</option>
+        <option value="0.6667">Tresillo (de negra)</option>
+        <option value="0.5">Corchea</option>
+        <option value="0.25">Semicorchea</option>
+      </select>
+    </label>
+    <label class="campo" id="campoDuracionManual">
+      <span>Duración por nota: <output id="duracionNotaValor">0.45s</output></span>
+      <input type="range" id="duracionNota" min="0.08" max="10" step="0.02" value="0.45" />
+    </label>
+    <label class="campo" id="campoPausa">
+      <span>Pausa entre notas: <output id="pausaValor">0.12s</output></span>
+      <input type="range" id="pausa" min="0" max="2" step="0.02" value="0.12" />
+    </label>
+    <label class="campo">
+      <span>Volumen</span>
+      <input type="range" id="volumen" min="0.1" max="1" step="0.05" value="0.85" />
+    </label>
+  </section>
+
+  <div class="acciones" id="accionesPiano">
+    <button id="btnEscuchar" class="boton principal">▶ Escuchar</button>
+    <button id="btnDetener" class="boton" disabled>⏹ Detener</button>
+    <button id="btnDescargar" class="boton">⬇ Descargar MP3</button>
+    <button id="btnCantar" class="boton" hidden>🎤 Cantar y calificar</button>
+    <button id="btnImitar" class="boton" hidden title="Escucha la frase completa una vez y luego cántala de memoria, nota por nota">🎧 Escucha e imita</button>
+  </div>
+
+  <p id="estado" class="estado" aria-live="polite"></p>
+
+  <section class="resultado" id="resultado" hidden>
+    <h2>Secuencia generada</h2>
+    <p id="infoSecuencia"></p>
+    <div id="resultadosCanto" class="resultados-canto"></div>
+  </section>
+
+  <footer class="pie">
+    <p>Los rangos de voz son una tesitura cómoda de práctica, no el límite extremo de cada cuerda vocal. El piano son muestras reales de un Steinway de cola (librería "SplendidGrandPiano"), reproducidas a la velocidad exacta para cada nota. El detector de afinación usa el micrófono del dispositivo (requiere permiso y conexión HTTPS).</p>
+  </footer>
+</div>
+
+<script src="lamejs.iife.js"></script>
+<script src="smplr.iife.js"></script>
+<script src="pitchy.iife.js"></script>
+<script src="escalas.js"></script>
+<script src="audio.js"></script>
+<script src="progreso.js"></script>
+<script src="teclado.js"></script>
+<script src="piano.js"></script>
+<script src="tema.js"></script>
+</body>
+</html>
