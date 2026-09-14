@@ -125,7 +125,24 @@ const GLOSARIO_TERMINOS = [
     definicion:
       "El músculo principal de la respiración, ubicado debajo de los pulmones. Su control consciente es la base del \"apoyo\" al cantar.",
   },
+  {
+    termino: "Adornos vocales (ornamentos)",
+    definicion:
+      "Variaciones melódicas breves (mordentes, grupetos, deslizamientos, notas de paso) que decoran una nota o frase sin cambiar la melodía principal — dan personalidad a una interpretación.",
+    // TODO: pega aquí el link real del reel de Instagram sobre este tema
+    // (Áleran lo mencionó como ejemplo del término con más vídeo asociado)
+    // y aparecerá automáticamente el botón "Ver ejemplo en Instagram" abajo.
+    instagram: null,
+  },
 ];
+
+/** Algunos términos tienen un reel de Instagram con un ejemplo real -- se
+ * confirma antes de salir de la app, en vez de abrirlo directo. */
+function abrirEjemploInstagram(url) {
+  if (confirm("Vas a salir de esta página para ver el ejemplo en Instagram. ¿Continuar?")) {
+    window.open(url, "_blank", "noopener");
+  }
+}
 
 function renderizarGlosario(filtro) {
   const cont = el("glosarioLista");
@@ -142,6 +159,13 @@ function renderizarGlosario(filtro) {
     const div = document.createElement("div");
     div.className = "glosario-termino";
     div.innerHTML = `<h3>${t.termino}</h3><p>${t.definicion}</p>`;
+    if (t.instagram) {
+      const btn = document.createElement("button");
+      btn.className = "boton glosario-instagram";
+      btn.textContent = "▶ Ver ejemplo en Instagram";
+      btn.addEventListener("click", () => abrirEjemploInstagram(t.instagram));
+      div.appendChild(btn);
+    }
     cont.appendChild(div);
   });
 }
