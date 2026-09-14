@@ -137,6 +137,23 @@ function mapaFormaTecla(pos, midi, yTope, altoNegra, altoBlanca) {
   return `${xArribaIzq},${yTope} ${xArribaDer},${yTope} ${xArribaDer},${yNegra} ${x2},${yNegra} ${x2},${yBlanca} ${x1},${yBlanca} ${x1},${yNegra} ${xArribaIzq},${yNegra}`;
 }
 
+/** Pinta un registro TECLA POR TECLA con la forma real de cada una
+ * (`mapaFormaTecla`) en vez de un único rectángulo de borde a borde. Dos
+ * teclas vecinas encajan exactas (comparten el mismo filo, sin hueco ni
+ * solape), así que varias teclas seguidas del mismo color se siguen viendo
+ * como una sola franja continua — pero si la frontera con el registro
+ * vecino cae justo en una tecla negra, esa tecla queda COMPLETA de un solo
+ * color en vez de partida a la mitad entre dos colores distintos (que es lo
+ * que pasaba antes al usar una única línea vertical promediada ahí). */
+function mapaZonaPorTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlanca, color, opacidad) {
+  let partes = "";
+  for (let midi = desdeMidi; midi <= hastaMidi; midi++) {
+    if (!pos.posiciones[midi]) continue;
+    partes += `<polygon points="${mapaFormaTecla(pos, midi, yTope, altoNegra, altoBlanca)}" fill="${color}" fill-opacity="${opacidad}" />`;
+  }
+  return partes;
+}
+
 /** Una franja de color translúcida SOBRE el teclado — varias de estas se
  * superponen en la misma columna cuando los registros se pisan
  * (pecho/cabeza), como acetatos de color puestos encima de las teclas. */
@@ -563,25 +580,23 @@ function mapaConstruirSvg(datos) {
   cuerpo += `<clipPath id="${idRecorte}">${mapaTeclasRecorteSvg(pos, midiMin, midiMax, yKeyboard, ALTO_BLANCA, ALTO_NEGRA)}</clipPath>`;
   cuerpo += `<g clip-path="url(#${idRecorte})">`;
 
-  // Todas las fronteras de abajo (mongol|pecho, pecho|diagonal,
-  // diagonal|passaggio, passaggio|cabeza, cabeza|silbido) usan `mapaLimite`
-  // en vez del borde "crudo" de cada nota: cuando la nota de un lado es una
-  // tecla negra, su rectángulo se mete un poco en la nota vecina (está
-  // centrada sobre el límite entre dos blancas), y dos franjas
-  // semitransparentes pisándose ahí se ven más oscuras que cualquiera de
-  // los dos colores por separado — o, si son de colores distintos, se
-  // alcanzan a transparentar una sobre la otra.
+  // Cada registro se pinta TECLA POR TECLA (`mapaZonaPorTeclas`) con la forma
+  // real de cada una — igual que ya se hacía solo para el passaggio y la nota
+  // central. Antes, la frontera entre dos registros de color distinto (ej.
+  // cabeza|silbido, mongol|pecho) se resolvía con una única línea vertical
+  // promediada (`mapaLimite`); si la nota justo en esa frontera era una tecla
+  // negra, esa tecla quedaba partida a la mitad entre los dos colores — una
+  // misma nota no puede ser "mitad cabeza, mitad silbido". Pintando tecla por
+  // tecla, cada nota pertenece siempre a un solo color completo, y como dos
+  // teclas vecinas encajan exactas (mismo filo, sin hueco ni solape), la
+  // franja se sigue viendo continua.
   const yTope = yKeyboard, yPie = yKeyboard + ALTO_BLANCA;
-  const limiteMongolPecho = datos.mongolInicio !== null ? mapaLimite(pos, datos.mongolFinal, datos.pechoInicio) : null;
-  const limiteCabezaSilbido = datos.silbidoFinal !== null ? mapaLimite(pos, datos.cabezaFinal, datos.silbidoInicio) : null;
 
   if (datos.mongolInicio !== null) {
-    const [mInicioX] = mapaBordes(pos, datos.mongolInicio, datos.mongolInicio);
-    cuerpo += `<rect x="${mInicioX}" y="${yTope}" width="${limiteMongolPecho - mInicioX}" height="${ALTO_BLANCA}" fill="${MAPA_COLORES.mongol}" fill-opacity="0.45" />`;
+    cuerpo += mapaZonaPorTeclas(pos, datos.mongolInicio, datos.mongolFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.mongol, 0.45);
   }
-  if (datos.silbidoFinal !== null) {
-    const [, sFinalX] = mapaBordes(pos, datos.silbidoFinal, datos.silbidoFinal);
-    cuerpo += `<rect x="${limiteCabezaSilbido}" y="${yTope}" width="${sFinalX - limiteCabezaSilbido}" height="${ALTO_BLANCA}" fill="${MAPA_COLORES.silbido}" fill-opacity="0.45" />`;
+  if (datos.silbidoInicio !== null) {
+    cuerpo += mapaZonaPorTeclas(pos, datos.silbidoInicio, datos.silbidoFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.silbido, 0.45);
   }
 
   // El solapamiento real de pecho y cabeza depende de dónde el profesor puso
@@ -590,21 +605,23 @@ function mapaConstruirSvg(datos) {
   // esa columna se pinta en diagonal; el ancho de esa diagonal cambia según
   // qué tan grave sea cabezaInicio, así que su ángulo no es siempre el
   // mismo. Si no llegan a tocarse, cada uno es sólido y no hay diagonal.
+  // El propio corte diagonal SÍ sigue usando un único límite promediado en
+  // vez de tecla por tecla: es un degradado visual deliberado entre dos
+  // registros que de verdad se solapan, no una frontera dura entre dos
+  // registros que no se tocan (que es el caso que sí había que arreglar).
   const hayColapso = datos.cabezaInicio <= datos.pechoFinal;
 
-  // El diagonal y la voz de cabeza paran en el borde real de SU PROPIA nota
-  // vecina al passaggio (passaggio±1) — coincide exactamente con el filo de
-  // la muesca que `mapaFormaTecla` le deja al passaggio de ese lado (ver más
-  // abajo), así que no hay hueco entre uno y otro.
+  // El diagonal para justo en el borde real de la nota vecina al passaggio
+  // (passaggio-1) — coincide exactamente con el filo de la muesca que
+  // `mapaFormaTecla` le deja al passaggio de ese lado (ver más abajo), así
+  // que no hay hueco entre uno y otro.
   const limiteDiagonalPassaggio = mapaBordes(pos, datos.passaggio - 1, datos.passaggio - 1)[1];
-  const limitePassaggioCabeza = mapaBordes(pos, datos.passaggio + 1, datos.passaggio + 1)[0];
 
-  const pInicioX = limiteMongolPecho !== null ? limiteMongolPecho : mapaBordes(pos, datos.pechoInicio, datos.pechoInicio)[0];
   if (hayColapso) {
     const pechoSolidoHasta = datos.cabezaInicio - 1;
     const limitePechoDiagonal = mapaLimite(pos, datos.cabezaInicio - 1, datos.cabezaInicio);
     if (datos.pechoInicio <= pechoSolidoHasta) {
-      cuerpo += `<rect x="${pInicioX}" y="${yTope}" width="${limitePechoDiagonal - pInicioX}" height="${ALTO_BLANCA}" fill="${MAPA_COLORES.pecho}" fill-opacity="0.45" />`;
+      cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, pechoSolidoHasta, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45);
     }
     // Corte diagonal limpio: pecho abajo a la izquierda, cabeza arriba a la
     // derecha, SIN línea divisoria ni relleno doble.
@@ -612,7 +629,7 @@ function mapaConstruirSvg(datos) {
     cuerpo += `<polygon points="${limitePechoDiagonal},${yPie} ${limiteDiagonalPassaggio},${yPie} ${limiteDiagonalPassaggio},${yTope}" fill="${MAPA_COLORES.cabeza}" fill-opacity="0.45" />`;
   } else {
     // No se tocan: la voz de pecho es sólida en todo su rango, sin diagonal.
-    cuerpo += `<rect x="${pInicioX}" y="${yTope}" width="${limiteDiagonalPassaggio - pInicioX}" height="${ALTO_BLANCA}" fill="${MAPA_COLORES.pecho}" fill-opacity="0.45" />`;
+    cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, datos.pechoFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45);
   }
 
   // Voz de cabeza: sólida desde justo después del passaggio (o desde su
@@ -620,9 +637,7 @@ function mapaConstruirSvg(datos) {
   // escribió el profesor.
   const cabezaSolidoDesde = Math.max(datos.cabezaInicio, datos.passaggio + 1);
   if (cabezaSolidoDesde <= datos.cabezaFinal) {
-    const cInicioX = cabezaSolidoDesde === datos.passaggio + 1 ? limitePassaggioCabeza : mapaBordes(pos, cabezaSolidoDesde, cabezaSolidoDesde)[0];
-    const cFinalX = limiteCabezaSilbido !== null ? limiteCabezaSilbido : mapaBordes(pos, datos.cabezaFinal, datos.cabezaFinal)[1];
-    cuerpo += `<rect x="${cInicioX}" y="${yTope}" width="${cFinalX - cInicioX}" height="${ALTO_BLANCA}" fill="${MAPA_COLORES.cabeza}" fill-opacity="0.45" />`;
+    cuerpo += mapaZonaPorTeclas(pos, cabezaSolidoDesde, datos.cabezaFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.cabeza, 0.45);
   }
 
   // La tecla del passaggio: resaltada con SU PROPIA forma real (angosta
