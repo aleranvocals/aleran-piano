@@ -12,17 +12,103 @@ let cantoEnCurso = false;
 let cantoCancelado = false;
 let solfeoTonicaMidi = nombreAMidi("Do3");
 
-// --- Solfeo (do movible): solo escalas mayores por ahora --------------------
+// --- Solfeo (do movible) --------------------------------------------------
+// Sílabas cromáticas estándar (sistema Kodály, alteradas con la variante
+// "bemol" -- Me/Le/Te/Ra en vez de Ri/Si/Li/Di -- por ser la que se lee y
+// canta más intuitivamente al bajar un grado, que es lo que hace falta para
+// nombrar los grados propios de la escala menor y de los modos griegos).
+const SOLFEO_GRADOS = {
+  0: "Do", 1: "Ra", 2: "Re", 3: "Me", 4: "Mi", 5: "Fa", 6: "Fi",
+  7: "Sol", 8: "Le", 9: "La", 10: "Te", 11: "Si", 12: "Do",
+};
 
-const SOLFEO_GRADOS = { 0: "Do", 2: "Re", 4: "Mi", 5: "Fa", 7: "Sol", 9: "La", 11: "Si", 12: "Do" };
+const SOLFEO_CATEGORIAS = {
+  basicos: "Básicos",
+  escalas: "Escalas",
+  modos: "Modos griegos",
+  cadencias: "Cadencias y saltos",
+};
 
 const SOLFEO_PATRONES = {
-  primeros_tres: { nombre: "Primeros tres grados (Do-Re-Mi)", semitonos: [0, 2, 4, 2, 0] },
-  primeros_cinco: { nombre: "Primeros cinco grados (Do-Re-Mi-Fa-Sol)", semitonos: [0, 2, 4, 5, 7, 5, 4, 2, 0] },
-  triada_mayor: { nombre: "Tríada mayor (Do-Mi-Sol-Do)", semitonos: [0, 4, 7, 12, 7, 4, 0] },
+  primeros_tres: {
+    nombre: "Primeros tres grados (Do-Re-Mi)",
+    categoria: "basicos",
+    semitonos: [0, 2, 4, 2, 0],
+  },
+  primeros_cinco: {
+    nombre: "Primeros cinco grados (Do-Re-Mi-Fa-Sol)",
+    categoria: "basicos",
+    semitonos: [0, 2, 4, 5, 7, 5, 4, 2, 0],
+  },
+  triada_mayor: {
+    nombre: "Tríada mayor (Do-Mi-Sol-Do)",
+    categoria: "basicos",
+    semitonos: [0, 4, 7, 12, 7, 4, 0],
+  },
+  triada_menor: {
+    nombre: "Tríada menor (Do-Me-Sol-Do)",
+    categoria: "basicos",
+    semitonos: [0, 3, 7, 12, 7, 3, 0],
+  },
   escala_mayor: {
-    nombre: "Escala mayor completa (Do-Re-Mi-Fa-Sol-La-Si-Do)",
+    nombre: "Escala mayor (Do-Re-Mi-Fa-Sol-La-Si-Do)",
+    categoria: "escalas",
     semitonos: [0, 2, 4, 5, 7, 9, 11, 12, 11, 9, 7, 5, 4, 2, 0],
+  },
+  escala_menor_natural: {
+    nombre: "Escala menor natural (Do-Re-Me-Fa-Sol-Le-Te-Do)",
+    categoria: "escalas",
+    semitonos: [0, 2, 3, 5, 7, 8, 10, 12, 10, 8, 7, 5, 3, 2, 0],
+  },
+  escala_menor_armonica: {
+    nombre: "Escala menor armónica (Do-Re-Me-Fa-Sol-Le-Si-Do)",
+    categoria: "escalas",
+    semitonos: [0, 2, 3, 5, 7, 8, 11, 12, 11, 8, 7, 5, 3, 2, 0],
+  },
+  pentatonica_mayor: {
+    nombre: "Pentatónica mayor (Do-Re-Mi-Sol-La-Do)",
+    categoria: "escalas",
+    semitonos: [0, 2, 4, 7, 9, 12, 9, 7, 4, 2, 0],
+  },
+  pentatonica_menor: {
+    nombre: "Pentatónica menor (Do-Me-Fa-Sol-Te-Do)",
+    categoria: "escalas",
+    semitonos: [0, 3, 5, 7, 10, 12, 10, 7, 5, 3, 0],
+  },
+  modo_dorico: {
+    nombre: "Dórico (Do-Re-Me-Fa-Sol-La-Te-Do)",
+    categoria: "modos",
+    semitonos: [0, 2, 3, 5, 7, 9, 10, 12, 10, 9, 7, 5, 3, 2, 0],
+  },
+  modo_frigio: {
+    nombre: "Frigio (Do-Ra-Me-Fa-Sol-Le-Te-Do)",
+    categoria: "modos",
+    semitonos: [0, 1, 3, 5, 7, 8, 10, 12, 10, 8, 7, 5, 3, 1, 0],
+  },
+  modo_lidio: {
+    nombre: "Lidio (Do-Re-Mi-Fi-Sol-La-Si-Do)",
+    categoria: "modos",
+    semitonos: [0, 2, 4, 6, 7, 9, 11, 12, 11, 9, 7, 6, 4, 2, 0],
+  },
+  modo_mixolidio: {
+    nombre: "Mixolidio (Do-Re-Mi-Fa-Sol-La-Te-Do)",
+    categoria: "modos",
+    semitonos: [0, 2, 4, 5, 7, 9, 10, 12, 10, 9, 7, 5, 4, 2, 0],
+  },
+  cadencia_iv_v_i: {
+    nombre: "Cadencia IV-V-I (Do-Fa-Sol-Do)",
+    categoria: "cadencias",
+    semitonos: [0, 5, 7, 12],
+  },
+  salto_quinta: {
+    nombre: "Salto de 5ª (Do-Sol-Do-Sol)",
+    categoria: "cadencias",
+    semitonos: [0, 7, 12, 7],
+  },
+  salto_octava: {
+    nombre: "Salto de 8ª (Do-Do agudo-Do)",
+    categoria: "cadencias",
+    semitonos: [0, 12, 0],
   },
 };
 
@@ -74,11 +160,19 @@ function poblarSelects() {
   selectTonica.value = "Do3";
 
   const selectSolfeoPatron = el("solfeoPatron");
+  const gruposSolfeoPorCategoria = {};
   for (const [clave, patron] of Object.entries(SOLFEO_PATRONES)) {
+    const categoria = patron.categoria || "otras";
+    if (!gruposSolfeoPorCategoria[categoria]) {
+      const grupo = document.createElement("optgroup");
+      grupo.label = SOLFEO_CATEGORIAS[categoria] || categoria;
+      gruposSolfeoPorCategoria[categoria] = grupo;
+      selectSolfeoPatron.appendChild(grupo);
+    }
     const opt = document.createElement("option");
     opt.value = clave;
     opt.textContent = patron.nombre;
-    selectSolfeoPatron.appendChild(opt);
+    gruposSolfeoPorCategoria[categoria].appendChild(opt);
   }
 }
 
