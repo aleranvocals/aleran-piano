@@ -279,6 +279,15 @@ body {
   color: var(--bone);
 }
 
+/* Separa el menú en "Guía" / practicar / seguimiento / consulta, en vez de
+   una lista plana de 10 enlaces sin ninguna jerarquía entre ellos. */
+.nav-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0.15rem 0.15rem;
+}
+
 .hub-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
