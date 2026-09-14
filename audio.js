@@ -14,7 +14,7 @@
  * Las muestras de audio en sí (los .mp3/.ogg del piano) sí se siguen
  * descargando de internet la primera vez que se reproduce una nota.
  */
-const { SplendidGrandPiano, renderOffline, SampleLoader } = smplrLib;
+const { SplendidGrandPiano, SampleLoader } = smplrLib;
 // DO1_MIDI / DO6_MIDI ya están declaradas por escalas.js (se carga antes).
 
 // Sin esto, SplendidGrandPiano carga las 5 capas de velocidad completas del
@@ -109,34 +109,58 @@ function ultimaDuracionNota(eventos) {
 }
 
 /**
- * Renderiza la secuencia completa fuera de tiempo real; devuelve un AudioBuffer.
+ * Graba la secuencia completa y devuelve un AudioBuffer.
  *
- * El corte abrupto que se oía en los MP3 exportados era porque el buffer
- * offline medía exactamente la suma de duraciones, sin dejar sitio para la
- * cola de decaimiento natural del piano (el "release" que suena después de
- * soltar la tecla) -- ese decaimiento se recortaba en seco al llegar al final
- * del buffer. Ahora se reserva una cola proporcional a la duración de la
- * última nota (notas largas -> fundido más largo, como pidió el usuario).
+ * ANTES esto usaba smplr.renderOffline() (instantáneo, sin esperar el tiempo
+ * real de la secuencia). Se retiró: confirmado con un repro mínimo sin
+ * ningún código de este proyecto de por medio, renderOffline() de smplr solo
+ * reproduce la PRIMERA nota de cualquier secuencia con más de una -- el resto
+ * queda en silencio absoluto aunque el buffer dure lo correcto (por eso las
+ * descargas de más de una nota sonaban "cortadas" a la primera). Es un bug
+ * de la librería, no nuestro.
+ *
+ * Workaround: se graba la reproducción real (igual que reproducirSecuencia,
+ * pero en un AudioContext e instrumento aparte, no conectado a los
+ * altavoces) con MediaRecorder, y se decodifica el resultado de vuelta a un
+ * AudioBuffer. Tarda lo mismo que escuchar la secuencia entera, pero suena
+ * completa.
  */
-async function renderizarOffline(eventos, volumen) {
-  const margen = 0.05;
+async function grabarSecuencia(eventos, volumen) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const decayTime = Math.min(1.8, Math.max(0.3, ultimaDuracionNota(eventos) * 0.25));
-  const colaFinal = decayTime + 0.4;
-  const total = duracionTotal(eventos) + margen + colaFinal;
-  const resultado = await renderOffline(
-    async (ctx) => {
-      const piano = SplendidGrandPiano(ctx, { ...OPCIONES_PIANO, loader: obtenerCargador(), decayTime });
-      await piano.ready;
-      piano.output.volume = Math.round(Math.max(0, Math.min(1, volumen)) * 127);
-      let t = margen;
-      for (const { midi, duracion } of eventos) {
-        if (midi !== -1) piano.start({ note: clampMidi(midi), time: t, duration: duracion });
-        t += duracion;
-      }
-    },
-    { duration: total, channels: 1 }
-  );
-  return resultado.audioBuffer;
+  const piano = SplendidGrandPiano(ctx, { ...OPCIONES_PIANO, loader: obtenerCargador(), decayTime });
+  await piano.ready;
+  piano.output.volume = Math.round(Math.max(0, Math.min(1, volumen)) * 127);
+
+  const destino = ctx.createMediaStreamDestination();
+  piano.output.input.connect(destino);
+
+  const tipo = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
+  const grabadora = tipo ? new MediaRecorder(destino.stream, { mimeType: tipo }) : new MediaRecorder(destino.stream);
+  const trozos = [];
+  grabadora.ondataavailable = (e) => {
+    if (e.data.size > 0) trozos.push(e.data);
+  };
+  const terminada = new Promise((resolve) => (grabadora.onstop = resolve));
+  grabadora.start();
+
+  for (const { midi, duracion } of eventos) {
+    if (midi !== -1) piano.start({ note: clampMidi(midi), duration: duracion });
+    await esperar(duracion * 1000);
+  }
+  await esperar((decayTime + 0.4) * 1000); // deja sonar la cola de decaimiento de la última nota
+
+  grabadora.stop();
+  await terminada;
+  piano.dispose();
+  ctx.close();
+
+  const blob = new Blob(trozos, { type: grabadora.mimeType || "audio/webm" });
+  const arrBuf = await blob.arrayBuffer();
+  const ctxDecodificacion = new (window.AudioContext || window.webkitAudioContext)();
+  const audioBuffer = await ctxDecodificacion.decodeAudioData(arrBuf);
+  ctxDecodificacion.close();
+  return audioBuffer;
 }
 
 // lamejs.iife.js pesa 169 KB (la librería más pesada del sitio) y solo hace falta
@@ -181,7 +205,7 @@ function audioBufferAMp3(buffer, kbps = 128) {
 }
 
 async function exportarMp3(eventos, volumen, nombreArchivo) {
-  const [buffer] = await Promise.all([renderizarOffline(eventos, volumen), cargarLamejs()]);
+  const [buffer] = await Promise.all([grabarSecuencia(eventos, volumen), cargarLamejs()]);
   const blob = audioBufferAMp3(buffer);
   const url = URL.createObjectURL(blob);
   const enlace = document.createElement("a");

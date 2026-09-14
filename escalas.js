@@ -340,8 +340,10 @@ function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida
 
   const eventos = [];
   for (const raiz of raices) {
-    for (const st of semitonos) eventos.push({ midi: raiz + st, duracion: duracionNota });
-    eventos.push({ midi: -1, duracion: pausa });
+    for (const st of semitonos) {
+      eventos.push({ midi: raiz + st, duracion: duracionNota });
+      eventos.push({ midi: -1, duracion: pausa });
+    }
   }
   const info =
     `${infoVoz.nombre} · ${infoPatron.nombre} — raíces: ` + raices.map(midiANombre).join(", ");

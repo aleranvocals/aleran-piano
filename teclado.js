@@ -129,10 +129,24 @@ function marcarTeclaActiva(midi, activa) {
   const tecla = el("piano").querySelector(`[data-midi="${midi}"]`);
   if (!tecla) return;
   tecla.classList.toggle("activa", activa);
-  // Si la nota queda fuera de la parte visible del teclado (saltos grandes,
-  // p. ej. de Re5 a La1) la desplazamos hasta ella; "nearest" no hace nada
-  // si ya está a la vista, así el teclado no salta a recentrar cada nota.
-  if (activa) tecla.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+  if (activa) desplazarTeclaAlaVista(tecla);
+}
+
+// Si la nota queda fuera de la parte visible del teclado (saltos grandes, p.
+// ej. de Re5 a La1) la desplazamos hasta ella -- solo el scroll HORIZONTAL
+// del propio teclado, nunca el de la página. scrollIntoView() se probó antes
+// aquí, pero también mueve el scroll vertical de la página entera para
+// mantener la tecla a la vista, secuestrando el scroll del usuario mientras
+// suena una secuencia (le impedía bajar a pulsar "Detener").
+function desplazarTeclaAlaVista(tecla) {
+  const contenedor = el("pianoContenedor");
+  const cRect = contenedor.getBoundingClientRect();
+  const tRect = tecla.getBoundingClientRect();
+  if (tRect.left < cRect.left) {
+    contenedor.scrollBy({ left: tRect.left - cRect.left, behavior: "smooth" });
+  } else if (tRect.right > cRect.right) {
+    contenedor.scrollBy({ left: tRect.right - cRect.right, behavior: "smooth" });
+  }
 }
 
 function limpiarTeclasActivas() {

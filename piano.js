@@ -643,7 +643,7 @@ function inicializar() {
     const boton = el("btnDescargar");
     boton.disabled = true;
     el("btnEscuchar").disabled = true;
-    el("estado").textContent = "Generando MP3 (puede tardar unos segundos)…";
+    el("estado").textContent = `Grabando ${Math.ceil(duracionTotal)}s de audio (tarda lo mismo que escucharla)…`;
     try {
       await window.PianoEngine.exportarMp3(resultado.eventos, parseFloat(el("volumen").value), nombreArchivoSugerido());
       el("estado").textContent = "Listo — revisa tus descargas.";
