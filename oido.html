@@ -95,6 +95,14 @@
       El piano toca una secuencia que crece cada ronda. Repítela tocando las
       mismas teclas en el mismo orden.
     </p>
+    <label class="campo checkbox">
+      <input type="checkbox" id="simonProgramado" />
+      <span>Usar una secuencia programada por mí, en vez de aleatoria</span>
+    </label>
+    <label class="campo" id="campoSimonNotas" hidden>
+      <span>Escribe la secuencia completa (el juego la irá revelando nota a nota)</span>
+      <textarea id="simonNotasProgramadas" rows="2" placeholder="Do3 Re3 Mi3 Fa3 Sol3"></textarea>
+    </label>
     <p class="marcador">Nivel: <strong id="simonNivel">0</strong> · Récord: <strong id="simonRecord">0</strong></p>
     <div class="acciones">
       <button id="btnSimonEmpezar" class="boton principal">▶ Empezar</button>

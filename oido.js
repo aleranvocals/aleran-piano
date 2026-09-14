@@ -154,18 +154,37 @@ let simonNivel = 0;
 let simonEsperandoEntrada = false;
 let simonReproduciendo = false;
 
+let simonSecuenciaProgramada = [];
+
 function empezarSimon() {
   simonSecuencia = [];
   simonNivel = 0;
   el("simonFeedback").textContent = "";
   el("simonRecord").textContent = Progreso.obtener("simonMejorNivel", 0);
+
+  if (el("simonProgramado").checked) {
+    try {
+      simonSecuenciaProgramada = parsearNotasPersonalizadas(el("simonNotasProgramadas").value);
+    } catch (err) {
+      el("simonFeedback").textContent = err.message;
+      return;
+    }
+  }
   siguienteRondaSimon();
 }
 
 function siguienteRondaSimon() {
-  const bajo = nombreAMidi("Do3");
-  const alto = nombreAMidi("Do5");
-  simonSecuencia.push(bajo + Math.floor(Math.random() * (alto - bajo + 1)));
+  if (el("simonProgramado").checked) {
+    if (simonNivel >= simonSecuenciaProgramada.length) {
+      el("simonFeedback").textContent = "🎉 ¡Completaste la secuencia entera! Pulsa Empezar para repetirla.";
+      return;
+    }
+    simonSecuencia.push(simonSecuenciaProgramada[simonNivel]);
+  } else {
+    const bajo = nombreAMidi("Do3");
+    const alto = nombreAMidi("Do5");
+    simonSecuencia.push(bajo + Math.floor(Math.random() * (alto - bajo + 1)));
+  }
   simonNivel++;
   simonEntrada = [];
   el("simonNivel").textContent = simonNivel;
@@ -241,6 +260,9 @@ function inicializarOido() {
 
   el("btnSimonEmpezar").addEventListener("click", empezarSimon);
   el("simonRecord").textContent = Progreso.obtener("simonMejorNivel", 0);
+  el("simonProgramado").addEventListener("change", () => {
+    el("campoSimonNotas").hidden = !el("simonProgramado").checked;
+  });
 }
 
 document.addEventListener("DOMContentLoaded", inicializarOido);
