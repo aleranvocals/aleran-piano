@@ -26,12 +26,17 @@ function progresoGuardar(datos) {
 function progresoActualizarRecord(clave, nuevo, comparador) {
   const datos = progresoCargar();
   const actual = datos[clave];
-  if (actual === undefined || actual === null || comparador(nuevo, actual)) {
+  const esPrimerIntento = actual === undefined || actual === null;
+  // El primer intento SIEMPRE se guarda (hace falta una base con la que
+  // comparar los siguientes), pero no cuenta como "récord batido" -- antes
+  // devolvía true también aquí, así que el primer fallo en Simon Dice (nivel
+  // 0) o la primera vez que se mide algo ya se celebraba como "¡Nuevo récord!"
+  const esMejora = !esPrimerIntento && comparador(nuevo, actual);
+  if (esPrimerIntento || esMejora) {
     datos[clave] = nuevo;
     progresoGuardar(datos);
-    return true;
   }
-  return false;
+  return esMejora;
 }
 
 function progresoIncrementar(clave, cantidad = 1) {

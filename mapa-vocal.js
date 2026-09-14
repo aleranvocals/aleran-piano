@@ -42,11 +42,22 @@ function mapaLeerNota(idCampo, etiqueta, opcional) {
     if (opcional) return null;
     throw new Error(`Falta "${etiqueta}".`);
   }
+  let midi;
   try {
-    return nombreAMidi(valor);
+    midi = nombreAMidi(valor);
   } catch {
     throw new Error(`No entiendo la nota "${valor}" en "${etiqueta}" (ejemplos válidos: Do3, Fa#4, Sib2).`);
   }
+  // nombreAMidi() no valida el rango por sí sola -- acepta "Do0" o "Sol99"
+  // igual de bien que "Do3". Este mapa NO está atado al piano interactivo
+  // (Do1-Do6, limitado a las muestras cargadas): aquí el registro de silbido
+  // legítimamente sube más arriba (el propio valor de ejemplo es Sol6). El
+  // límite de abajo es solo para pillar errores de verdad (typos, un cero de
+  // más), no para recortar el rango vocal real.
+  if (midi < nombreAMidi("Do0") || midi > nombreAMidi("Do9")) {
+    throw new Error(`"${valor}" en "${etiqueta}" es una nota fuera de cualquier rango vocal real -- revisa si es un error de escritura.`);
+  }
+  return midi;
 }
 
 /** Redondea el rango al Do de abajo y al Do de arriba: el teclado siempre
