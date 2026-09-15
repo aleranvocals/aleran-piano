@@ -187,6 +187,21 @@ function detenerReproduccion() {
   escuchaMicrofonoCancelada = true; // si había una escucha de "cantar y calificar" en curso, se corta ya
 }
 
+/**
+ * Corta en seco cualquier nota que siga sonando, SIN invalidar el token ni
+ * cancelar una escucha de micrófono en curso (a diferencia de
+ * detenerReproduccion). Se usa justo antes de empezar a escuchar al alumno
+ * en "Cantar y calificar"/"Escucha e imita": el piano usa muestras reales,
+ * que se apagan con una cola de resonancia natural (como un piano de
+ * verdad) en vez de cortar en seco al llegar a la duración pedida -- sin
+ * esto, esa cola todavía sonando por los altavoces se cuela en el
+ * micrófono justo al empezar a escuchar y se calificaba como si fuera la
+ * voz del alumno (perfecta, porque es la nota exacta de referencia).
+ */
+function silenciarPianoAhora() {
+  if (pianoEnVivo) pianoEnVivo.stop();
+}
+
 function ultimaDuracionNota(eventos) {
   for (let i = eventos.length - 1; i >= 0; i--) {
     if (eventos[i].midi !== -1) return eventos[i].duracion;
@@ -531,7 +546,7 @@ function detenerEscuchaContinua() {
   escuchaContinuaActiva = false;
 }
 
-window.PianoEngine = { reproducirSecuencia, detenerReproduccion, exportarMp3 };
+window.PianoEngine = { reproducirSecuencia, detenerReproduccion, exportarMp3, silenciarPianoAhora };
 window.MetronomoEngine = {
   iniciar: iniciarMetronomo,
   detener: detenerMetronomo,

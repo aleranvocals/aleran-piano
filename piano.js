@@ -4,6 +4,10 @@
  * del teclado compartido (teclado.js) para esta página en concreto.
  */
 
+// Respiro entre que el piano toca la nota de referencia y se empieza a
+// escuchar al alumno -- ver silenciarPianoAhora() en audio.js para el porqué.
+const PAUSA_ANTES_DE_ESCUCHAR_MS = 250;
+
 let modoActual = "individual";
 let notaIndividual = nombreAMidi("Do3");
 let secuenciaActual = null; // cache: lo último generado, para que "Descargar" coincida con lo que sonó
@@ -493,6 +497,17 @@ async function cantarYCalificar() {
       break;
     }
 
+    // El piano suena con muestras reales: aunque la nota "termine", sigue
+    // resonando un poco por los altavoces (como un piano de verdad). Sin
+    // silenciarla y dar un respiro, esa cola se cuela en el micrófono justo
+    // al empezar a escuchar y se calificaba como si fuera la voz del alumno.
+    if (window.PianoEngine) window.PianoEngine.silenciarPianoAhora();
+    await new Promise((r) => setTimeout(r, PAUSA_ANTES_DE_ESCUCHAR_MS));
+    if (cantoCancelado) {
+      marcarTeclaActiva(evento.midi, false);
+      break;
+    }
+
     el("estado").textContent = `🎤 Ahora canta: ${etiquetaNota(evento.midi)}…`;
     mostrarAfinometro(true);
     const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(1, evento.duracion), (cents) =>
@@ -577,6 +592,18 @@ async function escucharEImitar() {
     el("estado").textContent = `No se pudo acceder al micrófono: ${err.message}`;
     cantoEnCurso = false;
     fijarEstadoBotones({ escuchando: false });
+    return;
+  }
+
+  // Mismo respiro que en "Cantar y calificar": la última nota de la frase
+  // (muestra real de piano) sigue resonando un poco tras "terminar", y sin
+  // esto esa cola se colaba en el micrófono al empezar a escuchar.
+  if (window.PianoEngine) window.PianoEngine.silenciarPianoAhora();
+  await new Promise((r) => setTimeout(r, PAUSA_ANTES_DE_ESCUCHAR_MS));
+  if (cantoCancelado) {
+    cantoEnCurso = false;
+    fijarEstadoBotones({ escuchando: false });
+    el("estado").textContent = "Práctica detenida.";
     return;
   }
 
