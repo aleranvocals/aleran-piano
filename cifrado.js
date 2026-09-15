@@ -409,7 +409,7 @@ function crearNotaGrupo(lineaObj, grupo) {
   // contenido, igual que la sílaba — así "Sol#4" no se corta solo porque
   // la sílaba de arriba sea corta ("le").
   const span = document.createElement("span");
-  span.className = "celda-nota";
+  span.className = "celda-nota" + (grupo.fin > grupo.inicio ? " celda-nota-fusionada" : "");
   span.contentEditable = "true";
   span.spellcheck = false;
   span.textContent = silabaBase.nota;

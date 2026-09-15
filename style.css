@@ -1394,6 +1394,15 @@ input[type="checkbox"] {
   outline: none;
 }
 
+/* Cuando la nota es de dos o más sílabas unidas por el eslabón, que se vea
+   pegada de principio a fin de esas sílabas (no flotando centrada y angosta
+   en medio del hueco). */
+.celda-nota-fusionada {
+  justify-self: stretch;
+  width: 100%;
+  min-width: 100%;
+}
+
 .celda-nota:empty::before {
   content: "·";
   color: var(--muted);
