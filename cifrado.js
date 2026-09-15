@@ -279,11 +279,13 @@ function gruposDeNotas(lineaObj) {
    ========================================================= */
 
 let cancion = [];
+let escalaCifrado = 1;
 
 const elEntrada = document.getElementById("cifradoEntrada");
 const elSalida = document.getElementById("cifradoSalida");
 const elAcciones = document.getElementById("cifradoAcciones");
 const elEstado = document.getElementById("estadoCifrado");
+const elZoom = document.getElementById("cifradoZoom");
 
 const SVG_ESLABON =
   '<svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M9 15l6-6M8 16.5 5.6 18.9a3 3 0 0 1-4.2-4.2L4 12.1M16 7.5l2.4-2.4a3 3 0 0 1 4.2 4.2L20 11.9"/></svg>';
@@ -320,7 +322,8 @@ function renderLinea(lineaObj) {
   const fila = document.createElement("div");
   fila.className = "cifrado-linea";
   const n = lineaObj.silabas.length;
-  fila.style.gridTemplateColumns = n <= 1 ? "auto" : `repeat(${n - 1}, auto 11px) auto`;
+  const anchoHueco = Math.round(11 * escalaCifrado);
+  fila.style.gridTemplateColumns = n <= 1 ? "auto" : `repeat(${n - 1}, auto ${anchoHueco}px) auto`;
 
   lineaObj.silabas.forEach((silaba, i) => {
     fila.appendChild(crearCelda(silaba, i));
@@ -548,6 +551,12 @@ document.getElementById("btnCifradoGenerar").addEventListener("click", () => {
   cancion = parsearCancion(texto);
   renderCancion();
   elEstado.textContent = "";
+});
+
+elZoom.addEventListener("input", () => {
+  escalaCifrado = parseFloat(elZoom.value);
+  elSalida.style.setProperty("--cifrado-escala", escalaCifrado);
+  renderCancion();
 });
 
 document.getElementById("btnCifradoReiniciar").addEventListener("click", () => {

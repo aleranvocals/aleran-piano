@@ -1264,8 +1264,8 @@ input[type="checkbox"] {
   display: grid;
   align-items: end;
   column-gap: 0;
-  row-gap: 0.3rem;
-  margin: 0 0 1.1rem;
+  row-gap: calc(0.3rem * var(--cifrado-escala, 1));
+  margin: 0 0 calc(1.1rem * var(--cifrado-escala, 1));
   /* Un verso largo nunca se parte en varias filas: si no cabe, esta línea
      concreta se desliza horizontalmente (como .mapa-vocal-contenedor), sin
      afectar el ancho de la página ni de las demás líneas. */
@@ -1283,12 +1283,12 @@ input[type="checkbox"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 1.3rem;
-  padding: 0 0.1rem;
+  min-width: calc(1.3rem * var(--cifrado-escala, 1));
+  padding: 0 calc(0.1rem * var(--cifrado-escala, 1));
 }
 
 .cifrado-celda.inicio-palabra {
-  margin-left: 0.45rem;
+  margin-left: calc(0.45rem * var(--cifrado-escala, 1));
 }
 
 .cifrado-linea > .cifrado-celda:first-child {
@@ -1304,24 +1304,24 @@ input[type="checkbox"] {
 }
 
 .cifrado-chip {
-  font-size: 0.54rem;
+  font-size: calc(0.54rem * var(--cifrado-escala, 1));
   font-weight: 700;
   line-height: 1.4;
-  padding: 0 0.25rem;
+  padding: 0 calc(0.25rem * var(--cifrado-escala, 1));
   border-radius: 999px;
   white-space: nowrap;
 }
 
 .celda-texto {
   display: inline-block;
-  min-width: 1.1rem;
+  min-width: calc(1.1rem * var(--cifrado-escala, 1));
   margin-top: 0.15rem;
-  padding: 0.15rem 0.28rem;
+  padding: calc(0.15rem * var(--cifrado-escala, 1)) calc(0.28rem * var(--cifrado-escala, 1));
   background: var(--panel-2);
   color: var(--bone);
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: calc(0.78rem * var(--cifrado-escala, 1));
   text-align: center;
   white-space: nowrap;
   outline: none;
@@ -1333,15 +1333,15 @@ input[type="checkbox"] {
 
 .celda-marca-btn {
   margin-top: 0.15rem;
-  width: 0.85rem;
-  height: 0.85rem;
-  line-height: 0.78rem;
+  width: calc(0.85rem * var(--cifrado-escala, 1));
+  height: calc(0.85rem * var(--cifrado-escala, 1));
+  line-height: calc(0.78rem * var(--cifrado-escala, 1));
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: calc(0.65rem * var(--cifrado-escala, 1));
   cursor: pointer;
 }
 
@@ -1353,9 +1353,9 @@ input[type="checkbox"] {
 .cifrado-eslabon {
   grid-row: 1;
   align-self: center;
-  margin-bottom: 1.2rem;
-  width: 0.85rem;
-  height: 0.85rem;
+  margin-bottom: calc(1.2rem * var(--cifrado-escala, 1));
+  width: calc(0.85rem * var(--cifrado-escala, 1));
+  height: calc(0.85rem * var(--cifrado-escala, 1));
   padding: 0;
   border: none;
   background: transparent;
@@ -1379,15 +1379,15 @@ input[type="checkbox"] {
      en vez de quedar atado al ancho de la sílaba de arriba. */
   justify-self: center;
   display: inline-block;
-  min-width: 1.1rem;
+  min-width: calc(1.1rem * var(--cifrado-escala, 1));
   max-width: 100%;
   box-sizing: border-box;
-  padding: 0.15rem 0.28rem;
+  padding: calc(0.15rem * var(--cifrado-escala, 1)) calc(0.28rem * var(--cifrado-escala, 1));
   background: var(--bg);
   color: var(--crimson-bright);
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 0.68rem;
+  font-size: calc(0.68rem * var(--cifrado-escala, 1));
   font-weight: 600;
   text-align: center;
   white-space: nowrap;
