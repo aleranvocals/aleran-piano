@@ -538,27 +538,27 @@ function mapaConstruirSvg(datos) {
   // manda ninguna a una fila nueva (eso deja espacio vertical de sobra) —
   // se le achica la letra o se corre horizontalmente (`mapaAcomodarFila`).
   const centroDeNota = (midi) => pos.posiciones[midi].x + pos.posiciones[midi].ancho / 2;
-  const FUENTE_PRINCIPAL = 7;
-  const FUENTE_PRINCIPAL_MIN = 5;
-  const FUENTE_NOTA = 6;
-  const FUENTE_NOTA_MIN = 5;
+  // Un solo tamaño de letra para TODAS las guías de arriba (antes el passaggio
+  // y la nota central usaban una letra más grande que el resto de notas).
+  const FUENTE_GUIA = 6;
+  const FUENTE_GUIA_MIN = 5;
   const MARGEN_ENTRE_GUIAS = 4;
+  const medirGuia = (item, fuente) => Math.max(...mapaLineasEtiqueta(item.etiqueta).map((l) => mapaAnchoTexto(l, fuente)));
+  const medirNota = (item, fuente) => mapaAnchoTexto(item.etiqueta, fuente);
 
-  // El belting NO va arriba con el resto de guías — se marca aparte, muy
-  // pequeño, directamente sobre su propia tecla (más abajo).
-  const guiasPrincipales = [{ midi: datos.passaggio, color: MAPA_COLORES.passaggio, etiqueta: `Passaggio (${midiANombre(datos.passaggio)})` }];
-  if (pos.posiciones[centralMidi]) guiasPrincipales.push({ midi: centralMidi, color: MAPA_COLORES.central, etiqueta: centralEtiqueta });
-  guiasPrincipales.sort((a, b) => centroDeNota(a.midi) - centroDeNota(b.midi));
-  guiasPrincipales.forEach((g) => (g.x = centroDeNota(g.midi)));
-  const medirPrincipal = (item, fuente) => Math.max(...mapaLineasEtiqueta(item.etiqueta).map((l) => mapaAnchoTexto(l, fuente)));
-  mapaAcomodarFila(guiasPrincipales, medirPrincipal, FUENTE_PRINCIPAL, FUENTE_PRINCIPAL_MIN, MARGEN_ENTRE_GUIAS, pos.anchoTotal);
+  // El passaggio va SOLO, en su propia fila arriba del todo -- así su nombre
+  // nunca choca con las líneas punteadas de inicio/final de la voz de pecho,
+  // que pasan justo por donde antes estaba esta etiqueta.
+  const filaPassaggio = [{ midi: datos.passaggio, color: MAPA_COLORES.passaggio, etiqueta: `Passaggio (${midiANombre(datos.passaggio)})` }];
+  filaPassaggio.forEach((g) => (g.x = centroDeNota(g.midi)));
+  mapaAcomodarFila(filaPassaggio, medirGuia, FUENTE_GUIA, FUENTE_GUIA_MIN, MARGEN_ENTRE_GUIAS, pos.anchoTotal);
 
+  // Fila intermedia: el resto de notas sueltas que no son límite de la voz de
+  // pecho (mongol, cabeza, silbido) -- igual que siempre, menos pecho.
   const guiasNotas = [];
   const agregarGuiaNota = (midi, color) => {
     if (pos.posiciones[midi]) guiasNotas.push({ midi, color, etiqueta: midiANombre(midi) });
   };
-  agregarGuiaNota(datos.pechoInicio, MAPA_COLORES.pecho);
-  agregarGuiaNota(datos.pechoFinal, MAPA_COLORES.pecho);
   agregarGuiaNota(datos.cabezaInicio, MAPA_COLORES.cabeza);
   agregarGuiaNota(datos.cabezaFinal, MAPA_COLORES.cabeza);
   if (datos.mongolInicio !== null) {
@@ -571,13 +571,30 @@ function mapaConstruirSvg(datos) {
   }
   guiasNotas.sort((a, b) => centroDeNota(a.midi) - centroDeNota(b.midi));
   guiasNotas.forEach((g) => (g.x = centroDeNota(g.midi)));
-  const medirNota = (item, fuente) => mapaAnchoTexto(item.etiqueta, fuente);
-  mapaAcomodarFila(guiasNotas, medirNota, FUENTE_NOTA, FUENTE_NOTA_MIN, MARGEN_ENTRE_GUIAS, pos.anchoTotal);
+  mapaAcomodarFila(guiasNotas, medirNota, FUENTE_GUIA, FUENTE_GUIA_MIN, MARGEN_ENTRE_GUIAS, pos.anchoTotal);
 
-  const MARGEN_BANDA = 5;
-  const yBaseNotas = MARGEN_BANDA + FUENTE_NOTA; // única fila de notas, la más cercana al teclado
-  const yBasePrincipales = yBaseNotas + (FUENTE_NOTA + 4) + 8; // única fila de principales, encima de esa
-  const ALTO_BANDA_SUPERIOR = yBasePrincipales + MARGEN_BANDA;
+  // Fila más cercana al teclado: la nota central + el inicio y el final de la
+  // voz de pecho -- a la altura donde antes iba el passaggio (que se libera
+  // al subir el passaggio a su propia fila arriba del todo).
+  const filaPechoYCentral = [];
+  if (pos.posiciones[centralMidi]) filaPechoYCentral.push({ midi: centralMidi, color: MAPA_COLORES.central, etiqueta: centralEtiqueta });
+  if (pos.posiciones[datos.pechoInicio]) filaPechoYCentral.push({ midi: datos.pechoInicio, color: MAPA_COLORES.pecho, etiqueta: midiANombre(datos.pechoInicio) });
+  if (pos.posiciones[datos.pechoFinal]) filaPechoYCentral.push({ midi: datos.pechoFinal, color: MAPA_COLORES.pecho, etiqueta: midiANombre(datos.pechoFinal) });
+  filaPechoYCentral.sort((a, b) => centroDeNota(a.midi) - centroDeNota(b.midi));
+  filaPechoYCentral.forEach((g) => (g.x = centroDeNota(g.midi)));
+  mapaAcomodarFila(filaPechoYCentral, medirGuia, FUENTE_GUIA, FUENTE_GUIA_MIN, MARGEN_ENTRE_GUIAS, pos.anchoTotal);
+
+  // Tres filas, todas con el mismo tamaño de letra: de más lejana a más
+  // cercana del teclado: [passaggio] -> [notas sueltas] -> [pecho + central].
+  // Passaggio y central son etiquetas de 2 líneas, así que cada una reserva
+  // su propio hueco hacia arriba para esa segunda línea sin invadir la fila
+  // de encima (ni, en el caso del passaggio, salirse por arriba del SVG).
+  const MARGEN_BANDA = 8;
+  const interlineadoGuia = FUENTE_GUIA + 2;
+  const yFilaPassaggio = MARGEN_BANDA + interlineadoGuia;
+  const yFilaNotas = yFilaPassaggio + FUENTE_GUIA + 6;
+  const yFilaPechoCentral = yFilaNotas + FUENTE_GUIA + 6 + interlineadoGuia;
+  const ALTO_BANDA_SUPERIOR = yFilaPechoCentral + MARGEN_BANDA;
 
   const yKeyboard = ALTO_BANDA_SUPERIOR + GAP_BANDA_TECLADO;
   const yBrackets = yKeyboard + ALTO_BLANCA + GAP_TECLADO_BRACKETS;
@@ -730,11 +747,14 @@ function mapaConstruirSvg(datos) {
   // nunca inclinado. Cada grupo va en una sola fila; `mapaAcomodarFila` ya
   // decidió el tamaño de letra y si el texto de cada una se corrió a un
   // lado para no chocar con la de al lado. --------------------------------
-  guiasNotas.forEach((guia) => {
-    cuerpo += mapaGuiaSvg(guia.x, guia.anclaX, guia.anclaTipo, yBaseNotas, yKeyboard + ALTO_BLANCA, guia.color, guia.etiqueta, guia.fuente);
+  filaPechoYCentral.forEach((guia) => {
+    cuerpo += mapaGuiaSvg(guia.x, guia.anclaX, guia.anclaTipo, yFilaPechoCentral, yKeyboard + ALTO_BLANCA, guia.color, guia.etiqueta, guia.fuente);
   });
-  guiasPrincipales.forEach((guia) => {
-    cuerpo += mapaGuiaSvg(guia.x, guia.anclaX, guia.anclaTipo, yBasePrincipales, yKeyboard + ALTO_BLANCA, guia.color, guia.etiqueta, guia.fuente);
+  guiasNotas.forEach((guia) => {
+    cuerpo += mapaGuiaSvg(guia.x, guia.anclaX, guia.anclaTipo, yFilaNotas, yKeyboard + ALTO_BLANCA, guia.color, guia.etiqueta, guia.fuente);
+  });
+  filaPassaggio.forEach((guia) => {
+    cuerpo += mapaGuiaSvg(guia.x, guia.anclaX, guia.anclaTipo, yFilaPassaggio, yKeyboard + ALTO_BLANCA, guia.color, guia.etiqueta, guia.fuente);
   });
 
   // Nombres de nota en los límites blancos del rango, bajo la última fila.
