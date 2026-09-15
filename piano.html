@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css?v=2" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -144,11 +144,32 @@
   </section>
 
   <section id="panel-personalizada" class="panel" hidden>
+    <p class="descripcion">
+      Modo Simple del editor de ritmo: cada nota tiene su propia figura
+      (redonda, blanca, negra, corchea o semicorchea) y puede marcarse como
+      silencio. El tempo es el BPM de la pestaña Metrónomo — ahora mismo
+      <output id="personalizadaBpmTexto">100</output> BPM.
+    </p>
+    <div id="personalizadaLista" class="cifrado-linea"></div>
+    <p id="personalizadaVacio" class="descripcion">Todavía no hay notas — escríbelas abajo, o mándalas desde Cifrado con "Llevar al editor de ritmo".</p>
+
     <label class="campo">
-      <span>Escribe las notas separadas por espacios, comas o saltos de línea</span>
-      <textarea id="notasPersonalizadas" rows="3" placeholder="Do3 Re#3 Mi3 Fa#3 Sol3"></textarea>
+      <span>Añadir notas rápido (se agregan al final, todas como negra)</span>
+      <textarea id="notasPersonalizadas" rows="2" placeholder="Do3 Re#3 Mi3 Fa#3 Sol3"></textarea>
     </label>
-    <p class="descripcion">Ejemplo: <code>Do3 Re#3 Mi3 Fa#3</code>. Se reproducen en ese orden exacto, con la duración y pausa de abajo.</p>
+    <div class="acciones">
+      <button id="btnUsarNotas" class="boton" type="button">+ Usar estas notas</button>
+      <button id="btnLimpiarPersonalizada" class="boton" type="button">🗑 Vaciar</button>
+    </div>
+
+    <div class="acciones">
+      <button id="btnDescargarMelodia" class="boton" type="button">⬇ Descargar melodía (.json)</button>
+      <button id="btnAbrirMelodia" class="boton" type="button">📂 Abrir archivo</button>
+      <input type="file" id="inputAbrirMelodia" accept="application/json" hidden />
+    </div>
+    <div class="acciones" id="accionesVolverCifrado" hidden>
+      <button id="btnGuardarYVolver" class="boton principal" type="button">💾 Guardar y volver al Cifrado</button>
+    </div>
   </section>
 
   <section id="panel-solfeo" class="panel" hidden>
@@ -242,11 +263,11 @@
 
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
-<script src="escalas.js"></script>
+<script src="escalas.js?v=1"></script>
 <script src="audio.js"></script>
 <script src="progreso.js"></script>
 <script src="teclado.js"></script>
-<script src="piano.js"></script>
+<script src="piano.js?v=1"></script>
 <script src="tema.js"></script>
 <script src="pwa.js"></script>
 </body>

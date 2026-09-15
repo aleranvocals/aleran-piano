@@ -50,6 +50,40 @@ function midiAFrecuencia(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
+/* =========================================================
+   Figuras musicales — Modo Simple del editor de ritmo
+   (redonda/blanca/negra/corchea/semicorchea, sin puntillo, ligadura
+   ni tresillo — eso es Modo Músico, todavía sin construir)
+   ========================================================= */
+
+// Cuántos pulsos de negra dura cada figura. La negra es "1 pulso" siempre:
+// a este número solo le falta multiplicar por (60 / bpm) para tener segundos.
+const FIGURAS = [
+  { id: "redonda", nombre: "Redonda", simbolo: "𝅝", pulsos: 4 },
+  { id: "blanca", nombre: "Blanca", simbolo: "𝅗𝅥", pulsos: 2 },
+  { id: "negra", nombre: "Negra", simbolo: "♩", pulsos: 1 },
+  { id: "corchea", nombre: "Corchea", simbolo: "♪", pulsos: 0.5 },
+  { id: "semicorchea", nombre: "Semicorchea", simbolo: "𝅘𝅥𝅯", pulsos: 0.25 },
+];
+
+function figuraPorId(id) {
+  return FIGURAS.find((f) => f.id === id) || FIGURAS[2]; // negra por defecto
+}
+
+function figuraASegundos(figuraId, bpm) {
+  const segundosPorPulso = 60 / (bpm || 100);
+  return figuraPorId(figuraId).pulsos * segundosPorPulso;
+}
+
+// unidades: [{ texto, midi: number|null, figura: idDeFigura }] -> eventos
+// que ya entiende window.PianoEngine.reproducirSecuencia({midi, duracion}).
+function unidadesAEventos(unidades, bpm) {
+  return unidades.map((u) => ({
+    midi: u.midi === null || u.midi === undefined ? -1 : u.midi,
+    duracion: figuraASegundos(u.figura, bpm),
+  }));
+}
+
 // Rango cómodo de práctica por tipo de voz (tesitura central, no el límite
 // teórico extremo de cada cuerda vocal): sirve para generar ejercicios seguros.
 const VOCES = {
@@ -392,13 +426,3 @@ function parsearNotasPersonalizadas(texto) {
   });
 }
 
-function eventosNotasPersonalizadas({ texto, duracionNota, pausa }) {
-  const secuencia = parsearNotasPersonalizadas(texto);
-  const eventos = [];
-  for (const midi of secuencia) {
-    eventos.push({ midi, duracion: duracionNota });
-    eventos.push({ midi: -1, duracion: pausa });
-  }
-  const info = `Escala personalizada: ` + secuencia.map(midiANombre).join(" · ");
-  return { eventos, info };
-}

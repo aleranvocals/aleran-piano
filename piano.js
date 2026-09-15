@@ -16,6 +16,16 @@ let cantoEnCurso = false;
 let cantoCancelado = false;
 let solfeoTonicaMidi = nombreAMidi("Do3");
 
+// --- Personalizada: Modo Simple del editor de ritmo ------------------------
+// unidadesPersonalizadas: [{ texto, midi: number|null, figura: idDeFigura }].
+// midi === null es un silencio (sin sonido, sí ocupa el tiempo de su figura).
+let unidadesPersonalizadas = [];
+// Si esta melodía llegó desde una línea de Cifrado, el id de esa línea --
+// así "Guardar y volver" sabe a dónde mandar el resultado.
+let personalizadaLineaId = null;
+const CLAVE_RITMO_ENVIO = "aleran-piano-ritmo-envio";
+const CLAVE_RITMO_RESULTADO_PREFIJO = "aleran-piano-ritmo-resultado-";
+
 // --- Solfeo (do movible) --------------------------------------------------
 // Sílabas cromáticas estándar (sistema Kodály, alteradas con la variante
 // "bemol" -- Me/Le/Te/Ra en vez de Ri/Si/Li/Di -- por ser la que se lee y
@@ -212,11 +222,13 @@ function fijarBpm(bpm) {
   el("bpmValor").textContent = bpm;
   el("metroFlotBpm").value = bpm;
   el("metroFlotBpmValor").textContent = bpm;
+  el("personalizadaBpmTexto").textContent = bpm;
   if (metronomoEnMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(bpm);
   if (el("sincronizarTempo").checked) {
     actualizarDuracionCalculada();
     invalidarSecuencia();
   }
+  if (modoActual === "personalizada") invalidarSecuencia();
 }
 
 function fijarVolumenMetronomo(volumen) {
@@ -245,7 +257,9 @@ function cambiarModo(modo) {
   el("panel-metronomo").hidden = modo !== "metronomo";
 
   const esMetronomo = modo === "metronomo";
-  el("panelComunes").hidden = esMetronomo;
+  // Personalizada ya no usa duración/pausa compartidas -- cada nota lleva su
+  // propia figura musical (Modo Simple del editor de ritmo).
+  el("panelComunes").hidden = esMetronomo || modo === "personalizada";
   el("accionesPiano").hidden = esMetronomo;
   el("pianoContenedor").hidden = esMetronomo;
   el("pianoDesplazamiento").hidden = esMetronomo;
@@ -320,6 +334,212 @@ function actualizarNotaSeleccionadaUI() {
   el("notaSeleccionadaTexto").textContent = midiANombre(notaIndividual);
 }
 
+// --- Personalizada: Modo Simple del editor de ritmo ------------------------
+// Reutiliza el mismo lenguaje visual que Cifrado (.cifrado-linea/.cifrado-celda/
+// .celda-texto) en vez de inventar uno nuevo, tal como se pidió.
+
+function renderPersonalizada() {
+  const lista = el("personalizadaLista");
+  lista.innerHTML = "";
+  lista.style.gridTemplateColumns = unidadesPersonalizadas.length
+    ? `repeat(${unidadesPersonalizadas.length}, auto)`
+    : "";
+  el("personalizadaVacio").hidden = unidadesPersonalizadas.length > 0;
+  el("accionesVolverCifrado").hidden = personalizadaLineaId === null;
+
+  unidadesPersonalizadas.forEach((unidad, indice) => {
+    lista.appendChild(crearCeldaPersonalizada(unidad, indice));
+  });
+}
+
+function crearCeldaPersonalizada(unidad, indice) {
+  const wrap = document.createElement("div");
+  wrap.className = "cifrado-celda";
+  wrap.style.gridColumn = String(indice + 1);
+  wrap.style.gridRow = "1";
+
+  const texto = document.createElement("span");
+  texto.className = "celda-texto";
+  texto.contentEditable = "true";
+  texto.spellcheck = false;
+  texto.textContent = unidad.texto;
+  texto.addEventListener("input", () => {
+    unidad.texto = texto.textContent;
+  });
+  wrap.appendChild(texto);
+
+  const figuraSelect = document.createElement("select");
+  figuraSelect.className = "celda-figura";
+  FIGURAS.forEach((f) => {
+    const opt = document.createElement("option");
+    opt.value = f.id;
+    opt.textContent = `${f.simbolo} ${f.nombre}`;
+    figuraSelect.appendChild(opt);
+  });
+  figuraSelect.value = unidad.figura;
+  figuraSelect.addEventListener("change", () => {
+    unidad.figura = figuraSelect.value;
+  });
+  wrap.appendChild(figuraSelect);
+
+  const filaBotones = document.createElement("div");
+  filaBotones.className = "celda-fila-botones";
+
+  const silencioBtn = document.createElement("button");
+  silencioBtn.type = "button";
+  silencioBtn.className = "celda-marca-btn";
+  const esSilencio = unidad.midi === null;
+  silencioBtn.title = esSilencio ? "Ponerle sonido de nuevo" : "Marcar como silencio";
+  silencioBtn.textContent = esSilencio ? "🔇" : "🔊";
+  silencioBtn.addEventListener("click", () => {
+    if (unidad.midi === null) {
+      try {
+        unidad.midi = nombreAMidi(unidad.texto);
+      } catch {
+        unidad.midi = unidad._ultimoMidi ?? nombreAMidi("Do3");
+      }
+    } else {
+      unidad._ultimoMidi = unidad.midi;
+      unidad.midi = null;
+    }
+    renderPersonalizada();
+  });
+  filaBotones.appendChild(silencioBtn);
+
+  const btnBorrar = document.createElement("button");
+  btnBorrar.type = "button";
+  btnBorrar.className = "celda-marca-btn";
+  btnBorrar.title = "Quitar esta nota";
+  btnBorrar.textContent = "×";
+  btnBorrar.addEventListener("click", () => {
+    unidadesPersonalizadas.splice(indice, 1);
+    renderPersonalizada();
+  });
+  filaBotones.appendChild(btnBorrar);
+
+  wrap.appendChild(filaBotones);
+  return wrap;
+}
+
+function eventosPersonalizadaConRitmo() {
+  if (unidadesPersonalizadas.length === 0) {
+    throw new Error('Todavía no hay notas en Personalizada -- escribe algunas o mándalas desde Cifrado con "Llevar al editor de ritmo".');
+  }
+  const bpm = parseInt(el("bpmSlider").value, 10) || 100;
+  const eventos = unidadesAEventos(unidadesPersonalizadas, bpm);
+  const info = `Personalizada (Modo Simple) — ${unidadesPersonalizadas.length} unidades a ${bpm} BPM`;
+  return { eventos, info };
+}
+
+/** Si venimos de "Llevar al editor de ritmo" en Cifrado, hay una melodía
+ * esperando en localStorage -- se carga, se cambia a esta pestaña, y se
+ * borra esa clave (ya está consumida). */
+function cargarPersonalizadaDesdeCifradoSiHaceFalta() {
+  let crudo;
+  try {
+    crudo = localStorage.getItem(CLAVE_RITMO_ENVIO);
+  } catch {
+    crudo = null;
+  }
+  if (!crudo) return;
+  try {
+    const datos = JSON.parse(crudo);
+    unidadesPersonalizadas = datos.unidades.map((u) => ({
+      texto: u.texto,
+      midi: typeof u.midi === "number" ? u.midi : null,
+      figura: "negra",
+    }));
+    personalizadaLineaId = datos.lineaId;
+    cambiarModo("personalizada");
+    renderPersonalizada();
+  } catch {
+    // Datos corruptos: no hay mucho que hacer salvo no romper la carga de la página.
+  } finally {
+    try {
+      localStorage.removeItem(CLAVE_RITMO_ENVIO);
+    } catch {
+      /* localStorage bloqueado (privado/incógnito): no pasa nada, solo no se limpia. */
+    }
+  }
+}
+
+function inicializarPersonalizada() {
+  el("btnUsarNotas").addEventListener("click", () => {
+    let midis;
+    try {
+      midis = parsearNotasPersonalizadas(el("notasPersonalizadas").value);
+    } catch (err) {
+      el("estado").textContent = err.message;
+      return;
+    }
+    midis.forEach((midi) => unidadesPersonalizadas.push({ texto: midiANombre(midi), midi, figura: "negra" }));
+    el("notasPersonalizadas").value = "";
+    invalidarSecuencia();
+    renderPersonalizada();
+  });
+
+  el("btnLimpiarPersonalizada").addEventListener("click", () => {
+    if (unidadesPersonalizadas.length && !confirm("¿Vaciar toda la lista de Personalizada?")) return;
+    unidadesPersonalizadas = [];
+    personalizadaLineaId = null;
+    invalidarSecuencia();
+    renderPersonalizada();
+  });
+
+  el("btnDescargarMelodia").addEventListener("click", () => {
+    if (unidadesPersonalizadas.length === 0) {
+      el("estado").textContent = "No hay nada que descargar todavía.";
+      return;
+    }
+    const datos = { bpm: parseInt(el("bpmSlider").value, 10) || 100, unidades: unidadesPersonalizadas };
+    const blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `melodia-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  el("btnAbrirMelodia").addEventListener("click", () => el("inputAbrirMelodia").click());
+  el("inputAbrirMelodia").addEventListener("change", async (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    try {
+      const texto = await archivo.text();
+      const datos = JSON.parse(texto);
+      if (!Array.isArray(datos.unidades)) throw new Error("El archivo no tiene el formato esperado");
+      unidadesPersonalizadas = datos.unidades;
+      if (datos.bpm) fijarBpm(datos.bpm);
+      personalizadaLineaId = null;
+      invalidarSecuencia();
+      renderPersonalizada();
+      el("estado").textContent = "Melodía cargada.";
+    } catch (err) {
+      el("estado").textContent = `No se pudo abrir el archivo: ${err.message}`;
+    } finally {
+      e.target.value = "";
+    }
+  });
+
+  el("btnGuardarYVolver").addEventListener("click", () => {
+    if (personalizadaLineaId === null) return;
+    try {
+      localStorage.setItem(
+        CLAVE_RITMO_RESULTADO_PREFIJO + personalizadaLineaId,
+        JSON.stringify({ unidades: unidadesPersonalizadas, bpm: parseInt(el("bpmSlider").value, 10) || 100 })
+      );
+    } catch {
+      /* localStorage lleno o bloqueado -- no hay mucho más que hacer aquí. */
+    }
+    window.location.href = "cifrado.html";
+  });
+
+  renderPersonalizada();
+}
+
 // --- Generación de eventos ----------------------------------------------
 
 /** Envuelve generarResultadoInterno para que todo resultado tenga `grupos`
@@ -352,7 +572,7 @@ function generarResultadoInterno() {
   }
 
   if (modoActual === "personalizada") {
-    return eventosNotasPersonalizadas({ texto: el("notasPersonalizadas").value, duracionNota, pausa });
+    return eventosPersonalizadaConRitmo();
   }
 
   if (modoActual === "solfeo") {
@@ -730,7 +950,9 @@ function inicializar() {
   actualizarNotaSeleccionadaUI();
   inicializarMetronomo();
   actualizarVisibilidadDuracion();
+  inicializarPersonalizada();
   cambiarModo("individual");
+  cargarPersonalizadaDesdeCifradoSiHaceFalta();
 
   document.querySelectorAll(".tab").forEach((btn) => {
     btn.addEventListener("click", () => cambiarModo(btn.dataset.modo));

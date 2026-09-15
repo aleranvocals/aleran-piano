@@ -301,7 +301,7 @@ function silabizarPalabraJapones(nucleo) {
    profesional" de Áleran Vocals)
    ========================================================= */
 
-const CATEGORIAS = [
+const CATEGORIAS_TECNICAS = [
   { id: "mecanismos", nombre: "Mecanismos Vocales", hue: 350 },
   { id: "colocaciones", nombre: "Colocaciones", hue: 210 },
   { id: "adornos", nombre: "Adornos", hue: 35 },
@@ -345,7 +345,7 @@ const COLOR_TECNICA = new Map();
 const TECNICA_TEXTO_OSCURO = new Set();
 
 (function calcularColores() {
-  CATEGORIAS.forEach((cat) => {
+  CATEGORIAS_TECNICAS.forEach((cat) => {
     const items = TECNICAS.filter((t) => t.categoria === cat.id);
     items.forEach((t, idx) => {
       const frac = items.length <= 1 ? 0.4 : idx / (items.length - 1);
@@ -357,7 +357,7 @@ const TECNICA_TEXTO_OSCURO = new Set();
 })();
 
 function categoriaDe(id) {
-  return CATEGORIAS.find((c) => c.id === TECNICAS.find((t) => t.id === id)?.categoria);
+  return CATEGORIAS_TECNICAS.find((c) => c.id === TECNICAS.find((t) => t.id === id)?.categoria);
 }
 
 /* =========================================================
@@ -376,6 +376,12 @@ function silabizarSegunIdioma(nucleo, idioma) {
   if (idioma === "ja") return silabizarPalabraJapones(nucleo);
   return silabizarPalabra(nucleo);
 }
+
+// Id estable por línea (independiente de su posición en el array): hace
+// falta para el viaje de ida y vuelta con el editor de ritmo por
+// localStorage, que tiene que encontrar la línea correcta aunque el usuario
+// haya editado otras cosas mientras tanto.
+let siguienteLineaId = 1;
 
 function construirLinea(textoLinea, idioma) {
   const palabras = textoLinea.split(/\s+/).filter(Boolean);
@@ -399,9 +405,11 @@ function construirLinea(textoLinea, idioma) {
   });
   return {
     tipo: "linea",
+    id: siguienteLineaId++,
     textoOriginal: textoLinea,
     silabas,
     enlaces: new Array(Math.max(0, silabas.length - 1)).fill(false),
+    ritmo: null, // { unidades, bpm } una vez que vuelve del editor de ritmo
   };
 }
 
@@ -514,9 +522,37 @@ function renderCancion() {
       elSalida.appendChild(p);
       return;
     }
-    elSalida.appendChild(renderLinea(bloque));
+    const contenedor = document.createElement("div");
+    contenedor.className = "cifrado-linea-bloque";
+    contenedor.appendChild(renderLinea(bloque));
+    contenedor.appendChild(crearAccionesLinea(bloque));
+    elSalida.appendChild(contenedor);
   });
   elAcciones.hidden = cancion.length === 0;
+}
+
+function crearAccionesLinea(lineaObj) {
+  const fila = document.createElement("div");
+  fila.className = "cifrado-linea-acciones";
+
+  const btnRitmo = document.createElement("button");
+  btnRitmo.type = "button";
+  btnRitmo.className = "boton";
+  btnRitmo.textContent = "🎵 Llevar al editor de ritmo";
+  btnRitmo.addEventListener("click", () => llevarLineaAlEditorDeRitmo(lineaObj));
+  fila.appendChild(btnRitmo);
+
+  if (lineaObj.ritmo) {
+    const btnReproducir = document.createElement("button");
+    btnReproducir.type = "button";
+    btnReproducir.className = "boton principal";
+    btnReproducir.textContent = "▶ Reproducir";
+    btnReproducir.addEventListener("click", () => reproducirLinea(lineaObj));
+    fila.appendChild(btnReproducir);
+  }
+
+  lineaObj._elAcciones = fila;
+  return fila;
 }
 
 function renderLineaEnSitio(lineaObj) {
@@ -660,7 +696,7 @@ function abrirMenuMarcas(silaba, btnAncla, elChips) {
   menu.className = "marcas-menu";
   menu.dataset.silabaAbierta = "1";
 
-  CATEGORIAS.forEach((cat) => {
+  CATEGORIAS_TECNICAS.forEach((cat) => {
     const h = document.createElement("p");
     h.className = "marcas-menu-categoria";
     h.style.color = `hsl(${cat.hue}, 62%, 55%)`;
@@ -718,7 +754,7 @@ function renderLeyenda() {
   const cont = document.getElementById("cifradoLeyenda");
   if (!cont) return;
   cont.innerHTML = "";
-  CATEGORIAS.forEach((cat) => {
+  CATEGORIAS_TECNICAS.forEach((cat) => {
     const bloque = document.createElement("div");
     bloque.className = "leyenda-categoria";
 
@@ -743,6 +779,145 @@ function renderLeyenda() {
     bloque.appendChild(lista);
     cont.appendChild(bloque);
   });
+}
+
+/* =========================================================
+   Enlace con el editor de ritmo (piano.html, pestaña Personalizada)
+   ========================================================= */
+
+const CLAVE_RITMO_ENVIO = "aleran-piano-ritmo-envio";
+const CLAVE_RITMO_RESULTADO_PREFIJO = "aleran-piano-ritmo-resultado-";
+const CLAVE_AUTOGUARDADO = "aleran-piano-cifrado-autoguardado";
+
+const elBpm = document.getElementById("cifradoBpm");
+
+function serializarBloque(bloque) {
+  if (bloque.tipo !== "linea") return bloque;
+  return {
+    tipo: "linea",
+    id: bloque.id,
+    textoOriginal: bloque.textoOriginal,
+    enlaces: bloque.enlaces,
+    ritmo: bloque.ritmo,
+    silabas: bloque.silabas.map((s) => ({
+      texto: s.texto,
+      textoManual: s.textoManual,
+      inicioPalabra: s.inicioPalabra,
+      marcas: Array.from(s.marcas),
+      nota: s.nota,
+    })),
+  };
+}
+
+// Justo antes de navegar a piano.html (por "Llevar al editor de ritmo") hay
+// que guardar TODO el cifrado -- si no, al volver, la navegación se lo habría
+// borrado entero, no solo la línea que se fue a editar.
+function guardarCancionAutoguardado() {
+  try {
+    localStorage.setItem(
+      CLAVE_AUTOGUARDADO,
+      JSON.stringify({
+        textoEntrada: elEntrada.value,
+        idioma: elIdioma.value,
+        siguienteLineaId,
+        cancion: cancion.map(serializarBloque),
+      })
+    );
+  } catch {
+    /* localStorage lleno o bloqueado (privado/incógnito): no hay mucho más que hacer aquí. */
+  }
+}
+
+function restaurarCancionAutoguardada() {
+  let crudo;
+  try {
+    crudo = localStorage.getItem(CLAVE_AUTOGUARDADO);
+  } catch {
+    crudo = null;
+  }
+  if (!crudo) return false;
+  try {
+    const datos = JSON.parse(crudo);
+    elEntrada.value = datos.textoEntrada || "";
+    if (datos.idioma) elIdioma.value = datos.idioma;
+    siguienteLineaId = datos.siguienteLineaId || 1;
+    cancion = (datos.cancion || []).map((bloque) => {
+      if (bloque.tipo !== "linea") return bloque;
+      return { ...bloque, silabas: bloque.silabas.map((s) => ({ ...s, marcas: new Set(s.marcas) })) };
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Cada línea presente busca si el editor de ritmo dejó un resultado suyo
+// esperando (clave por id de línea) y, si lo hay, lo adopta y limpia la clave.
+function aplicarResultadosDeRitmoPendientes() {
+  let huboAlguno = false;
+  cancion.forEach((bloque) => {
+    if (bloque.tipo !== "linea") return;
+    const clave = CLAVE_RITMO_RESULTADO_PREFIJO + bloque.id;
+    let crudo;
+    try {
+      crudo = localStorage.getItem(clave);
+    } catch {
+      crudo = null;
+    }
+    if (!crudo) return;
+    try {
+      const datos = JSON.parse(crudo);
+      bloque.ritmo = { unidades: datos.unidades, bpm: datos.bpm };
+      huboAlguno = true;
+    } catch {
+      /* datos corruptos: se ignoran, no deben romper la carga de la página. */
+    } finally {
+      try {
+        localStorage.removeItem(clave);
+      } catch {
+        /* no pasa nada si no se pudo limpiar */
+      }
+    }
+  });
+  return huboAlguno;
+}
+
+function llevarLineaAlEditorDeRitmo(lineaObj) {
+  const unidades = lineaObj.silabas.map((s) => {
+    let midi = null;
+    const notaTexto = (s.nota || "").trim();
+    if (notaTexto) {
+      try {
+        midi = nombreAMidi(notaTexto);
+      } catch {
+        midi = null; // nota mal escrita o vacía -> arranca como silencio, se corrige allá
+      }
+    }
+    return { texto: textoSilaba(s), midi };
+  });
+  guardarCancionAutoguardado();
+  try {
+    localStorage.setItem(CLAVE_RITMO_ENVIO, JSON.stringify({ lineaId: lineaObj.id, unidades }));
+  } catch {
+    elEstado.textContent = "No se pudo mandar la línea al editor (almacenamiento del navegador lleno o bloqueado).";
+    return;
+  }
+  window.location.href = "piano.html";
+}
+
+async function reproducirLinea(lineaObj) {
+  if (!window.PianoEngine) {
+    elEstado.textContent = "El motor de audio todavía se está inicializando, espera un segundo…";
+    return;
+  }
+  if (!lineaObj.ritmo) return;
+  const bpm = parseInt(elBpm.value, 10) || lineaObj.ritmo.bpm || 100;
+  const eventos = unidadesAEventos(lineaObj.ritmo.unidades, bpm);
+  try {
+    await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {});
+  } catch (err) {
+    elEstado.textContent = `Error de audio: ${err.message}`;
+  }
 }
 
 /* =========================================================
@@ -771,6 +946,11 @@ document.getElementById("btnCifradoReiniciar").addEventListener("click", () => {
   cancion = [];
   elEntrada.value = "";
   elEstado.textContent = "";
+  try {
+    localStorage.removeItem(CLAVE_AUTOGUARDADO);
+  } catch {
+    /* no pasa nada si no se pudo limpiar */
+  }
   renderCancion();
 });
 
@@ -817,3 +997,11 @@ function generarTextoPlano() {
 }
 
 renderLeyenda();
+
+// Si venimos de "Llevar al editor de ritmo" (o simplemente se recargó la
+// página), recupera el cifrado completo y aplica cualquier ritmo que el
+// editor haya dejado esperando.
+if (restaurarCancionAutoguardada()) {
+  aplicarResultadosDeRitmoPendientes();
+  renderCancion();
+}

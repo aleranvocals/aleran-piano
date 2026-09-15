@@ -1260,12 +1260,16 @@ input[type="checkbox"] {
   height: 0.6rem;
 }
 
+.cifrado-linea-bloque {
+  margin: 0 0 calc(1.1rem * var(--cifrado-escala, 1));
+}
+
 .cifrado-linea {
   display: grid;
   align-items: end;
   column-gap: 0;
   row-gap: calc(0.3rem * var(--cifrado-escala, 1));
-  margin: 0 0 calc(1.1rem * var(--cifrado-escala, 1));
+  margin: 0;
   /* Un verso largo nunca se parte en varias filas: si no cabe, esta línea
      concreta se desliza horizontalmente (como .mapa-vocal-contenedor), sin
      afectar el ancho de la página ni de las demás líneas. */
@@ -1275,6 +1279,18 @@ input[type="checkbox"] {
   padding: 0 0.1rem 0.3rem;
   margin-left: -0.1rem;
   margin-right: -0.1rem;
+}
+
+.cifrado-linea-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.cifrado-linea-acciones .boton {
+  font-size: 0.72rem;
+  padding: 0.35rem 0.6rem;
 }
 
 .cifrado-celda {
@@ -1348,6 +1364,35 @@ input[type="checkbox"] {
 .celda-marca-btn:hover {
   border-color: var(--crimson-bright);
   color: var(--crimson-bright);
+}
+
+/* Selector de figura del editor de ritmo (Personalizada, Modo Simple) --
+   misma familia visual que .celda-nota, pero interactivo. */
+.celda-figura {
+  margin-top: 0.15rem;
+  display: block;
+  min-width: calc(1.8rem * var(--cifrado-escala, 1));
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: calc(0.12rem * var(--cifrado-escala, 1)) calc(0.2rem * var(--cifrado-escala, 1));
+  background: var(--bg);
+  color: var(--crimson-bright);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: calc(0.72rem * var(--cifrado-escala, 1));
+  font-weight: 600;
+  text-align: center;
+}
+
+.celda-figura:focus {
+  border-color: var(--crimson-bright);
+  outline: 1px solid var(--crimson-bright);
+}
+
+.celda-fila-botones {
+  display: flex;
+  gap: 0.2rem;
+  margin-top: 0.15rem;
 }
 
 .cifrado-eslabon {
