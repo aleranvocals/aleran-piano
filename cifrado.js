@@ -405,13 +405,65 @@ function construirLinea(textoLinea, idioma) {
   };
 }
 
-function parsearCancion(textoBruto, idioma) {
+/* =========================================================
+   Detección automática de idioma (español / inglés / japonés)
+   ========================================================= */
+
+// Rangos Unicode de kana y kanji: si una línea tiene alguno, es japonesa —
+// señal segura, no hace falta estadística para esto.
+const RE_JAPONES = /[぀-ゟ゠-ヿ一-鿿]/;
+
+function lineaEsJaponesa(linea) {
+  return RE_JAPONES.test(linea);
+}
+
+// Palabras muy frecuentes de cada idioma (artículos, preposiciones,
+// pronombres...): con pocas coincidencias ya alcanza para distinguir
+// español de inglés, que comparten alfabeto y no se pueden separar por
+// rango Unicode.
+const PALABRAS_ES = new Set([
+  "el", "la", "los", "las", "de", "del", "que", "y", "en", "un", "una", "unos", "unas",
+  "es", "se", "no", "te", "lo", "le", "les", "su", "sus", "por", "con", "para", "como",
+  "más", "pero", "si", "yo", "tu", "mí", "tú", "sí", "al", "o", "ya", "muy", "así",
+  "este", "esta", "estos", "estas", "eso", "esa", "esos", "esas", "donde", "cuando",
+  "porque", "también", "sin", "sobre", "entre", "hasta", "desde", "cada", "otro", "otra",
+  "todo", "toda", "todos", "todas", "nada", "nunca", "siempre", "bien", "mal", "aquí",
+  "allí", "soy", "eres", "somos", "son", "está", "están", "hay", "qué", "quién", "cómo",
+]);
+const PALABRAS_EN = new Set([
+  "the", "and", "of", "to", "a", "in", "is", "you", "that", "it", "he", "was", "for",
+  "on", "are", "as", "with", "his", "her", "they", "i", "at", "be", "this", "have",
+  "from", "or", "one", "had", "by", "but", "not", "what", "all", "we", "when", "your",
+  "can", "there", "an", "each", "which", "she", "do", "how", "their", "if", "will",
+  "up", "other", "about", "out", "many", "then", "them", "these", "so", "some", "my",
+  "me", "no", "just", "him", "know", "take", "into", "your", "im", "dont", "cant",
+]);
+
+function detectarIdiomaLatino(textoCompleto) {
+  const palabras = (textoCompleto.toLowerCase().match(/\p{L}+/gu) || []);
+  let puntosEs = 0;
+  let puntosEn = 0;
+  palabras.forEach((p) => {
+    if (PALABRAS_ES.has(p)) puntosEs++;
+    if (PALABRAS_EN.has(p)) puntosEn++;
+  });
+  return puntosEn > puntosEs ? "en" : "es";
+}
+
+function parsearCancion(textoBruto, idiomaElegido) {
+  const auto = idiomaElegido === "auto";
+  // El español/inglés se decide UNA vez con toda la letra (más señal que
+  // línea por línea); el japonés se detecta línea por línea porque es una
+  // señal segura por sí sola y así una canción mixta no rompe nada.
+  const idiomaLatino = auto ? detectarIdiomaLatino(textoBruto) : idiomaElegido;
+
   return textoBruto.split(/\r?\n/).map((lineaBruta) => {
     const linea = lineaBruta.trim();
     if (linea === "") return { tipo: "espacio" };
     const m = linea.match(/^\[(.+)\]$/);
     if (m) return { tipo: "seccion", texto: m[1] };
-    return construirLinea(linea, idioma);
+    const idiomaLinea = auto && lineaEsJaponesa(linea) ? "ja" : idiomaLatino;
+    return construirLinea(linea, idiomaLinea);
   });
 }
 

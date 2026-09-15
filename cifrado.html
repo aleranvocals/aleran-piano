@@ -56,13 +56,18 @@
     <label class="campo">
       <span>Idioma de la letra</span>
       <select id="cifradoIdioma">
+        <option value="auto">Automático (recomendado)</option>
         <option value="es">Español</option>
         <option value="en">Inglés</option>
         <option value="ja">Japonés (kana)</option>
       </select>
     </label>
     <p class="descripcion">
-      En japonés divide por moras de kana (き, しゃ, っ, ー...), que es como
+      En automático detecta japonés por los caracteres (kana/kanji, línea
+      por línea, así una canción mixta no se rompe) y decide español o
+      inglés contando palabras típicas de cada uno en toda la letra. Si se
+      equivoca o cantas en otro idioma, elige uno a mano arriba. En japonés
+      divide por moras de kana (き, しゃ, っ, ー...), que es como
       se canta de verdad. Un kanji suelto se muestra como una sola casilla
       porque su lectura no se puede deducir sin diccionario — si en la
       canción son varias moras, sepáralo a mano.
@@ -113,7 +118,7 @@
   </footer>
 </div>
 
-<script src="cifrado.js?v=5"></script>
+<script src="cifrado.js?v=6"></script>
 <script src="tema.js"></script>
 <script src="pwa.js"></script>
 </body>
