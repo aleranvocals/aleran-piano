@@ -59,12 +59,46 @@ function esperar(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Notas ya agendadas (vía piano.start({..., time})) de la reproducción en
+// curso, con su función de cancelación (la que devuelve piano.start), más
+// los setTimeout de UI (resaltado de teclas, onTerminar) pendientes. Hace
+// falta llevar la cuenta a mano porque piano.stop() solo calla voces que YA
+// están sonando -- no cancela notas agendadas a futuro en el planificador
+// interno de smplr -- así que sin esto, una reproducción "detenida" o
+// reemplazada por una nueva podía dejar sonando notas que aún no habían
+// llegado a su turno.
+let cancelacionesActivas = [];
+let temporizadoresUiActivos = [];
+let resolverEsperaActiva = null;
+
+// piano.start({..., time}) programa la nota contra el reloj del audio, pero
+// la promesa de reproducirSecuencia() sigue debiendo resolverse justo
+// cuando esa reproducción de verdad termina (o se cancela) -- de eso
+// dependen "Cantar y calificar"/"Escucha e imita"/Simon dice, que esperan
+// con await antes de escuchar el micrófono o pasar a la siguiente ronda.
+function cancelarProgramacionActiva() {
+  cancelacionesActivas.forEach((cancelar) => cancelar());
+  cancelacionesActivas = [];
+  temporizadoresUiActivos.forEach((id) => clearTimeout(id));
+  temporizadoresUiActivos = [];
+  scheduleActivo = null;
+  if (resolverEsperaActiva) {
+    const resolver = resolverEsperaActiva;
+    resolverEsperaActiva = null;
+    resolver(); // libera a quien esté esperando esta reproducción (ahora cancelada/reemplazada)
+  }
+}
+
 /**
- * Reproduce la secuencia en tiempo real, nota a nota (no la programa toda de
- * golpe): así "Detener" funciona de verdad -- basta con invalidar el token
- * para que el bucle no arranque ninguna nota más, y piano.stop() calla la
- * que esté sonando en ese instante. También permite avisar a la interfaz
- * qué nota suena en cada momento (para resaltarla en el teclado visual).
+ * Agenda la secuencia entera de una sola vez contra el reloj del propio
+ * AudioContext (con piano.start({..., time}), que smplr programa con la
+ * precisión del hardware de audio) en vez de ir nota a nota esperando con
+ * setTimeout entre una y otra. Encadenar setTimeouts acumula una pequeña
+ * imprecisión en cada espera (los temporizadores de JS son "como mínimo X
+ * ms", nunca exactos) que con una secuencia larga se nota cada vez más --
+ * el piano terminaba desincronizándose del metrónomo (que sí usa el reloj
+ * de audio) aunque hubiera empezado perfecto. Al anclar todo al mismo
+ * reloj, ninguno de los dos se desvía del otro sin importar cuánto dure.
  *
  * callbacks admite: onCargando(bool), onNotaInicio(midi), onNotaFin(midi), onTerminar().
  */
@@ -73,6 +107,7 @@ async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
   const miToken = ++tokenReproduccion;
   const piano = obtenerPianoEnVivo();
   piano.stop();
+  cancelarProgramacionActiva();
 
   const yaListo = piano.loadProgress && piano.loadProgress.loaded >= piano.loadProgress.total;
   if (onCargando) onCargando(!yaListo);
@@ -82,49 +117,72 @@ async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
 
   piano.output.volume = Math.round(Math.max(0, Math.min(1, volumen)) * 127);
 
-  // Si el metrónomo está sonando, no arrancar a destiempo: esperar al
-  // próximo pulso fuerte (o al próximo pulso si suena sin acento) antes de
-  // tocar la primera nota, para que la secuencia entre sincronizada.
-  const esperaPulsoMs = retrasoHastaProximoPulsoFuerte();
-  if (esperaPulsoMs > 0) {
-    await esperar(esperaPulsoMs);
-    if (tokenReproduccion !== miToken) return; // se pidió detener mientras se esperaba el pulso
-  }
+  const ctx = obtenerContexto();
+  // Si el metrónomo está sonando, no arrancar a destiempo: anclar el primer
+  // evento a su próximo pulso fuerte (o al próximo pulso si suena sin
+  // acento) en vez de a "ahora mismo".
+  const pulso = tiempoProximoPulsoFuerte();
+  let cuando = pulso !== null ? pulso : ctx.currentTime + 0.05;
 
-  reproduccionEnCurso = true;
-  try {
-    for (const { midi, duracion } of eventos) {
-      if (tokenReproduccion !== miToken) return;
-      notaActualInicioCtx = obtenerContexto().currentTime;
-      notaActualDuracion = duracion;
-      if (midi !== -1) {
-        piano.start({ note: clampMidi(midi), duration: duracion });
-        if (onNotaInicio) onNotaInicio(midi);
+  const ahora = ctx.currentTime;
+  const programados = eventos.map(({ midi, duracion }) => {
+    const tiempoInicio = cuando;
+    cuando += duracion;
+    if (midi !== -1) {
+      const cancelar = piano.start({ note: clampMidi(midi), duration: duracion, time: tiempoInicio });
+      if (typeof cancelar === "function") cancelacionesActivas.push(cancelar);
+      const retrasoMs = Math.max(0, (tiempoInicio - ahora) * 1000);
+      if (onNotaInicio) {
+        temporizadoresUiActivos.push(
+          setTimeout(() => {
+            if (tokenReproduccion === miToken) onNotaInicio(midi);
+          }, retrasoMs)
+        );
       }
-      await esperar(duracion * 1000);
-      if (tokenReproduccion !== miToken) return;
-      if (midi !== -1 && onNotaFin) onNotaFin(midi);
+      if (onNotaFin) {
+        temporizadoresUiActivos.push(
+          setTimeout(() => {
+            if (tokenReproduccion === miToken) onNotaFin(midi);
+          }, retrasoMs + duracion * 1000)
+        );
+      }
     }
-    if (tokenReproduccion === miToken && onTerminar) onTerminar();
-  } finally {
-    if (tokenReproduccion === miToken) reproduccionEnCurso = false;
-  }
+    return { midi, duracion, tiempoInicio };
+  });
+  const tiempoFinal = cuando;
+  scheduleActivo = { eventos: programados, tiempoFinal, token: miToken };
+
+  await new Promise((resolve) => {
+    resolverEsperaActiva = resolve;
+    temporizadoresUiActivos.push(
+      setTimeout(() => {
+        if (tokenReproduccion === miToken && onTerminar) onTerminar();
+        resolverEsperaActiva = null;
+        resolve();
+      }, Math.max(0, (tiempoFinal - ahora) * 1000))
+    );
+  });
 }
 
-// Cuándo empezó (en el reloj del AudioContext) el evento -nota o silencio-
-// que está sonando ahora mismo, y cuánto dura: lo usa el metrónomo para
+// Qué hay agendado ahora mismo (ver más arriba) -- lo usa el metrónomo para
 // saber, si arranca a mitad de una reproducción, en qué instante entrar
 // para coincidir con el arranque del siguiente evento en vez de a destiempo.
-let reproduccionEnCurso = false;
-let notaActualInicioCtx = 0;
-let notaActualDuracion = 0;
+let scheduleActivo = null;
 
 function proximoLimiteNotaCtx() {
-  return reproduccionEnCurso ? notaActualInicioCtx + notaActualDuracion : null;
+  if (!scheduleActivo || scheduleActivo.token !== tokenReproduccion) return null;
+  const ahora = obtenerContexto().currentTime;
+  if (ahora >= scheduleActivo.tiempoFinal) return null; // ya terminó
+  for (const ev of scheduleActivo.eventos) {
+    const fin = ev.tiempoInicio + ev.duracion;
+    if (fin > ahora) return fin;
+  }
+  return null;
 }
 
 function detenerReproduccion() {
-  tokenReproduccion++; // invalida cualquier reproducción en curso: no se programará ninguna nota más
+  tokenReproduccion++; // invalida cualquier reproducción en curso: no se agenda ninguna nota más
+  cancelarProgramacionActiva(); // cancela lo que ya estaba agendado a futuro
   if (pianoEnVivo) pianoEnVivo.stop(); // corta en seco lo que esté sonando ahora mismo
   escuchaMicrofonoCancelada = true; // si había una escucha de "cantar y calificar" en curso, se corta ya
 }
