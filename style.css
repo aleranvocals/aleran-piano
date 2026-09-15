@@ -1375,10 +1375,14 @@ input[type="checkbox"] {
 
 .celda-nota {
   grid-row: 2;
-  width: 100%;
+  /* auto-ancho como .celda-texto: crece con lo que escribas (p. ej. "Sol#4")
+     en vez de quedar atado al ancho de la sílaba de arriba. */
+  justify-self: center;
+  display: inline-block;
   min-width: 1.3rem;
+  max-width: 100%;
   box-sizing: border-box;
-  padding: 0.2rem 0.25rem;
+  padding: 0.2rem 0.35rem;
   background: var(--bg);
   color: var(--crimson-bright);
   border: 1px solid var(--line);
@@ -1386,9 +1390,18 @@ input[type="checkbox"] {
   font-size: 0.82rem;
   font-weight: 600;
   text-align: center;
+  white-space: nowrap;
+  outline: none;
+}
+
+.celda-nota:empty::before {
+  content: "·";
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .celda-nota:focus {
+  border-color: var(--crimson-bright);
   outline: 1px solid var(--crimson-bright);
 }
 

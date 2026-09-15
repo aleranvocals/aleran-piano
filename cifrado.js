@@ -405,19 +405,23 @@ function actualizarChips(silaba, elChips) {
 
 function crearNotaGrupo(lineaObj, grupo) {
   const silabaBase = lineaObj.silabas[grupo.inicio];
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "celda-nota";
-  input.placeholder = "·";
-  input.autocomplete = "off";
-  input.spellcheck = false;
-  input.value = silabaBase.nota;
-  input.style.gridColumn = `${2 * grupo.inicio + 1} / ${2 * grupo.fin + 2}`;
-  input.style.gridRow = "2";
-  input.addEventListener("input", () => {
-    silabaBase.nota = input.value;
+  // Span editable (no <input>) para que la casilla crezca sola con el
+  // contenido, igual que la sílaba — así "Sol#4" no se corta solo porque
+  // la sílaba de arriba sea corta ("le").
+  const span = document.createElement("span");
+  span.className = "celda-nota";
+  span.contentEditable = "true";
+  span.spellcheck = false;
+  span.textContent = silabaBase.nota;
+  span.style.gridColumn = `${2 * grupo.inicio + 1} / ${2 * grupo.fin + 2}`;
+  span.style.gridRow = "2";
+  span.addEventListener("input", () => {
+    // Si queda vacía, limpia también el <br> residual que deja contenteditable
+    // para que ":empty" (el punto de placeholder) siga funcionando.
+    if (span.textContent.trim() === "") span.innerHTML = "";
+    silabaBase.nota = span.textContent;
   });
-  return input;
+  return span;
 }
 
 /* =========================================================
