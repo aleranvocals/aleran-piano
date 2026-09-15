@@ -180,11 +180,24 @@ function mapaZonaPorTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlan
  * sólida de pecho, sin costura. Al ser UN solo triángulo por lado (no uno
  * por tecla), tampoco deja la costura de antialiasing entre teclas vecinas. */
 function mapaDiagonalPorTeclas(pos, desdeMidi, hastaMidi, xDesde, xHasta, yTope, yPie, altoNegra, altoBlanca, colorPecho, colorCabeza, opacidad, idClip) {
+  // xDesde/xHasta son solo los dos puntos donde la diagonal "quiebra" (abajo
+  // y arriba). Pero el recorte real (unión de las teclas de desdeMidi a
+  // hastaMidi) casi siempre se extiende MÁS ALLÁ de esos dos puntos -- por
+  // ejemplo, si desdeMidi es una tecla negra, su propio ancho entero puede
+  // sobrar por la izquierda de xDesde. Si el relleno se limitara al segmento
+  // [xDesde,xHasta] (como antes), esa parte de la tecla quedaba SIN PINTAR:
+  // el hueco que se veía. La solución es prolongar la línea diagonal hasta
+  // los bordes reales de la primera y la última tecla (bordeIzq/bordeDer):
+  // a la izquierda de xDesde todo es pecho (macizo), a la derecha de xHasta
+  // todo es cabeza (macizo) -- el recorte ya se encarga de dejar solo la
+  // forma real de cada tecla, sin importar cuál sea negra o blanca.
+  const [bordeIzq] = mapaBordes(pos, desdeMidi, desdeMidi);
+  const [, bordeDer] = mapaBordes(pos, hastaMidi, hastaMidi);
   return `
     ${mapaClipZonaTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlanca, idClip)}
     <g clip-path="url(#${idClip})">
-      <polygon points="${xDesde},${yTope} ${xHasta},${yTope} ${xDesde},${yPie}" fill="${colorPecho}" fill-opacity="${opacidad}" />
-      <polygon points="${xDesde},${yPie} ${xHasta},${yPie} ${xHasta},${yTope}" fill="${colorCabeza}" fill-opacity="${opacidad}" />
+      <polygon points="${bordeIzq},${yTope} ${xHasta},${yTope} ${xDesde},${yPie} ${bordeIzq},${yPie}" fill="${colorPecho}" fill-opacity="${opacidad}" />
+      <polygon points="${xDesde},${yPie} ${bordeDer},${yPie} ${bordeDer},${yTope} ${xHasta},${yTope}" fill="${colorCabeza}" fill-opacity="${opacidad}" />
     </g>
   `;
 }
@@ -568,8 +581,11 @@ function mapaConstruirSvg(datos) {
   filaPassaggio.forEach((g) => (g.x = centroDeNota(g.midi)));
   mapaAcomodarFila(filaPassaggio, medirGuia, FUENTE_GUIA, FUENTE_GUIA_MIN, MARGEN_ENTRE_GUIAS, pos.anchoTotal);
 
-  // Fila intermedia: el resto de notas sueltas que no son límite de la voz de
-  // pecho (mongol, cabeza, silbido) -- igual que siempre, menos pecho.
+  // Fila intermedia: mongol y cabeza -- silbido se baja a la fila de abajo
+  // (junto a pecho) porque su inicio (justo después del final de cabeza)
+  // quedaba pegado al final de cabeza y el choque se resolvía corriendo el
+  // texto a un lado, viéndose mal; separarlos en alturas distintas evita el
+  // choque de raíz, igual que ya se hizo con mongol y pecho.
   const guiasNotas = [];
   const agregarGuiaNota = (midi, color) => {
     if (pos.posiciones[midi]) guiasNotas.push({ midi, color, etiqueta: midiANombre(midi) });
@@ -580,20 +596,21 @@ function mapaConstruirSvg(datos) {
     agregarGuiaNota(datos.mongolInicio, MAPA_COLORES.mongol);
     agregarGuiaNota(datos.mongolFinal, MAPA_COLORES.mongol);
   }
-  if (datos.silbidoInicio !== null) {
-    agregarGuiaNota(datos.silbidoInicio, MAPA_COLORES.silbido);
-    agregarGuiaNota(datos.silbidoFinal, MAPA_COLORES.silbido);
-  }
   guiasNotas.sort((a, b) => centroDeNota(a.midi) - centroDeNota(b.midi));
   guiasNotas.forEach((g) => (g.x = centroDeNota(g.midi)));
   mapaAcomodarFila(guiasNotas, medirNota, FUENTE_GUIA, FUENTE_GUIA_MIN, MARGEN_ENTRE_GUIAS, pos.anchoTotal);
 
-  // Fila más cercana al teclado: la nota central + el inicio y el final de la
-  // voz de pecho -- a la altura donde antes iba el passaggio (que se libera
-  // al subir el passaggio a su propia fila arriba del todo).
+  // Fila más cercana al teclado: la nota central + el inicio/final de la voz
+  // de pecho + el inicio/final del silbido -- a la altura donde antes iba el
+  // passaggio (que se libera al subir el passaggio a su propia fila arriba
+  // del todo).
   const filaPechoYCentral = [];
   if (pos.posiciones[centralMidi]) filaPechoYCentral.push({ midi: centralMidi, color: MAPA_COLORES.central, etiqueta: centralEtiqueta });
   if (pos.posiciones[datos.pechoInicio]) filaPechoYCentral.push({ midi: datos.pechoInicio, color: MAPA_COLORES.pecho, etiqueta: midiANombre(datos.pechoInicio) });
+  if (datos.silbidoInicio !== null) {
+    if (pos.posiciones[datos.silbidoInicio]) filaPechoYCentral.push({ midi: datos.silbidoInicio, color: MAPA_COLORES.silbido, etiqueta: midiANombre(datos.silbidoInicio) });
+    if (pos.posiciones[datos.silbidoFinal]) filaPechoYCentral.push({ midi: datos.silbidoFinal, color: MAPA_COLORES.silbido, etiqueta: midiANombre(datos.silbidoFinal) });
+  }
   if (pos.posiciones[datos.pechoFinal]) filaPechoYCentral.push({ midi: datos.pechoFinal, color: MAPA_COLORES.pecho, etiqueta: midiANombre(datos.pechoFinal) });
   filaPechoYCentral.sort((a, b) => centroDeNota(a.midi) - centroDeNota(b.midi));
   filaPechoYCentral.forEach((g) => (g.x = centroDeNota(g.midi)));
