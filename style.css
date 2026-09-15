@@ -43,6 +43,7 @@
 
 html {
   color-scheme: dark;
+  overflow-x: hidden;
 }
 
 html[data-tema="claro"] {
@@ -55,6 +56,7 @@ body {
   color: var(--bone);
   font-family: var(--font-body);
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 .app {
@@ -1264,6 +1266,15 @@ input[type="checkbox"] {
   column-gap: 0;
   row-gap: 0.3rem;
   margin: 0 0 1.1rem;
+  /* Un verso largo nunca se parte en varias filas: si no cabe, esta línea
+     concreta se desliza horizontalmente (como .mapa-vocal-contenedor), sin
+     afectar el ancho de la página ni de las demás líneas. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0.1rem 0.3rem;
+  margin-left: -0.1rem;
+  margin-right: -0.1rem;
 }
 
 .cifrado-celda {
