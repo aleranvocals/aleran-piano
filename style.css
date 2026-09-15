@@ -1283,12 +1283,12 @@ input[type="checkbox"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 1.6rem;
-  padding: 0 0.15rem;
+  min-width: 1.3rem;
+  padding: 0 0.1rem;
 }
 
 .cifrado-celda.inicio-palabra {
-  margin-left: 0.6rem;
+  margin-left: 0.45rem;
 }
 
 .cifrado-linea > .cifrado-celda:first-child {
@@ -1304,24 +1304,24 @@ input[type="checkbox"] {
 }
 
 .cifrado-chip {
-  font-size: 0.6rem;
+  font-size: 0.54rem;
   font-weight: 700;
-  line-height: 1.5;
-  padding: 0 0.3rem;
+  line-height: 1.4;
+  padding: 0 0.25rem;
   border-radius: 999px;
   white-space: nowrap;
 }
 
 .celda-texto {
   display: inline-block;
-  min-width: 1.3rem;
+  min-width: 1.1rem;
   margin-top: 0.15rem;
-  padding: 0.2rem 0.35rem;
+  padding: 0.15rem 0.28rem;
   background: var(--panel-2);
   color: var(--bone);
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   text-align: center;
   white-space: nowrap;
   outline: none;
@@ -1333,15 +1333,15 @@ input[type="checkbox"] {
 
 .celda-marca-btn {
   margin-top: 0.15rem;
-  width: 1rem;
-  height: 1rem;
-  line-height: 0.9rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  line-height: 0.78rem;
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   cursor: pointer;
 }
 
@@ -1353,9 +1353,9 @@ input[type="checkbox"] {
 .cifrado-eslabon {
   grid-row: 1;
   align-self: center;
-  margin-bottom: 1.4rem;
-  width: 1rem;
-  height: 1rem;
+  margin-bottom: 1.2rem;
+  width: 0.85rem;
+  height: 0.85rem;
   padding: 0;
   border: none;
   background: transparent;
@@ -1379,15 +1379,15 @@ input[type="checkbox"] {
      en vez de quedar atado al ancho de la sílaba de arriba. */
   justify-self: center;
   display: inline-block;
-  min-width: 1.3rem;
+  min-width: 1.1rem;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 0.2rem 0.35rem;
+  padding: 0.15rem 0.28rem;
   background: var(--bg);
   color: var(--crimson-bright);
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 0.82rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-align: center;
   white-space: nowrap;

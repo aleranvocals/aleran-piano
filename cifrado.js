@@ -320,7 +320,7 @@ function renderLinea(lineaObj) {
   const fila = document.createElement("div");
   fila.className = "cifrado-linea";
   const n = lineaObj.silabas.length;
-  fila.style.gridTemplateColumns = n <= 1 ? "auto" : `repeat(${n - 1}, auto 14px) auto`;
+  fila.style.gridTemplateColumns = n <= 1 ? "auto" : `repeat(${n - 1}, auto 11px) auto`;
 
   lineaObj.silabas.forEach((silaba, i) => {
     fila.appendChild(crearCelda(silaba, i));
