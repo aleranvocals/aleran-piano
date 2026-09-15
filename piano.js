@@ -322,7 +322,18 @@ function actualizarNotaSeleccionadaUI() {
 
 // --- Generación de eventos ----------------------------------------------
 
+/** Envuelve generarResultadoInterno para que todo resultado tenga `grupos`
+ * (las "frases" que "Escucha e imita" toca y para a imitar una por una):
+ * los modos que no arman sus propios grupos (todos menos la escalera de
+ * "Escala vocal") caen en un único grupo con todos los eventos, que es
+ * exactamente el comportamiento de siempre. */
 function generarResultado() {
+  const resultado = generarResultadoInterno();
+  if (!resultado.grupos) resultado.grupos = [resultado.eventos];
+  return resultado;
+}
+
+function generarResultadoInterno() {
   const duracionNota = duracionNotaActual();
   const pausa = el("sincronizarTempo").checked ? 0 : parseFloat(el("pausa").value);
 
@@ -542,11 +553,13 @@ async function cantarYCalificar() {
   }
 }
 
-/** Flujo "escucha e imita": el programa toca la frase completa una sola vez
- * (a su tempo real) y luego el alumno la canta de memoria, de corrido; se
- * escucha nota a nota (por el mismo tiempo que duró cada una al sonar) y se
- * califica igual que en "Cantar y calificar", pero sin repetir cada nota
- * justo antes de cantarla — es un eco melódico, no llamada-y-respuesta. */
+/** Flujo "escucha e imita": el programa toca una frase, se calla y el
+ * alumno la canta de memoria, de corrido (sin repetir cada nota justo antes
+ * de cantarla, a diferencia de "Cantar y calificar" — es un eco melódico,
+ * no llamada-y-respuesta). Con varias frases (la escalera de "Escala
+ * vocal" trae una por raíz) se hace una por una: toca, para, escucha, y
+ * recién ahí pasa a la siguiente — nunca toca la escalera entera de
+ * corrido antes de dejar imitar. */
 async function escucharEImitar() {
   if (!window.MicrofonoEngine || !window.MicrofonoEngine.disponible()) {
     el("estado").textContent = "Este navegador no permite usar el micrófono aquí (hace falta https, o probarlo en local).";
@@ -571,20 +584,6 @@ async function escucharEImitar() {
   el("btnImitar").disabled = true;
   el("btnDetener").disabled = false;
 
-  const notas = resultado.eventos.filter((e) => e.midi !== -1);
-
-  el("estado").textContent = "🔊 Escucha la frase completa…";
-  await window.PianoEngine.reproducirSecuencia(resultado.eventos, parseFloat(el("volumen").value), {
-    onNotaInicio: (midi) => marcarTeclaActiva(midi, true),
-    onNotaFin: (midi) => marcarTeclaActiva(midi, false),
-  });
-  if (cantoCancelado) {
-    cantoEnCurso = false;
-    fijarEstadoBotones({ escuchando: false });
-    el("estado").textContent = "Práctica detenida.";
-    return;
-  }
-
   try {
     el("estado").textContent = "Pidiendo permiso del micrófono…";
     await window.MicrofonoEngine.iniciar();
@@ -595,42 +594,57 @@ async function escucharEImitar() {
     return;
   }
 
-  // Mismo respiro que en "Cantar y calificar": la última nota de la frase
-  // (muestra real de piano) sigue resonando un poco tras "terminar", y sin
-  // esto esa cola se colaba en el micrófono al empezar a escuchar.
-  if (window.PianoEngine) window.PianoEngine.silenciarPianoAhora();
-  await new Promise((r) => setTimeout(r, PAUSA_ANTES_DE_ESCUCHAR_MS));
-  if (cantoCancelado) {
-    cantoEnCurso = false;
-    fijarEstadoBotones({ escuchando: false });
-    el("estado").textContent = "Práctica detenida.";
-    return;
-  }
-
-  el("estado").textContent = "🎤 Ahora canta la frase completa de memoria, nota por nota…";
+  const grupos = resultado.grupos.filter((g) => g.some((e) => e.midi !== -1));
+  const totalFrases = grupos.length;
   const puntuaciones = [];
+  let notasTotales = 0;
 
-  for (const evento of notas) {
+  for (let i = 0; i < grupos.length; i++) {
+    if (cantoCancelado) break;
+    const grupo = grupos[i];
+    const notasGrupo = grupo.filter((e) => e.midi !== -1);
+    notasTotales += notasGrupo.length;
+    const prefijo = totalFrases > 1 ? `Frase ${i + 1}/${totalFrases}: ` : "";
+
+    el("estado").textContent = `🔊 ${prefijo}Escucha…`;
+    await window.PianoEngine.reproducirSecuencia(grupo, parseFloat(el("volumen").value), {
+      onNotaInicio: (midi) => marcarTeclaActiva(midi, true),
+      onNotaFin: (midi) => marcarTeclaActiva(midi, false),
+    });
     if (cantoCancelado) break;
 
-    marcarTeclaActiva(evento.midi, true);
-    mostrarAfinometro(true);
-    const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(1, evento.duracion), (cents) =>
-      actualizarAfinometro(cents)
-    );
-    mostrarAfinometro(false);
-    marcarTeclaActiva(evento.midi, false);
+    // Mismo respiro que en "Cantar y calificar": la última nota de la
+    // frase (muestra real de piano) sigue resonando un poco tras
+    // "terminar", y sin esto esa cola se colaba en el micrófono al
+    // empezar a escuchar.
+    window.PianoEngine.silenciarPianoAhora();
+    await new Promise((r) => setTimeout(r, PAUSA_ANTES_DE_ESCUCHAR_MS));
     if (cantoCancelado) break;
 
-    if (!analisis.detectado) {
-      agregarBadgeResultado(`${etiquetaNota(evento.midi)}: 🔇 no te oí bien`);
-    } else {
-      const cal = calificarCents(analisis.centsPromedio);
-      const signo = analisis.centsPromedio > 0 ? "+" : "";
-      agregarBadgeResultado(
-        `${etiquetaNota(evento.midi)}: ${cal.emoji} ${cal.texto} (${signo}${Math.round(analisis.centsPromedio)}¢)`
+    el("estado").textContent = `🎤 ${prefijo}Canta de memoria, nota por nota…`;
+
+    for (const evento of notasGrupo) {
+      if (cantoCancelado) break;
+
+      marcarTeclaActiva(evento.midi, true);
+      mostrarAfinometro(true);
+      const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(1, evento.duracion), (cents) =>
+        actualizarAfinometro(cents)
       );
-      puntuaciones.push(cal.puntos);
+      mostrarAfinometro(false);
+      marcarTeclaActiva(evento.midi, false);
+      if (cantoCancelado) break;
+
+      if (!analisis.detectado) {
+        agregarBadgeResultado(`${etiquetaNota(evento.midi)}: 🔇 no te oí bien`);
+      } else {
+        const cal = calificarCents(analisis.centsPromedio);
+        const signo = analisis.centsPromedio > 0 ? "+" : "";
+        agregarBadgeResultado(
+          `${etiquetaNota(evento.midi)}: ${cal.emoji} ${cal.texto} (${signo}${Math.round(analisis.centsPromedio)}¢)`
+        );
+        puntuaciones.push(cal.puntos);
+      }
     }
   }
 
@@ -643,7 +657,7 @@ async function escucharEImitar() {
     el("estado").textContent = "No pude detectar tu voz. Acércate al micrófono o canta un poco más fuerte.";
   } else {
     const media = Math.round(puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length);
-    el("estado").textContent = `Puntuación media: ${media}/100 (${puntuaciones.length}/${notas.length} notas detectadas).`;
+    el("estado").textContent = `Puntuación media: ${media}/100 (${puntuaciones.length}/${notasTotales} notas detectadas).`;
   }
 }
 

@@ -338,12 +338,20 @@ function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida
     );
   }
 
+  // Un grupo por raíz (cada paso de la escalera es su propia "frase", con
+  // su pausa entre notas ya incluida para que suene igual sola que dentro
+  // de la escalera completa): lo usa "Escucha e imita" para tocar y parar a
+  // imitar raíz por raíz, en vez de tratar la escalera entera como una sola
+  // frase gigante de corrido.
+  const grupos = raices.map((raiz) =>
+    semitonos.flatMap((st) => [
+      { midi: raiz + st, duracion: duracionNota },
+      { midi: -1, duracion: pausa },
+    ])
+  );
   const eventos = [];
-  raices.forEach((raiz, indiceRaiz) => {
-    for (const st of semitonos) {
-      eventos.push({ midi: raiz + st, duracion: duracionNota });
-      eventos.push({ midi: -1, duracion: pausa });
-    }
+  grupos.forEach((grupo, indiceRaiz) => {
+    eventos.push(...grupo);
     // Respiro entre cada repetición de la escalera (un paso más arriba o
     // abajo): sin esto, con la duración vinculada al tempo (pausa = 0) las
     // repeticiones sonaban pegadas sin dar tiempo a respirar. Se añade
@@ -355,7 +363,7 @@ function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida
   });
   const info =
     `${infoVoz.nombre} · ${infoPatron.nombre} — raíces: ` + raices.map(midiANombre).join(", ");
-  return { eventos, info };
+  return { eventos, info, grupos };
 }
 
 /** Parsea texto tipo "Do3 Re#3 Mi3 Fa#3" (separado por espacios, comas o
