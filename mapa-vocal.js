@@ -137,46 +137,56 @@ function mapaFormaTecla(pos, midi, yTope, altoNegra, altoBlanca) {
   return `${xArribaIzq},${yTope} ${xArribaDer},${yTope} ${xArribaDer},${yNegra} ${x2},${yNegra} ${x2},${yBlanca} ${x1},${yBlanca} ${x1},${yNegra} ${xArribaIzq},${yNegra}`;
 }
 
-/** Pinta un registro TECLA POR TECLA con la forma real de cada una
- * (`mapaFormaTecla`) en vez de un único rectángulo de borde a borde. Dos
- * teclas vecinas encajan exactas (comparten el mismo filo, sin hueco ni
- * solape), así que varias teclas seguidas del mismo color se siguen viendo
- * como una sola franja continua — pero si la frontera con el registro
- * vecino cae justo en una tecla negra, esa tecla queda COMPLETA de un solo
- * color en vez de partida a la mitad entre dos colores distintos (que es lo
- * que pasaba antes al usar una única línea vertical promediada ahí). */
-function mapaZonaPorTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlanca, color, opacidad) {
-  let partes = "";
+/** Un recorte (clipPath) que es la UNIÓN de la forma real de cada tecla en
+ * [desdeMidi..hastaMidi] — para usarlo como máscara de UN solo relleno
+ * continuo, en vez de pintar cada tecla como su propio <polygon>. Pintar N
+ * polígonos separados (aunque coincidan en el filo matemáticamente) hace
+ * que el navegador antialiase cada uno por su cuenta, y eso deja una
+ * costura de 1px (una línea clara) justo donde dos teclas vecinas del MISMO
+ * color se tocan. Recortando un único rectángulo/triángulo con esta máscara
+ * en vez de rellenar tecla por tecla, no hay ninguna costura interna. */
+function mapaClipZonaTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlanca, idClip) {
+  let formas = "";
   for (let midi = desdeMidi; midi <= hastaMidi; midi++) {
     if (!pos.posiciones[midi]) continue;
-    partes += `<polygon points="${mapaFormaTecla(pos, midi, yTope, altoNegra, altoBlanca)}" fill="${color}" fill-opacity="${opacidad}" />`;
+    formas += `<polygon points="${mapaFormaTecla(pos, midi, yTope, altoNegra, altoBlanca)}" />`;
   }
-  return partes;
+  return `<clipPath id="${idClip}">${formas}</clipPath>`;
 }
 
-/** El corte diagonal de la zona mixta (pecho/cabeza solapados), pero TECLA
- * POR TECLA: es la misma línea recta de siempre (de `(xDesde,yPie)` a
- * `(xHasta,yTope)`, la misma en todas las teclas de la zona), pero cada nota
- * se recorta a su propia forma real (`mapaFormaTecla`) antes de pintarle los
- * dos triángulos. Antes, dos triángulos gigantes de punta a punta ignoraban
- * las teclas negras que caían en medio de la zona mixta (la diagonal las
- * partía sin respetar su forma) y además no coincidían exactamente con el
- * filo real de la última tecla sólida de pecho, dejando una costura donde
- * empezaba el degradado. Recortando cada tecla a su forma antes de pintar,
- * el degradado se sigue viendo igual de diagonal (la línea no cambia), pero
- * cada nota solo se colorea dentro de su propio contorno real. */
-function mapaDiagonalPorTeclas(pos, desdeMidi, hastaMidi, xDesde, xHasta, yTope, yPie, altoNegra, altoBlanca, colorPecho, colorCabeza, opacidad, idBase) {
-  let partes = "";
-  for (let midi = desdeMidi; midi <= hastaMidi; midi++) {
-    if (!pos.posiciones[midi]) continue;
-    const idClip = `${idBase}-${midi}`;
-    partes += `<clipPath id="${idClip}"><polygon points="${mapaFormaTecla(pos, midi, yTope, altoNegra, altoBlanca)}" /></clipPath>`;
-    partes += `<g clip-path="url(#${idClip})">`;
-    partes += `<polygon points="${xDesde},${yTope} ${xHasta},${yTope} ${xDesde},${yPie}" fill="${colorPecho}" fill-opacity="${opacidad}" />`;
-    partes += `<polygon points="${xDesde},${yPie} ${xHasta},${yPie} ${xHasta},${yTope}" fill="${colorCabeza}" fill-opacity="${opacidad}" />`;
-    partes += `</g>`;
-  }
-  return partes;
+/** Pinta un registro con un ÚNICO rectángulo (un solo relleno, sin costuras)
+ * recortado a la forma real de cada tecla de [desdeMidi..hastaMidi] — si la
+ * frontera con el registro vecino cae justo en una tecla negra, esa tecla
+ * queda COMPLETA de un solo color en vez de partida a la mitad entre dos
+ * colores distintos (que es lo que pasaba antes al usar una única línea
+ * vertical promediada ahí). */
+function mapaZonaPorTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlanca, color, opacidad, idClip) {
+  if (!pos.posiciones[desdeMidi] || !pos.posiciones[hastaMidi]) return "";
+  const [x1] = mapaBordes(pos, desdeMidi, desdeMidi);
+  const [, x2] = mapaBordes(pos, hastaMidi, hastaMidi);
+  return `
+    ${mapaClipZonaTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlanca, idClip)}
+    <g clip-path="url(#${idClip})">
+      <rect x="${x1}" y="${yTope}" width="${x2 - x1}" height="${altoBlanca}" fill="${color}" fill-opacity="${opacidad}" />
+    </g>
+  `;
+}
+
+/** El corte diagonal de la zona mixta (pecho/cabeza solapados): la misma
+ * línea recta de siempre (de `(xDesde,yPie)` a `(xHasta,yTope)`), pero
+ * recortada con la UNIÓN de la forma real de cada tecla de la zona en vez de
+ * un rectángulo de punta a punta -- así respeta las teclas negras que caen
+ * en medio y coincide exactamente con el filo real de la última tecla
+ * sólida de pecho, sin costura. Al ser UN solo triángulo por lado (no uno
+ * por tecla), tampoco deja la costura de antialiasing entre teclas vecinas. */
+function mapaDiagonalPorTeclas(pos, desdeMidi, hastaMidi, xDesde, xHasta, yTope, yPie, altoNegra, altoBlanca, colorPecho, colorCabeza, opacidad, idClip) {
+  return `
+    ${mapaClipZonaTeclas(pos, desdeMidi, hastaMidi, yTope, altoNegra, altoBlanca, idClip)}
+    <g clip-path="url(#${idClip})">
+      <polygon points="${xDesde},${yTope} ${xHasta},${yTope} ${xDesde},${yPie}" fill="${colorPecho}" fill-opacity="${opacidad}" />
+      <polygon points="${xDesde},${yPie} ${xHasta},${yPie} ${xHasta},${yTope}" fill="${colorCabeza}" fill-opacity="${opacidad}" />
+    </g>
+  `;
 }
 
 /** Una franja de color translúcida SOBRE el teclado — varias de estas se
@@ -540,8 +550,13 @@ function mapaConstruirSvg(datos) {
   const centroDeNota = (midi) => pos.posiciones[midi].x + pos.posiciones[midi].ancho / 2;
   // Un solo tamaño de letra para TODAS las guías de arriba (antes el passaggio
   // y la nota central usaban una letra más grande que el resto de notas).
+  // Mismo tamaño siempre -- nada de achicar cuando dos guías chocan (eso se
+  // veía descuidado, con letras de tamaños distintos por toda la franja).
+  // FUENTE_GUIA_MIN = FUENTE_GUIA a propósito: con los dos iguales,
+  // `mapaAcomodarFila` nunca entra en su rama de encoger letra y el único
+  // recurso contra un choque es correrse a un lado (`anclaTipo: "start"`).
   const FUENTE_GUIA = 6;
-  const FUENTE_GUIA_MIN = 5;
+  const FUENTE_GUIA_MIN = FUENTE_GUIA;
   const MARGEN_ENTRE_GUIAS = 4;
   const medirGuia = (item, fuente) => Math.max(...mapaLineasEtiqueta(item.etiqueta).map((l) => mapaAnchoTexto(l, fuente)));
   const medirNota = (item, fuente) => mapaAnchoTexto(item.etiqueta, fuente);
@@ -635,10 +650,10 @@ function mapaConstruirSvg(datos) {
   const yTope = yKeyboard, yPie = yKeyboard + ALTO_BLANCA;
 
   if (datos.mongolInicio !== null) {
-    cuerpo += mapaZonaPorTeclas(pos, datos.mongolInicio, datos.mongolFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.mongol, 0.45);
+    cuerpo += mapaZonaPorTeclas(pos, datos.mongolInicio, datos.mongolFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.mongol, 0.45, "mapaClipMongol");
   }
   if (datos.silbidoInicio !== null) {
-    cuerpo += mapaZonaPorTeclas(pos, datos.silbidoInicio, datos.silbidoFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.silbido, 0.45);
+    cuerpo += mapaZonaPorTeclas(pos, datos.silbidoInicio, datos.silbidoFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.silbido, 0.45, "mapaClipSilbido");
   }
 
   // El solapamiento real de pecho y cabeza depende de dónde el profesor puso
@@ -667,17 +682,17 @@ function mapaConstruirSvg(datos) {
     const pechoSolidoHasta = datos.cabezaInicio - 1;
     const limitePechoDiagonal = mapaLimite(pos, datos.cabezaInicio - 1, datos.cabezaInicio);
     if (datos.pechoInicio <= pechoSolidoHasta) {
-      cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, pechoSolidoHasta, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45);
+      cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, pechoSolidoHasta, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45, "mapaClipPechoSolido");
     }
     cuerpo += mapaDiagonalPorTeclas(
       pos, datos.cabezaInicio, datos.pechoFinal,
       limitePechoDiagonal, limiteDiagonalPassaggio,
       yTope, yPie, ALTO_NEGRA, ALTO_BLANCA,
-      MAPA_COLORES.pecho, MAPA_COLORES.cabeza, 0.45, "mapaRecorteDiagonal"
+      MAPA_COLORES.pecho, MAPA_COLORES.cabeza, 0.45, "mapaClipDiagonal"
     );
   } else {
     // No se tocan: la voz de pecho es sólida en todo su rango, sin diagonal.
-    cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, datos.pechoFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45);
+    cuerpo += mapaZonaPorTeclas(pos, datos.pechoInicio, datos.pechoFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.pecho, 0.45, "mapaClipPecho");
   }
 
   // Voz de cabeza: sólida desde justo después del passaggio (o desde su
@@ -685,7 +700,7 @@ function mapaConstruirSvg(datos) {
   // escribió el profesor.
   const cabezaSolidoDesde = Math.max(datos.cabezaInicio, datos.passaggio + 1);
   if (cabezaSolidoDesde <= datos.cabezaFinal) {
-    cuerpo += mapaZonaPorTeclas(pos, cabezaSolidoDesde, datos.cabezaFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.cabeza, 0.45);
+    cuerpo += mapaZonaPorTeclas(pos, cabezaSolidoDesde, datos.cabezaFinal, yTope, ALTO_NEGRA, ALTO_BLANCA, MAPA_COLORES.cabeza, 0.45, "mapaClipCabeza");
   }
 
   // La tecla del passaggio: resaltada con SU PROPIA forma real (angosta
