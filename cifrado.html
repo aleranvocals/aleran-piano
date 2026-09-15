@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cifrado — Áleran Vocals</title>
+<meta name="description" content="Pega la letra de una canción, divide cada línea en sílabas, decide qué sílabas comparten nota y marca vibrato, twang, voz de cabeza y demás técnicas con colores — listo para imprimir o compartir." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://aleran-piano.vercel.app/cifrado.html" />
+<meta property="og:title" content="Cifrado — Áleran Vocals" />
+<meta property="og:description" content="Pega la letra de una canción, divide cada línea en sílabas, decide qué sílabas comparten nota y marca vibrato, twang, voz de cabeza y demás técnicas con colores — listo para imprimir o compartir." />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Cifrado — Áleran Vocals" />
+<meta name="twitter:description" content="Pega la letra de una canción, divide cada línea en sílabas, decide qué sílabas comparten nota y marca vibrato, twang, voz de cabeza y demás técnicas con colores — listo para imprimir o compartir." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#93172c" />
+<link rel="icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+</head>
+<body>
+<div class="app cifrado-app">
+  <header class="cabecera">
+    <h1>🎵 Cifrado</h1>
+    <p class="subtitulo">Pega la letra, divide en sílabas, decide qué sílabas comparten nota, y marca vibrato, twang, voz de cabeza y demás técnicas con color.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <a href="index.html">🏠 Inicio</a>
+    <a href="guia.html">🧭 Guía</a>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <a href="piano.html">🎹 Piano</a>
+    <a href="entrenamiento.html">🎤 Entrenamiento</a>
+    <a href="oido.html">🧠 Oído</a>
+    <a href="rutina.html">📋 Rutina</a>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <a href="progreso.html">📈 Progreso</a>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <a href="catalogo.html">🎼 Catálogo</a>
+    <a href="glosario.html">📖 Glosario</a>
+    <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+    <a href="cifrado.html" class="activo">🎵 Cifrado</a>
+  </nav>
+
+  <section class="panel" id="cifradoEntradaPanel">
+    <p class="descripcion">
+      Pega la letra completa. Deja una línea en blanco entre estrofas y usa
+      corchetes para las secciones, por ejemplo <code>[Verso 1]</code> o
+      <code>[Coro]</code> — esas líneas se muestran como título de sección y
+      no se dividen en sílabas.
+    </p>
+    <label class="campo">
+      <span>Letra completa</span>
+      <textarea id="cifradoEntrada" rows="12" placeholder="[Verso 1]&#10;Duele quererte así.&#10;Como un cristal en la mano."></textarea>
+    </label>
+    <div class="acciones">
+      <button id="btnCifradoGenerar" class="boton principal">🎼 Generar cifrado</button>
+      <button id="btnCifradoReiniciar" class="boton">↺ Reiniciar</button>
+    </div>
+    <p id="estadoCifrado" class="estado" aria-live="polite"></p>
+  </section>
+
+  <section class="panel cifrado-resultado">
+    <p class="descripcion">
+      Toca el icono de cadena entre dos sílabas para que compartan una sola
+      nota (fraseo fonético) — arriba se siguen viendo las dos sílabas, abajo
+      queda una sola casilla. Toca el <strong>+</strong> de una sílaba para
+      marcarla con una técnica (vibrato, twang, voz de cabeza...). Todo el
+      texto y las notas son editables — corrige lo que el programa se
+      equivoque.
+    </p>
+    <div id="cifradoSalida"></div>
+    <div class="acciones" id="cifradoAcciones" hidden>
+      <button id="btnCifradoImprimir" class="boton">🖨️ Imprimir / PDF</button>
+      <button id="btnCifradoCopiar" class="boton">📋 Copiar como texto</button>
+    </div>
+  </section>
+
+  <section class="panel cifrado-leyenda-panel">
+    <h2 class="leyenda-h2">Convenciones</h2>
+    <div id="cifradoLeyenda" class="cifrado-leyenda"></div>
+  </section>
+
+  <div class="cta-clases">
+    <p>¿Quieres pasar de practicar solo a progresar con feedback real de un vocal coach? <a href="https://agenda.aleranvocals.es/reservar" target="_blank" rel="noopener">Reserva tu primera clase →</a></p>
+  </div>
+
+  <footer class="pie">
+    <p>Todo se genera en tu navegador — nada se sube a ningún sitio. Las técnicas y colores están basados en el póster "Sonar como un profesional" de Áleran Vocals.</p>
+  </footer>
+</div>
+
+<script src="cifrado.js"></script>
+<script src="tema.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

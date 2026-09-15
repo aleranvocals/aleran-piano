@@ -1,0 +1,599 @@
+"use strict";
+
+/* =========================================================
+   Silabización gramatical del español
+   ========================================================= */
+
+const VOCALES = "aeiouáéíóúü";
+const FUERTES = "aeoáéó";
+const DEBILES_TONICAS = "íú";
+
+// Pares consonánticos inseparables: siempre se quedan enteros con la sílaba
+// siguiente (nunca se parten entre dos sílabas).
+const INSEPARABLES = new Set([
+  "pl", "bl", "cl", "gl", "fl", "tl",
+  "pr", "br", "cr", "gr", "fr", "tr", "dr",
+]);
+
+function esVocal(ch) {
+  return VOCALES.includes(ch.toLowerCase());
+}
+function esFuerte(ch) {
+  return FUERTES.includes(ch.toLowerCase());
+}
+function esDebilTonica(ch) {
+  return DEBILES_TONICAS.includes(ch.toLowerCase());
+}
+function esDigrafo(a, b) {
+  const par = (a + b).toLowerCase();
+  return par === "ch" || par === "ll" || par === "rr";
+}
+
+// "unidades" ya viene tokenizado (cada elemento es una letra suelta o una
+// unidad de dos letras: dígrafo ch/ll/rr, o "qu"/"gu" con la u muda) — así no
+// se pierde esa frontera al decidir dónde parte la sílaba.
+function repartirConsonantes(unidades) {
+  if (unidades.length === 0) return { colaAnterior: [], inicioSiguiente: [] };
+  if (unidades.length === 1) return { colaAnterior: [], inicioSiguiente: unidades };
+
+  if (unidades.length === 2) {
+    const [a, b] = unidades;
+    if (a.length === 1 && b.length === 1 && INSEPARABLES.has((a + b).toLowerCase())) {
+      return { colaAnterior: [], inicioSiguiente: [a, b] };
+    }
+    return { colaAnterior: [a], inicioSiguiente: [b] };
+  }
+
+  const [penultima, ultima] = unidades.slice(-2);
+  if (penultima.length === 1 && ultima.length === 1 && INSEPARABLES.has((penultima + ultima).toLowerCase())) {
+    return { colaAnterior: unidades.slice(0, -2), inicioSiguiente: [penultima, ultima] };
+  }
+  return { colaAnterior: unidades.slice(0, -1), inicioSiguiente: [unidades[unidades.length - 1]] };
+}
+
+function silabizarPalabra(palabra) {
+  const n = palabra.length;
+  if (n === 0) return [];
+
+  const tokens = [];
+  for (let i = 0; i < n; i++) {
+    const c = palabra[i];
+    const cl = c.toLowerCase();
+    if (esVocal(c)) {
+      tokens.push({ tipo: "V", texto: c });
+      continue;
+    }
+    if (
+      (cl === "q" || cl === "g") &&
+      i + 2 < n &&
+      palabra[i + 1].toLowerCase() === "u" &&
+      "eiéí".includes(palabra[i + 2].toLowerCase())
+    ) {
+      tokens.push({ tipo: "C", texto: c + palabra[i + 1] });
+      i++;
+      continue;
+    }
+    if (i + 1 < n && esDigrafo(c, palabra[i + 1])) {
+      tokens.push({ tipo: "C", texto: c + palabra[i + 1] });
+      i++;
+      continue;
+    }
+    tokens.push({ tipo: "C", texto: c });
+  }
+
+  const runs = [];
+  for (const t of tokens) {
+    const ultimo = runs[runs.length - 1];
+    if (ultimo && ultimo.tipo === t.tipo) {
+      ultimo.tokens.push(t);
+    } else {
+      runs.push({ tipo: t.tipo, tokens: [t] });
+    }
+  }
+
+  const nucleos = [];
+  const consonantesEntre = [];
+  // Cada "prefijo"/"consonantesEntre" es un ARREGLO de unidades (no un string
+  // concatenado), para no perder la frontera de dígrafos/"qu"-"gu" al repartir.
+  let prefijoActual = [];
+
+  for (const run of runs) {
+    if (run.tipo === "C") {
+      prefijoActual = prefijoActual.concat(run.tokens.map((t) => t.texto));
+      continue;
+    }
+    const letras = run.tokens.map((t) => t.texto);
+    let grupoActual = [letras[0]];
+    for (let i = 1; i < letras.length; i++) {
+      const prev = grupoActual[grupoActual.length - 1];
+      const cur = letras[i];
+      const hiato = (esFuerte(prev) && esFuerte(cur)) || esDebilTonica(prev) || esDebilTonica(cur);
+      if (hiato) {
+        nucleos.push(grupoActual.join(""));
+        consonantesEntre.push(prefijoActual);
+        prefijoActual = [];
+        grupoActual = [cur];
+      } else {
+        grupoActual.push(cur);
+      }
+    }
+    nucleos.push(grupoActual.join(""));
+    consonantesEntre.push(prefijoActual);
+    prefijoActual = [];
+  }
+  const sufijoFinal = prefijoActual.join("");
+
+  if (nucleos.length === 0) return [sufijoFinal];
+
+  const silabas = [];
+  for (let i = 0; i < nucleos.length; i++) {
+    let inicioSilaba;
+    if (i === 0) {
+      inicioSilaba = consonantesEntre[0].join("");
+    } else {
+      const { colaAnterior, inicioSiguiente } = repartirConsonantes(consonantesEntre[i]);
+      silabas[silabas.length - 1] += colaAnterior.join("");
+      inicioSilaba = inicioSiguiente.join("");
+    }
+    silabas.push(inicioSilaba + nucleos[i]);
+  }
+  silabas[silabas.length - 1] += sufijoFinal;
+
+  return silabas;
+}
+
+function separarPalabra(tokenBruto) {
+  const m = tokenBruto.match(/^([^\p{L}]*)(\p{L}+)([^\p{L}]*)$/u);
+  if (!m) return { pre: tokenBruto, nucleo: "", post: "" };
+  return { pre: m[1], nucleo: m[2], post: m[3] };
+}
+
+/* =========================================================
+   Convenciones de color (basado en el póster "Sonar como un
+   profesional" de Áleran Vocals)
+   ========================================================= */
+
+const CATEGORIAS = [
+  { id: "mecanismos", nombre: "Mecanismos Vocales", hue: 350 },
+  { id: "colocaciones", nombre: "Colocaciones", hue: 210 },
+  { id: "adornos", nombre: "Adornos", hue: 35 },
+  { id: "efectos", nombre: "Efectos Vocales", hue: 268 },
+];
+
+const TECNICAS = [
+  { id: "vocal-fry", categoria: "mecanismos", nombre: "Vocal Fry", corto: "Fry" },
+  { id: "voz-pecho", categoria: "mecanismos", nombre: "Voz de Pecho", corto: "Pecho" },
+  { id: "voz-mixta", categoria: "mecanismos", nombre: "Voz Mixta", corto: "Mixta" },
+  { id: "voz-cabeza", categoria: "mecanismos", nombre: "Voz de Cabeza", corto: "Cabeza" },
+  { id: "voz-silbido", categoria: "mecanismos", nombre: "Voz de Silbido", corto: "Silbido" },
+  { id: "voz-difonica-gutural", categoria: "mecanismos", nombre: "Voz Difónica (Gutural)", corto: "Gutural" },
+  { id: "voz-difonica-rasgado", categoria: "mecanismos", nombre: "Voz Difónica (Rasgado)", corto: "Rasgado" },
+  { id: "voz-difonica-mongol", categoria: "mecanismos", nombre: "Voz Difónica (Canto Mongol)", corto: "Mongol" },
+
+  { id: "central", categoria: "colocaciones", nombre: "Central", corto: "Central" },
+  { id: "al-frente", categoria: "colocaciones", nombre: "Al Frente", corto: "Frente" },
+  { id: "twang-nasal", categoria: "colocaciones", nombre: "Twang Nasal", corto: "Tw. Nasal" },
+  { id: "twang-oral", categoria: "colocaciones", nombre: "Twang Oral", corto: "Tw. Oral" },
+  { id: "engolada", categoria: "colocaciones", nombre: "Engolada", corto: "Engolada" },
+  { id: "cubierta", categoria: "colocaciones", nombre: "Cubierta", corto: "Cubierta" },
+  { id: "bostezo", categoria: "colocaciones", nombre: "Bostezo", corto: "Bostezo" },
+
+  { id: "vibrato", categoria: "adornos", nombre: "Vibrato", corto: "Vibrato" },
+  { id: "apoyatura", categoria: "adornos", nombre: "Apoyatura", corto: "Apoyat." },
+  { id: "melisma", categoria: "adornos", nombre: "Melisma", corto: "Melisma" },
+  { id: "tremolo", categoria: "adornos", nombre: "Trémolo", corto: "Trémolo" },
+  { id: "mordente", categoria: "adornos", nombre: "Mordente", corto: "Mordente" },
+  { id: "glissando", categoria: "adornos", nombre: "Glissando", corto: "Gliss." },
+  { id: "grupeto", categoria: "adornos", nombre: "Grupeto", corto: "Grupeto" },
+
+  { id: "distorsion", categoria: "efectos", nombre: "Distorsión", corto: "Distors." },
+  { id: "raspy", categoria: "efectos", nombre: "Raspy Voice", corto: "Raspy" },
+  { id: "crack", categoria: "efectos", nombre: "Crack / Flip / Yodel", corto: "Crack" },
+  { id: "voz-aireada", categoria: "efectos", nombre: "Voz Aireada", corto: "Aireada" },
+  { id: "vocal-fry-efecto", categoria: "efectos", nombre: "Vocal Fry", corto: "Fry" },
+];
+
+const COLOR_TECNICA = new Map();
+const TECNICA_TEXTO_OSCURO = new Set();
+
+(function calcularColores() {
+  CATEGORIAS.forEach((cat) => {
+    const items = TECNICAS.filter((t) => t.categoria === cat.id);
+    items.forEach((t, idx) => {
+      const frac = items.length <= 1 ? 0.4 : idx / (items.length - 1);
+      const l = Math.round(58 - frac * 26); // 58% (claro) -> 32% (oscuro)
+      COLOR_TECNICA.set(t.id, `hsl(${cat.hue}, 62%, ${l}%)`);
+      if (l >= 48) TECNICA_TEXTO_OSCURO.add(t.id);
+    });
+  });
+})();
+
+function categoriaDe(id) {
+  return CATEGORIAS.find((c) => c.id === TECNICAS.find((t) => t.id === id)?.categoria);
+}
+
+/* =========================================================
+   Parseo de la letra completa
+   ========================================================= */
+
+function nuevaSilaba(texto, inicioPalabra) {
+  return { texto, textoManual: null, inicioPalabra, marcas: new Set(), nota: "" };
+}
+function textoSilaba(s) {
+  return s.textoManual !== null ? s.textoManual : s.texto;
+}
+
+function construirLinea(textoLinea) {
+  const palabras = textoLinea.split(/\s+/).filter(Boolean);
+  const silabas = [];
+  palabras.forEach((palabraBruta) => {
+    const subTokens = palabraBruta.split("-");
+    subTokens.forEach((sub, idxSub) => {
+      const { pre, nucleo, post } = separarPalabra(sub);
+      if (!nucleo) {
+        if (pre + post) silabas.push(nuevaSilaba(pre + post, idxSub === 0));
+        return;
+      }
+      const partes = silabizarPalabra(nucleo);
+      partes.forEach((sil, idx) => {
+        let texto = sil;
+        if (idx === 0) texto = pre + texto;
+        if (idx === partes.length - 1) texto = texto + post;
+        silabas.push(nuevaSilaba(texto, idxSub === 0 && idx === 0));
+      });
+    });
+  });
+  return {
+    tipo: "linea",
+    textoOriginal: textoLinea,
+    silabas,
+    enlaces: new Array(Math.max(0, silabas.length - 1)).fill(false),
+  };
+}
+
+function parsearCancion(textoBruto) {
+  return textoBruto.split(/\r?\n/).map((lineaBruta) => {
+    const linea = lineaBruta.trim();
+    if (linea === "") return { tipo: "espacio" };
+    const m = linea.match(/^\[(.+)\]$/);
+    if (m) return { tipo: "seccion", texto: m[1] };
+    return construirLinea(linea);
+  });
+}
+
+function gruposDeNotas(lineaObj) {
+  const grupos = [];
+  let inicio = 0;
+  const n = lineaObj.silabas.length;
+  for (let i = 1; i <= n; i++) {
+    if (i === n || !lineaObj.enlaces[i - 1]) {
+      grupos.push({ inicio, fin: i - 1 });
+      inicio = i;
+    }
+  }
+  return grupos;
+}
+
+/* =========================================================
+   Render
+   ========================================================= */
+
+let cancion = [];
+
+const elEntrada = document.getElementById("cifradoEntrada");
+const elSalida = document.getElementById("cifradoSalida");
+const elAcciones = document.getElementById("cifradoAcciones");
+const elEstado = document.getElementById("estadoCifrado");
+
+const SVG_ESLABON =
+  '<svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M9 15l6-6M8 16.5 5.6 18.9a3 3 0 0 1-4.2-4.2L4 12.1M16 7.5l2.4-2.4a3 3 0 0 1 4.2 4.2L20 11.9"/></svg>';
+
+function renderCancion() {
+  cerrarMenuMarcas();
+  elSalida.innerHTML = "";
+  cancion.forEach((bloque) => {
+    if (bloque.tipo === "espacio") {
+      const div = document.createElement("div");
+      div.className = "cifrado-espacio";
+      elSalida.appendChild(div);
+      return;
+    }
+    if (bloque.tipo === "seccion") {
+      const p = document.createElement("p");
+      p.className = "cifrado-seccion";
+      p.textContent = bloque.texto;
+      elSalida.appendChild(p);
+      return;
+    }
+    elSalida.appendChild(renderLinea(bloque));
+  });
+  elAcciones.hidden = cancion.length === 0;
+}
+
+function renderLineaEnSitio(lineaObj) {
+  const viejo = lineaObj._el;
+  const nuevo = renderLinea(lineaObj); // ojo: esto ya deja lineaObj._el = nuevo
+  viejo.replaceWith(nuevo);
+}
+
+function renderLinea(lineaObj) {
+  const fila = document.createElement("div");
+  fila.className = "cifrado-linea";
+  const n = lineaObj.silabas.length;
+  fila.style.gridTemplateColumns = n <= 1 ? "auto" : `repeat(${n - 1}, auto 14px) auto`;
+
+  lineaObj.silabas.forEach((silaba, i) => {
+    fila.appendChild(crearCelda(silaba, i));
+    if (i < n - 1) fila.appendChild(crearEslabon(lineaObj, i));
+  });
+
+  gruposDeNotas(lineaObj).forEach((grupo) => {
+    fila.appendChild(crearNotaGrupo(lineaObj, grupo));
+  });
+
+  lineaObj._el = fila;
+  return fila;
+}
+
+function crearEslabon(lineaObj, i) {
+  const activo = lineaObj.enlaces[i];
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "cifrado-eslabon" + (activo ? " activo" : "");
+  btn.title = activo
+    ? "Separar: que cada sílaba tenga su propia nota"
+    : "Unir: que estas dos sílabas compartan una sola nota (fraseo fonético)";
+  btn.innerHTML = SVG_ESLABON;
+  btn.style.gridColumn = String(2 * i + 2);
+  btn.style.gridRow = "1";
+  btn.addEventListener("click", () => {
+    lineaObj.enlaces[i] = !lineaObj.enlaces[i];
+    renderLineaEnSitio(lineaObj);
+  });
+  return btn;
+}
+
+function crearCelda(silaba, indiceCol) {
+  const wrap = document.createElement("div");
+  wrap.className = "cifrado-celda" + (silaba.inicioPalabra ? " inicio-palabra" : "");
+  wrap.style.gridColumn = String(2 * indiceCol + 1);
+  wrap.style.gridRow = "1";
+
+  const chips = document.createElement("div");
+  chips.className = "cifrado-chips";
+  wrap.appendChild(chips);
+  actualizarChips(silaba, chips);
+
+  const texto = document.createElement("span");
+  texto.className = "celda-texto";
+  texto.contentEditable = "true";
+  texto.spellcheck = false;
+  texto.textContent = textoSilaba(silaba);
+  texto.addEventListener("input", () => {
+    silaba.textoManual = texto.textContent;
+  });
+  wrap.appendChild(texto);
+
+  const btnMarca = document.createElement("button");
+  btnMarca.type = "button";
+  btnMarca.className = "celda-marca-btn";
+  btnMarca.title = "Marcar técnica: vibrato, twang, voz de cabeza...";
+  btnMarca.textContent = "+";
+  btnMarca.addEventListener("click", (e) => {
+    e.stopPropagation();
+    abrirMenuMarcas(silaba, btnMarca, chips);
+  });
+  wrap.appendChild(btnMarca);
+
+  return wrap;
+}
+
+function actualizarChips(silaba, elChips) {
+  elChips.innerHTML = "";
+  silaba.marcas.forEach((id) => {
+    const tecnica = TECNICAS.find((t) => t.id === id);
+    if (!tecnica) return;
+    const chip = document.createElement("span");
+    chip.className = "cifrado-chip";
+    chip.style.background = COLOR_TECNICA.get(id);
+    chip.style.color = TECNICA_TEXTO_OSCURO.has(id) ? "#1a1414" : "#fdf9f5";
+    chip.title = tecnica.nombre;
+    chip.textContent = tecnica.corto;
+    elChips.appendChild(chip);
+  });
+}
+
+function crearNotaGrupo(lineaObj, grupo) {
+  const silabaBase = lineaObj.silabas[grupo.inicio];
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "celda-nota";
+  input.placeholder = "·";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  input.value = silabaBase.nota;
+  input.style.gridColumn = `${2 * grupo.inicio + 1} / ${2 * grupo.fin + 2}`;
+  input.style.gridRow = "2";
+  input.addEventListener("input", () => {
+    silabaBase.nota = input.value;
+  });
+  return input;
+}
+
+/* =========================================================
+   Menú flotante de marcas (convenciones)
+   ========================================================= */
+
+let menuMarcasActual = null;
+
+function cerrarMenuMarcas() {
+  if (!menuMarcasActual) return;
+  menuMarcasActual.remove();
+  menuMarcasActual = null;
+  document.removeEventListener("click", manejarClicFueraMenu);
+}
+
+function manejarClicFueraMenu(e) {
+  if (menuMarcasActual && !menuMarcasActual.contains(e.target)) cerrarMenuMarcas();
+}
+
+function abrirMenuMarcas(silaba, btnAncla, elChips) {
+  const yaAbiertoParaEsta = menuMarcasActual && menuMarcasActual.dataset.silabaAbierta === "1";
+  cerrarMenuMarcas();
+  if (yaAbiertoParaEsta) return;
+
+  const menu = document.createElement("div");
+  menu.className = "marcas-menu";
+  menu.dataset.silabaAbierta = "1";
+
+  CATEGORIAS.forEach((cat) => {
+    const h = document.createElement("p");
+    h.className = "marcas-menu-categoria";
+    h.style.color = `hsl(${cat.hue}, 62%, 55%)`;
+    h.textContent = cat.nombre;
+    menu.appendChild(h);
+
+    TECNICAS.filter((t) => t.categoria === cat.id).forEach((t) => {
+      const fila = document.createElement("label");
+      fila.className = "marcas-menu-item";
+
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.checked = silaba.marcas.has(t.id);
+      check.addEventListener("change", () => {
+        if (check.checked) silaba.marcas.add(t.id);
+        else silaba.marcas.delete(t.id);
+        actualizarChips(silaba, elChips);
+      });
+
+      const swatch = document.createElement("span");
+      swatch.className = "marcas-menu-swatch";
+      swatch.style.background = COLOR_TECNICA.get(t.id);
+
+      fila.appendChild(check);
+      fila.appendChild(swatch);
+      fila.appendChild(document.createTextNode(t.nombre));
+      menu.appendChild(fila);
+    });
+  });
+
+  const cerrar = document.createElement("button");
+  cerrar.type = "button";
+  cerrar.className = "marcas-menu-cerrar";
+  cerrar.textContent = "Listo";
+  cerrar.addEventListener("click", cerrarMenuMarcas);
+  menu.appendChild(cerrar);
+
+  document.body.appendChild(menu);
+  const rect = btnAncla.getBoundingClientRect();
+  const anchoMenu = 240;
+  let left = window.scrollX + rect.left - anchoMenu / 2;
+  left = Math.max(8, Math.min(left, window.scrollX + document.documentElement.clientWidth - anchoMenu - 8));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${window.scrollY + rect.bottom + 6}px`;
+
+  menuMarcasActual = menu;
+  setTimeout(() => document.addEventListener("click", manejarClicFueraMenu), 0);
+}
+
+/* =========================================================
+   Leyenda de convenciones
+   ========================================================= */
+
+function renderLeyenda() {
+  const cont = document.getElementById("cifradoLeyenda");
+  if (!cont) return;
+  cont.innerHTML = "";
+  CATEGORIAS.forEach((cat) => {
+    const bloque = document.createElement("div");
+    bloque.className = "leyenda-categoria";
+
+    const titulo = document.createElement("p");
+    titulo.className = "leyenda-titulo";
+    titulo.style.color = `hsl(${cat.hue}, 62%, 55%)`;
+    titulo.textContent = cat.nombre;
+    bloque.appendChild(titulo);
+
+    const lista = document.createElement("div");
+    lista.className = "leyenda-lista";
+    TECNICAS.filter((t) => t.categoria === cat.id).forEach((t) => {
+      const item = document.createElement("span");
+      item.className = "leyenda-item";
+      const swatch = document.createElement("span");
+      swatch.className = "leyenda-swatch";
+      swatch.style.background = COLOR_TECNICA.get(t.id);
+      item.appendChild(swatch);
+      item.appendChild(document.createTextNode(t.nombre));
+      lista.appendChild(item);
+    });
+    bloque.appendChild(lista);
+    cont.appendChild(bloque);
+  });
+}
+
+/* =========================================================
+   Acciones
+   ========================================================= */
+
+document.getElementById("btnCifradoGenerar").addEventListener("click", () => {
+  const texto = elEntrada.value;
+  if (!texto.trim()) {
+    elEstado.textContent = "Pega primero la letra de la canción.";
+    return;
+  }
+  cancion = parsearCancion(texto);
+  renderCancion();
+  elEstado.textContent = "";
+});
+
+document.getElementById("btnCifradoReiniciar").addEventListener("click", () => {
+  if (cancion.length && !confirm("¿Borrar todo el cifrado y empezar de nuevo?")) return;
+  cancion = [];
+  elEntrada.value = "";
+  elEstado.textContent = "";
+  renderCancion();
+});
+
+document.getElementById("btnCifradoImprimir").addEventListener("click", () => {
+  window.print();
+});
+
+document.getElementById("btnCifradoCopiar").addEventListener("click", async () => {
+  const texto = generarTextoPlano();
+  try {
+    await navigator.clipboard.writeText(texto);
+    elEstado.textContent = "Copiado — ya lo puedes pegar donde quieras.";
+  } catch {
+    elEstado.textContent = "No se pudo copiar automáticamente. Usa Imprimir / PDF en su lugar.";
+  }
+});
+
+function textoSilabaPlano(s) {
+  const base = textoSilaba(s);
+  if (s.marcas.size === 0) return base;
+  const nombres = Array.from(s.marcas).map((id) => TECNICAS.find((t) => t.id === id)?.corto || id);
+  return `${base}[${nombres.join(",")}]`;
+}
+
+function generarTextoPlano() {
+  const lineas = [];
+  cancion.forEach((bloque) => {
+    if (bloque.tipo === "espacio") {
+      lineas.push("");
+      return;
+    }
+    if (bloque.tipo === "seccion") {
+      lineas.push(`[${bloque.texto}]`);
+      return;
+    }
+    lineas.push(bloque.silabas.map((s) => textoSilabaPlano(s)).join("-"));
+    lineas.push(
+      gruposDeNotas(bloque)
+        .map((g) => bloque.silabas[g.inicio].nota || "·")
+        .join("  ")
+    );
+  });
+  return lineas.join("\n");
+}
+
+renderLeyenda();
