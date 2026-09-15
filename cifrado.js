@@ -149,6 +149,154 @@ function separarPalabra(tokenBruto) {
 }
 
 /* =========================================================
+   Silabización aproximada del inglés
+   (la ortografía inglesa no es fonética como la española: esto es una
+   aproximación razonable — grupos vocálicos = núcleo, "e" final muda,
+   dígrafos comunes — no un diccionario de pronunciación. Las casillas
+   son editables para corregir lo que falle.)
+   ========================================================= */
+
+const INSEPARABLES_EN_INICIO = new Set([
+  "pl", "bl", "cl", "gl", "fl", "sl",
+  "pr", "br", "cr", "gr", "fr", "tr", "dr",
+  "sc", "sk", "sm", "sn", "sp", "st", "sw", "tw", "dw", "gw",
+]);
+const INSEPARABLES_EN_CODA = new Set(["ck", "ng", "tch", "dge"]);
+const DIGRAFOS_EN_INICIO = new Set(["th", "sh", "ch", "ph", "wh", "gh"]);
+
+function repartirConsonantesIngles(unidades) {
+  if (unidades.length === 0) return { colaAnterior: [], inicioSiguiente: [] };
+
+  const combo = unidades.join("").toLowerCase();
+  if (unidades.length <= 3 && INSEPARABLES_EN_CODA.has(combo)) {
+    return { colaAnterior: unidades, inicioSiguiente: [] };
+  }
+  if (unidades.length === 1) return { colaAnterior: [], inicioSiguiente: unidades };
+  if (unidades.length === 2) {
+    const [a, b] = unidades;
+    if (a.length === 1 && b.length === 1 && INSEPARABLES_EN_INICIO.has((a + b).toLowerCase())) {
+      return { colaAnterior: [], inicioSiguiente: [a, b] };
+    }
+    return { colaAnterior: [a], inicioSiguiente: [b] };
+  }
+  const ultimas2 = unidades.slice(-2).join("").toLowerCase();
+  if (INSEPARABLES_EN_INICIO.has(ultimas2)) {
+    return { colaAnterior: unidades.slice(0, -2), inicioSiguiente: unidades.slice(-2) };
+  }
+  return { colaAnterior: unidades.slice(0, -1), inicioSiguiente: [unidades[unidades.length - 1]] };
+}
+
+function silabizarPalabraIngles(palabraOriginal) {
+  // Patrón "consonante + le" final (table, apple, little, people...): esa
+  // parte es su propia sílaba (la "e" no es simplemente muda ahí), a
+  // diferencia de "whale"/"pale" donde antes de la "l" hay una vocal.
+  const silabico = palabraOriginal.match(/^(.+?)([bcdfgjklmnpqrstvwxz])le$/i);
+  if (silabico) {
+    return [...silabizarPalabraIngles(silabico[1]), silabico[2] + "le"];
+  }
+
+  let palabra = palabraOriginal;
+
+  // "e" final muda (name, like, quiet...): no cuenta como núcleo propio,
+  // salvo que sea la única vocal de la palabra.
+  let sufijoMudo = "";
+  const m = palabra.match(/^(.*[^aeiouyAEIOUY])(e)$/);
+  if (m && /[aeiouy]/i.test(m[1])) {
+    palabra = m[1];
+    sufijoMudo = m[2];
+  }
+
+  const n = palabra.length;
+  if (n === 0) return [sufijoMudo || palabraOriginal];
+
+  const tokens = [];
+  for (let i = 0; i < n; i++) {
+    const c = palabra[i];
+    const cl = c.toLowerCase();
+    const esVocal = cl === "y" ? i > 0 : "aeiou".includes(cl);
+    if (esVocal) {
+      tokens.push({ tipo: "V", texto: c });
+      continue;
+    }
+    if (i + 1 < n && DIGRAFOS_EN_INICIO.has((c + palabra[i + 1]).toLowerCase())) {
+      tokens.push({ tipo: "C", texto: c + palabra[i + 1] });
+      i++;
+      continue;
+    }
+    tokens.push({ tipo: "C", texto: c });
+  }
+
+  const runs = [];
+  for (const t of tokens) {
+    const ultimo = runs[runs.length - 1];
+    if (ultimo && ultimo.tipo === t.tipo) ultimo.tokens.push(t);
+    else runs.push({ tipo: t.tipo, tokens: [t] });
+  }
+
+  // A diferencia del español, cada grupo vocálico es UN solo núcleo: la
+  // ortografía inglesa no distingue diptongo/hiato de forma fiable por letra.
+  const nucleos = [];
+  const consonantesEntre = [];
+  let prefijoActual = [];
+  for (const run of runs) {
+    if (run.tipo === "C") {
+      prefijoActual = prefijoActual.concat(run.tokens.map((t) => t.texto));
+      continue;
+    }
+    nucleos.push(run.tokens.map((t) => t.texto).join(""));
+    consonantesEntre.push(prefijoActual);
+    prefijoActual = [];
+  }
+  const sufijoFinal = prefijoActual;
+
+  if (nucleos.length === 0) return [palabraOriginal];
+
+  const silabas = [];
+  for (let i = 0; i < nucleos.length; i++) {
+    let inicioSilaba;
+    if (i === 0) {
+      inicioSilaba = consonantesEntre[0].join("");
+    } else {
+      const { colaAnterior, inicioSiguiente } = repartirConsonantesIngles(consonantesEntre[i]);
+      silabas[silabas.length - 1] += colaAnterior.join("");
+      inicioSilaba = inicioSiguiente.join("");
+    }
+    silabas.push(inicioSilaba + nucleos[i]);
+  }
+  silabas[silabas.length - 1] += sufijoFinal.join("") + sufijoMudo;
+
+  return silabas;
+}
+
+/* =========================================================
+   División del japonés (kana) en moras
+   (cada carácter es una mora — el sistema ya "viene silabizado" — salvo
+   los pequeños ゃゅょ/ァィゥェォ que se pegan a la mora anterior: きゃ,
+   ファ... っ/ッ y ー cuentan como su propia mora, que es lo correcto.
+   Un kanji suelto no tiene lectura deducible por reglas, así que se trata
+   como una sola casilla — corrígelo a mano si en la canción son más de
+   una mora.)
+   ========================================================= */
+
+const KANA_PEQUENA = new Set([
+  "ゃ", "ゅ", "ょ", "ャ", "ュ", "ョ",
+  "ぁ", "ぃ", "ぅ", "ぇ", "ぉ", "ァ", "ィ", "ゥ", "ェ", "ォ",
+]);
+
+function silabizarPalabraJapones(nucleo) {
+  const caracteres = Array.from(nucleo);
+  const moras = [];
+  for (const c of caracteres) {
+    if (KANA_PEQUENA.has(c) && moras.length > 0) {
+      moras[moras.length - 1] += c;
+    } else {
+      moras.push(c);
+    }
+  }
+  return moras;
+}
+
+/* =========================================================
    Convenciones de color (basado en el póster "Sonar como un
    profesional" de Áleran Vocals)
    ========================================================= */
@@ -223,7 +371,13 @@ function textoSilaba(s) {
   return s.textoManual !== null ? s.textoManual : s.texto;
 }
 
-function construirLinea(textoLinea) {
+function silabizarSegunIdioma(nucleo, idioma) {
+  if (idioma === "en") return silabizarPalabraIngles(nucleo);
+  if (idioma === "ja") return silabizarPalabraJapones(nucleo);
+  return silabizarPalabra(nucleo);
+}
+
+function construirLinea(textoLinea, idioma) {
   const palabras = textoLinea.split(/\s+/).filter(Boolean);
   const silabas = [];
   palabras.forEach((palabraBruta) => {
@@ -234,7 +388,7 @@ function construirLinea(textoLinea) {
         if (pre + post) silabas.push(nuevaSilaba(pre + post, idxSub === 0));
         return;
       }
-      const partes = silabizarPalabra(nucleo);
+      const partes = silabizarSegunIdioma(nucleo, idioma);
       partes.forEach((sil, idx) => {
         let texto = sil;
         if (idx === 0) texto = pre + texto;
@@ -251,13 +405,13 @@ function construirLinea(textoLinea) {
   };
 }
 
-function parsearCancion(textoBruto) {
+function parsearCancion(textoBruto, idioma) {
   return textoBruto.split(/\r?\n/).map((lineaBruta) => {
     const linea = lineaBruta.trim();
     if (linea === "") return { tipo: "espacio" };
     const m = linea.match(/^\[(.+)\]$/);
     if (m) return { tipo: "seccion", texto: m[1] };
-    return construirLinea(linea);
+    return construirLinea(linea, idioma);
   });
 }
 
@@ -286,6 +440,7 @@ const elSalida = document.getElementById("cifradoSalida");
 const elAcciones = document.getElementById("cifradoAcciones");
 const elEstado = document.getElementById("estadoCifrado");
 const elZoom = document.getElementById("cifradoZoom");
+const elIdioma = document.getElementById("cifradoIdioma");
 
 const SVG_ESLABON =
   '<svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M9 15l6-6M8 16.5 5.6 18.9a3 3 0 0 1-4.2-4.2L4 12.1M16 7.5l2.4-2.4a3 3 0 0 1 4.2 4.2L20 11.9"/></svg>';
@@ -548,7 +703,7 @@ document.getElementById("btnCifradoGenerar").addEventListener("click", () => {
     elEstado.textContent = "Pega primero la letra de la canción.";
     return;
   }
-  cancion = parsearCancion(texto);
+  cancion = parsearCancion(texto, elIdioma.value);
   renderCancion();
   elEstado.textContent = "";
 });

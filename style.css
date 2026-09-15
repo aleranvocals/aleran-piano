@@ -1380,7 +1380,10 @@ input[type="checkbox"] {
   justify-self: center;
   display: inline-block;
   min-width: calc(1.1rem * var(--cifrado-escala, 1));
-  max-width: 100%;
+  /* Sin max-width: si lo dejamos en 100% del área de la rejilla, cuando el
+     ancho disponible (móvil) se queda corto la columna se aplasta y el
+     max-width recorta la nota en vez de dejar que la línea entera se
+     desborde (que es lo que overflow-x:auto en .cifrado-linea espera). */
   box-sizing: border-box;
   padding: calc(0.15rem * var(--cifrado-escala, 1)) calc(0.28rem * var(--cifrado-escala, 1));
   background: var(--bg);
