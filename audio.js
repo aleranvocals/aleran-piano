@@ -82,17 +82,45 @@ async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
 
   piano.output.volume = Math.round(Math.max(0, Math.min(1, volumen)) * 127);
 
-  for (const { midi, duracion } of eventos) {
-    if (tokenReproduccion !== miToken) return;
-    if (midi !== -1) {
-      piano.start({ note: clampMidi(midi), duration: duracion });
-      if (onNotaInicio) onNotaInicio(midi);
-    }
-    await esperar(duracion * 1000);
-    if (tokenReproduccion !== miToken) return;
-    if (midi !== -1 && onNotaFin) onNotaFin(midi);
+  // Si el metrónomo está sonando, no arrancar a destiempo: esperar al
+  // próximo pulso fuerte (o al próximo pulso si suena sin acento) antes de
+  // tocar la primera nota, para que la secuencia entre sincronizada.
+  const esperaPulsoMs = retrasoHastaProximoPulsoFuerte();
+  if (esperaPulsoMs > 0) {
+    await esperar(esperaPulsoMs);
+    if (tokenReproduccion !== miToken) return; // se pidió detener mientras se esperaba el pulso
   }
-  if (tokenReproduccion === miToken && onTerminar) onTerminar();
+
+  reproduccionEnCurso = true;
+  try {
+    for (const { midi, duracion } of eventos) {
+      if (tokenReproduccion !== miToken) return;
+      notaActualInicioCtx = obtenerContexto().currentTime;
+      notaActualDuracion = duracion;
+      if (midi !== -1) {
+        piano.start({ note: clampMidi(midi), duration: duracion });
+        if (onNotaInicio) onNotaInicio(midi);
+      }
+      await esperar(duracion * 1000);
+      if (tokenReproduccion !== miToken) return;
+      if (midi !== -1 && onNotaFin) onNotaFin(midi);
+    }
+    if (tokenReproduccion === miToken && onTerminar) onTerminar();
+  } finally {
+    if (tokenReproduccion === miToken) reproduccionEnCurso = false;
+  }
+}
+
+// Cuándo empezó (en el reloj del AudioContext) el evento -nota o silencio-
+// que está sonando ahora mismo, y cuánto dura: lo usa el metrónomo para
+// saber, si arranca a mitad de una reproducción, en qué instante entrar
+// para coincidir con el arranque del siguiente evento en vez de a destiempo.
+let reproduccionEnCurso = false;
+let notaActualInicioCtx = 0;
+let notaActualDuracion = 0;
+
+function proximoLimiteNotaCtx() {
+  return reproduccionEnCurso ? notaActualInicioCtx + notaActualDuracion : null;
 }
 
 function detenerReproduccion() {
@@ -258,7 +286,12 @@ function iniciarMetronomo(bpm, acentoCada, onPulso) {
   metronomoAcentoCada = acentoCada;
   metronomoActivo = true;
   metronomoContadorPulso = 0;
-  metronomoSiguienteTiempo = ctx.currentTime + 0.05;
+  // Si ya hay una nota/secuencia sonando cuando se arranca el metrónomo, no
+  // empezar a destiempo: esperar a que termine el evento actual (nota o
+  // silencio) para que el primer clic coincida justo con el arranque del
+  // siguiente, en vez de caer en medio de una nota ya sonando.
+  const limiteNota = proximoLimiteNotaCtx();
+  metronomoSiguienteTiempo = limiteNota !== null && limiteNota > ctx.currentTime ? limiteNota : ctx.currentTime + 0.05;
 
   function programar() {
     if (!metronomoActivo) return;
@@ -287,6 +320,38 @@ function detenerMetronomo() {
 
 function metronomoEnMarchaMotor() {
   return metronomoActivo;
+}
+
+/** Tiempo (en el reloj del AudioContext) del próximo pulso "fuerte": el
+ * siguiente pulso acentuado si hay acento configurado, o simplemente el
+ * siguiente pulso si el metrónomo suena sin acento (ahí cualquier pulso
+ * vale). Devuelve null si el metrónomo no está sonando. */
+function tiempoProximoPulsoFuerte() {
+  if (!metronomoActivo) return null;
+  const ctx = obtenerContexto();
+  const periodo = 60 / metronomoBpm;
+  let tiempo = metronomoSiguienteTiempo;
+  let contador = metronomoContadorPulso;
+  while (tiempo < ctx.currentTime) {
+    tiempo += periodo;
+    contador++;
+  }
+  if (metronomoAcentoCada > 0) {
+    while (contador % metronomoAcentoCada !== 0) {
+      tiempo += periodo;
+      contador++;
+    }
+  }
+  return tiempo;
+}
+
+/** Cuántos milisegundos hay que esperar, desde ahora, para que arrancar una
+ * reproducción del piano coincida con el próximo pulso fuerte del
+ * metrónomo. 0 si el metrónomo no está sonando (nada que esperar). */
+function retrasoHastaProximoPulsoFuerte() {
+  const tiempo = tiempoProximoPulsoFuerte();
+  if (tiempo === null) return 0;
+  return Math.max(0, (tiempo - obtenerContexto().currentTime) * 1000);
 }
 
 function ajustarBpmMetronomo(bpm) {

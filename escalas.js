@@ -339,12 +339,20 @@ function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida
   }
 
   const eventos = [];
-  for (const raiz of raices) {
+  raices.forEach((raiz, indiceRaiz) => {
     for (const st of semitonos) {
       eventos.push({ midi: raiz + st, duracion: duracionNota });
       eventos.push({ midi: -1, duracion: pausa });
     }
-  }
+    // Respiro entre cada repetición de la escalera (un paso más arriba o
+    // abajo): sin esto, con la duración vinculada al tempo (pausa = 0) las
+    // repeticiones sonaban pegadas sin dar tiempo a respirar. Se añade
+    // siempre (esté o no vinculado al metrónomo), con la duración de una
+    // nota para que la pausa tenga una lógica musical con el tempo.
+    if (indiceRaiz < raices.length - 1) {
+      eventos.push({ midi: -1, duracion: duracionNota });
+    }
+  });
   const info =
     `${infoVoz.nombre} · ${infoPatron.nombre} — raíces: ` + raices.map(midiANombre).join(", ");
   return { eventos, info };

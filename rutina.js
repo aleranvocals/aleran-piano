@@ -119,6 +119,7 @@ function inicializarMetronomoFlotante() {
   const toggle = el("metroFlotToggle");
   const bpm = el("metroFlotBpm");
   const bpmValor = el("metroFlotBpmValor");
+  const acento = el("metroFlotAcento");
   const volumen = el("metroFlotVolumen");
   const punto = el("metronomoPuntoMini");
   let enMarcha = false;
@@ -126,6 +127,10 @@ function inicializarMetronomoFlotante() {
   bpm.addEventListener("input", () => {
     bpmValor.textContent = bpm.value;
     if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(parseInt(bpm.value, 10));
+  });
+
+  acento.addEventListener("change", () => {
+    if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarAcento(parseInt(acento.value, 10));
   });
 
   volumen.addEventListener("input", () => {
@@ -145,7 +150,7 @@ function inicializarMetronomoFlotante() {
     toggle.textContent = "⏹";
     toggle.classList.add("en-marcha");
     window.MetronomoEngine.ajustarVolumen(parseFloat(volumen.value));
-    window.MetronomoEngine.iniciar(parseInt(bpm.value, 10), 4, () => {
+    window.MetronomoEngine.iniciar(parseInt(bpm.value, 10), parseInt(acento.value, 10), () => {
       punto.classList.remove("pulso");
       void punto.offsetWidth; // fuerza reflow para reiniciar la animación en cada pulso
       punto.classList.add("pulso");

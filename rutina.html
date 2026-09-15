@@ -68,6 +68,15 @@
       <output id="metroFlotBpmValor">100</output> BPM
     </label>
     <label class="campo-inline">
+      <select id="metroFlotAcento" aria-label="Métrica del metrónomo">
+        <option value="0" selected>Sin acento</option>
+        <option value="2">2/4</option>
+        <option value="3">3/4</option>
+        <option value="4">4/4</option>
+        <option value="6">6 pulsos</option>
+      </select>
+    </label>
+    <label class="campo-inline">
       <span aria-hidden="true">🔊</span>
       <input type="range" id="metroFlotVolumen" min="0" max="1" step="0.05" value="0.7" aria-label="Volumen del metrónomo" />
     </label>

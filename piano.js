@@ -631,6 +631,7 @@ function inicializarMetronomo() {
   const btnDetener = el("btnMetronomoDetener");
   const metroFlotBpm = el("metroFlotBpm");
   const metroFlotBpmValor = el("metroFlotBpmValor");
+  const metroFlotAcento = el("metroFlotAcento");
   const metroFlotVolumen = el("metroFlotVolumen");
   const metroFlotToggle = el("metroFlotToggle");
 
@@ -640,11 +641,16 @@ function inicializarMetronomo() {
     fijarBpm(parseInt(metroFlotBpm.value, 10));
   });
 
-  acentoSelect.addEventListener("change", () => {
-    if (metronomoEnMarcha && window.MetronomoEngine) {
-      window.MetronomoEngine.ajustarAcento(parseInt(acentoSelect.value, 10));
-    }
-  });
+  // La métrica se puede cambiar tanto desde el panel detallado como desde la
+  // barra compacta -- se mantienen los dos selects sincronizados entre sí,
+  // igual que ya se hace con el BPM.
+  function fijarAcento(valor) {
+    acentoSelect.value = valor;
+    metroFlotAcento.value = valor;
+    if (metronomoEnMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarAcento(parseInt(valor, 10));
+  }
+  acentoSelect.addEventListener("change", () => fijarAcento(acentoSelect.value));
+  metroFlotAcento.addEventListener("change", () => fijarAcento(metroFlotAcento.value));
 
   metroFlotVolumen.addEventListener("input", () => fijarVolumenMetronomo(parseFloat(metroFlotVolumen.value)));
 

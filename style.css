@@ -642,6 +642,11 @@ textarea {
   font-size: 0.9rem;
 }
 
+.metronomo-flotante select {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.5rem;
+}
+
 .metronomo-flotante .boton.en-marcha {
   background: var(--crimson);
   border-color: var(--crimson);
