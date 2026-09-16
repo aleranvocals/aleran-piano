@@ -86,7 +86,21 @@ function marcarCeldaActivaRitmo(indice) {
   if (celda) celda.classList.add("activa");
 }
 
+/** Corta cualquier reproducción de ritmo en curso y deja los botones/celdas
+ * en reposo. Se usa tanto al pulsar "Detener" como antes de regenerar el
+ * ritmo (nivel/compases/"Ritmo nuevo") -- sin esto, cambiar de nivel a
+ * mitad de una reproducción dejaba el resaltado marcando celdas del patrón
+ * VIEJO sobre la tira NUEVA (índices que ya no correspondían a nada real). */
+function detenerRitmoUI() {
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  limpiarCeldaActivaRitmo();
+  ritmoReproduciendo = false;
+  el("btnRitmoEscuchar").disabled = false;
+  el("btnRitmoDetener").disabled = true;
+}
+
 function nuevoRitmo() {
+  if (ritmoReproduciendo) detenerRitmoUI();
   const nivel = parseInt(el("ritmoNivel").value, 10) || 1;
   const compases = Math.max(1, Math.min(8, parseInt(el("ritmoCompases").value, 10) || 4));
   ritmoUnidades = generarRitmoNivel(nivel, compases);
@@ -126,13 +140,7 @@ function inicializarRitmo() {
   });
   el("btnRitmoNuevo").addEventListener("click", nuevoRitmo);
   el("btnRitmoEscuchar").addEventListener("click", reproducirRitmoActual);
-  el("btnRitmoDetener").addEventListener("click", () => {
-    if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
-    limpiarCeldaActivaRitmo();
-    ritmoReproduciendo = false;
-    el("btnRitmoEscuchar").disabled = false;
-    el("btnRitmoDetener").disabled = true;
-  });
+  el("btnRitmoDetener").addEventListener("click", detenerRitmoUI);
 
   actualizarDescripcionNivelRitmo();
   nuevoRitmo();
