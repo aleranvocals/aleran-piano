@@ -16,13 +16,21 @@ let cantoEnCurso = false;
 let cantoCancelado = false;
 let solfeoTonicaMidi = nombreAMidi("Do3");
 
-// --- Personalizada: Modo Simple del editor de ritmo ------------------------
-// unidadesPersonalizadas: [{ texto, midi: number|null, figura: idDeFigura }].
-// midi === null es un silencio (sin sonido, sí ocupa el tiempo de su figura).
+// --- Personalizada: editor de ritmo (Modo Simple / Modo Músico) -----------
+// unidadesPersonalizadas: [{ texto, midi: number|null, figura: idDeFigura,
+// puntillo?, ligadura?, tresillo? }]. midi === null es un silencio (sin
+// sonido, sí ocupa el tiempo de su figura). Los tres campos opcionales solo
+// los pone/usa el Modo Músico -- en Modo Simple simplemente no existen.
 let unidadesPersonalizadas = [];
 // Si esta melodía llegó desde una línea de Cifrado, el id de esa línea --
 // así "Guardar y volver" sabe a dónde mandar el resultado.
 let personalizadaLineaId = null;
+// Modo Músico: activa puntillo/ligadura/tresillo por nota + agrupación en
+// compases según personalizadaMetrica -- mismo motor/datos que Modo Simple
+// (unidadesAEventos en escalas.js ya entiende esos campos), solo cambian
+// los controles que se muestran.
+let personalizadaModoMusico = false;
+let personalizadaMetrica = "4/4";
 const CLAVE_RITMO_ENVIO = "aleran-piano-ritmo-envio";
 const CLAVE_RITMO_RESULTADO_PREFIJO = "aleran-piano-ritmo-resultado-";
 
@@ -338,9 +346,23 @@ function actualizarNotaSeleccionadaUI() {
   el("notaSeleccionadaTexto").textContent = midiANombre(notaIndividual);
 }
 
-// --- Personalizada: Modo Simple del editor de ritmo ------------------------
+// --- Personalizada: editor de ritmo (Modo Simple / Modo Músico) -----------
 // Reutiliza el mismo lenguaje visual que Cifrado (.cifrado-linea/.cifrado-celda/
-// .celda-texto) en vez de inventar uno nuevo, tal como se pidió.
+// .celda-texto) en vez de inventar uno nuevo, tal como se pidió. Modo Músico
+// no es un sistema aparte: son controles extra sobre las mismas unidades.
+
+function fijarModoMusico(activo) {
+  personalizadaModoMusico = activo;
+  el("btnModoSimple").classList.toggle("activo", !activo);
+  el("btnModoSimple").setAttribute("aria-selected", String(!activo));
+  el("btnModoMusico").classList.toggle("activo", activo);
+  el("btnModoMusico").setAttribute("aria-selected", String(activo));
+  el("descModoSimple").hidden = activo;
+  el("descModoMusico").hidden = !activo;
+  el("campoMetricaMusico").hidden = !activo;
+  renderPersonalizada();
+  invalidarSecuencia();
+}
 
 function renderPersonalizada() {
   const lista = el("personalizadaLista");
@@ -351,16 +373,44 @@ function renderPersonalizada() {
   el("personalizadaVacio").hidden = unidadesPersonalizadas.length > 0;
   el("accionesVolverCifrado").hidden = personalizadaLineaId === null;
 
+  const agrupado = personalizadaModoMusico
+    ? agruparEnCompases(unidadesPersonalizadas, personalizadaMetrica)
+    : null;
+
   unidadesPersonalizadas.forEach((unidad, indice) => {
-    lista.appendChild(crearCeldaPersonalizada(unidad, indice));
+    lista.appendChild(crearCeldaPersonalizada(unidad, indice, agrupado));
   });
+
+  actualizarAvisoCompases(agrupado);
 }
 
-function crearCeldaPersonalizada(unidad, indice) {
+/** Aviso textual (no bloqueante) de qué compases no cuadran con la métrica
+ * elegida -- el divisor visual en las celdas ya lo muestra, pero un número
+ * de compás concreto es más fácil de ubicar que solo una raya. */
+function actualizarAvisoCompases(agrupado) {
+  const aviso = el("personalizadaCompasesAviso");
+  if (!agrupado) {
+    aviso.hidden = true;
+    return;
+  }
+  const numerosQueNoCuadran = agrupado.grupos
+    .map((g, i) => (g.cuadra ? null : i + 1))
+    .filter((n) => n !== null);
+  aviso.hidden = numerosQueNoCuadran.length === 0;
+  if (!aviso.hidden) {
+    const plural = numerosQueNoCuadran.length > 1 ? "s" : "";
+    aviso.textContent = `⚠️ El compás${plural} ${numerosQueNoCuadran.join(", ")} no cuadra${plural} con la métrica elegida (solo un aviso, no bloquea nada).`;
+  }
+}
+
+function crearCeldaPersonalizada(unidad, indice, agrupado) {
   const wrap = document.createElement("div");
   wrap.className = "cifrado-celda";
   wrap.style.gridColumn = String(indice + 1);
   wrap.style.gridRow = "1";
+  if (agrupado && indice > 0 && agrupado.compasDeUnidad[indice] !== agrupado.compasDeUnidad[indice - 1]) {
+    wrap.classList.add("compas-inicio");
+  }
 
   const texto = document.createElement("span");
   texto.className = "celda-texto";
@@ -410,6 +460,45 @@ function crearCeldaPersonalizada(unidad, indice) {
   });
   filaBotones.appendChild(silencioBtn);
 
+  if (personalizadaModoMusico) {
+    const btnPuntillo = document.createElement("button");
+    btnPuntillo.type = "button";
+    btnPuntillo.className = "celda-marca-btn" + (unidad.puntillo ? " activo" : "");
+    btnPuntillo.title = "Puntillo (alarga la figura la mitad de su valor)";
+    btnPuntillo.textContent = "•";
+    btnPuntillo.addEventListener("click", () => {
+      unidad.puntillo = !unidad.puntillo;
+      renderPersonalizada();
+    });
+    filaBotones.appendChild(btnPuntillo);
+
+    const btnTresillo = document.createElement("button");
+    btnTresillo.type = "button";
+    btnTresillo.className = "celda-marca-btn" + (unidad.tresillo ? " activo" : "");
+    btnTresillo.title = "Tresillo (marca esta nota junto con otras 2 seguidas: las 3 ocupan el tiempo de 2)";
+    btnTresillo.textContent = "3";
+    btnTresillo.addEventListener("click", () => {
+      unidad.tresillo = !unidad.tresillo;
+      renderPersonalizada();
+    });
+    filaBotones.appendChild(btnTresillo);
+
+    const puedeLigar = indice < unidadesPersonalizadas.length - 1 && unidad.midi !== null;
+    const btnLigadura = document.createElement("button");
+    btnLigadura.type = "button";
+    btnLigadura.className = "celda-marca-btn" + (unidad.ligadura ? " activo" : "");
+    btnLigadura.title = puedeLigar
+      ? "Ligadura (se funde con la siguiente nota en un solo sonido, sin volver a atacarla)"
+      : "La ligadura necesita una nota siguiente (no un silencio) para fundirse con ella";
+    btnLigadura.textContent = "🔗";
+    btnLigadura.disabled = !puedeLigar;
+    btnLigadura.addEventListener("click", () => {
+      unidad.ligadura = !unidad.ligadura;
+      renderPersonalizada();
+    });
+    filaBotones.appendChild(btnLigadura);
+  }
+
   const btnBorrar = document.createElement("button");
   btnBorrar.type = "button";
   btnBorrar.className = "celda-marca-btn";
@@ -431,7 +520,8 @@ function eventosPersonalizadaConRitmo() {
   }
   const bpm = parseInt(el("bpmSlider").value, 10) || 100;
   const eventos = unidadesAEventos(unidadesPersonalizadas, bpm);
-  const info = `Personalizada (Modo Simple) — ${unidadesPersonalizadas.length} unidades a ${bpm} BPM`;
+  const modo = personalizadaModoMusico ? `Modo Músico, ${personalizadaMetrica}` : "Modo Simple";
+  const info = `Personalizada (${modo}) — ${unidadesPersonalizadas.length} unidades a ${bpm} BPM`;
   return { eventos, info };
 }
 
@@ -468,6 +558,13 @@ function cargarPersonalizadaDesdeCifradoSiHaceFalta() {
 }
 
 function inicializarPersonalizada() {
+  el("btnModoSimple").addEventListener("click", () => fijarModoMusico(false));
+  el("btnModoMusico").addEventListener("click", () => fijarModoMusico(true));
+  el("personalizadaMetrica").addEventListener("change", () => {
+    personalizadaMetrica = el("personalizadaMetrica").value;
+    renderPersonalizada();
+  });
+
   el("btnUsarNotas").addEventListener("click", () => {
     let midis;
     try {
@@ -495,7 +592,12 @@ function inicializarPersonalizada() {
       el("estado").textContent = "No hay nada que descargar todavía.";
       return;
     }
-    const datos = { bpm: parseInt(el("bpmSlider").value, 10) || 100, unidades: unidadesPersonalizadas };
+    const datos = {
+      bpm: parseInt(el("bpmSlider").value, 10) || 100,
+      modoMusico: personalizadaModoMusico,
+      metrica: personalizadaMetrica,
+      unidades: unidadesPersonalizadas,
+    };
     const blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -517,9 +619,13 @@ function inicializarPersonalizada() {
       if (!Array.isArray(datos.unidades)) throw new Error("El archivo no tiene el formato esperado");
       unidadesPersonalizadas = datos.unidades;
       if (datos.bpm) fijarBpm(datos.bpm);
+      if (datos.metrica) {
+        personalizadaMetrica = datos.metrica;
+        el("personalizadaMetrica").value = datos.metrica;
+      }
+      fijarModoMusico(!!datos.modoMusico);
       personalizadaLineaId = null;
       invalidarSecuencia();
-      renderPersonalizada();
       el("estado").textContent = "Melodía cargada.";
     } catch (err) {
       el("estado").textContent = `No se pudo abrir el archivo: ${err.message}`;

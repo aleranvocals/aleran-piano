@@ -75,13 +75,117 @@ function figuraASegundos(figuraId, bpm) {
   return figuraPorId(figuraId).pulsos * segundosPorPulso;
 }
 
-// unidades: [{ texto, midi: number|null, figura: idDeFigura }] -> eventos
-// que ya entiende window.PianoEngine.reproducirSecuencia({midi, duracion}).
+// Factor por el que se multiplica la duración "cruda" de cada unidad
+// (puntillo/tresillo del Modo Músico) -- el mismo factor sirve tanto para
+// segundos (unidadesAEventos) como para pulsos (unidadesAPulsos), así que
+// vive aparte para no calcularlo dos veces de formas distintas.
+//  - puntillo: x1.5 (alarga la figura la mitad de su valor).
+//  - tresillo: en cada grupo de 3 unidades CONSECUTIVAS marcadas, esas 3 se
+//    reparten el tiempo de 2 de esa figura (x2/3 cada una); una sobra que no
+//    llega a 3 se queda con su factor normal.
+function factoresDuracionUnidades(unidades) {
+  const factores = unidades.map((u) => (u.puntillo ? 1.5 : 1));
+  let i = 0;
+  while (i < unidades.length) {
+    if (unidades[i].tresillo) {
+      let fin = i;
+      while (fin < unidades.length && unidades[fin].tresillo) fin++;
+      const gruposDe3 = Math.floor((fin - i) / 3) * 3;
+      for (let j = i; j < i + gruposDe3; j++) factores[j] *= 2 / 3;
+      i = fin;
+    } else {
+      i++;
+    }
+  }
+  return factores;
+}
+
+// unidades: [{ texto, midi: number|null, figura: idDeFigura, puntillo?,
+// ligadura?, tresillo? }] -> eventos que ya entiende
+// window.PianoEngine.reproducirSecuencia({midi, duracion}).
+//
+// Los tres campos opcionales son del Modo Músico (Modo Simple nunca los
+// pone, así que ahí este mismo código se comporta exactamente igual que
+// antes -- es el motor compartido que pedía la spec, no un sistema aparte).
+// ligadura: la unidad marcada se funde con la SIGUIENTE (mismo midi) en un
+// solo sonido continuo -- no se vuelve a atacar la nota.
 function unidadesAEventos(unidades, bpm) {
-  return unidades.map((u) => ({
-    midi: u.midi === null || u.midi === undefined ? -1 : u.midi,
-    duracion: figuraASegundos(u.figura, bpm),
-  }));
+  const factores = factoresDuracionUnidades(unidades);
+  const duraciones = unidades.map((u, i) => figuraASegundos(u.figura, bpm) * factores[i]);
+
+  const eventos = [];
+  let actual = null;
+  let ligaPendiente = false;
+  unidades.forEach((u, idx) => {
+    const midi = u.midi === null || u.midi === undefined ? -1 : u.midi;
+    const duracion = duraciones[idx];
+    if (actual && ligaPendiente && midi === actual.midi) {
+      actual.duracion += duracion;
+    } else {
+      if (actual) eventos.push(actual);
+      actual = { midi, duracion };
+    }
+    ligaPendiente = !!u.ligadura && midi !== -1; // ligar un silencio no tiene sentido
+  });
+  if (actual) eventos.push(actual);
+  return eventos;
+}
+
+// Igual que arriba pero en pulsos "crudos" (sin bpm) -- para agrupar en
+// compases y detectar cuáles no cuadran con la métrica elegida.
+function unidadesAPulsos(unidades) {
+  const factores = factoresDuracionUnidades(unidades);
+  return unidades.map((u, i) => figuraPorId(u.figura).pulsos * factores[i]);
+}
+
+// Métricas comunes del Modo Músico. pulsosPorCompas se mide en "pulsos de
+// negra" (una redonda = 4), igual que FIGURAS.pulsos -- 6/8 y 12/8 se
+// cuentan en corcheas pero equivalen a 3 y 6 negras respectivamente.
+const METRICAS = [
+  { id: "2/4", nombre: "2/4", pulsosPorCompas: 2 },
+  { id: "3/4", nombre: "3/4", pulsosPorCompas: 3 },
+  { id: "4/4", nombre: "4/4", pulsosPorCompas: 4 },
+  { id: "6/8", nombre: "6/8", pulsosPorCompas: 3 },
+  { id: "12/8", nombre: "12/8", pulsosPorCompas: 6 },
+];
+
+function metricaPorId(id) {
+  return METRICAS.find((m) => m.id === id) || METRICAS[2]; // 4/4 por defecto
+}
+
+/** Agrupa unidades en compases según la métrica -- puramente informativo:
+ * no parte ni reordena nada, solo dice en qué compás cae cada unidad y si
+ * ESE compás cuadra con la métrica (para pintar rayas de compás y avisar,
+ * sin bloquear, cuando uno no suma lo que debería). Devuelve
+ * { grupos: [{inicio, fin, pulsosTotal, cuadra}], compasDeUnidad: [indice] }. */
+function agruparEnCompases(unidades, metricaId) {
+  if (unidades.length === 0) return { grupos: [], compasDeUnidad: [] };
+  const pulsosPorCompas = metricaPorId(metricaId).pulsosPorCompas;
+  const pulsos = unidadesAPulsos(unidades);
+  const grupos = [];
+  const compasDeUnidad = [];
+  let compasActual = { inicio: 0, pulsosTotal: 0 };
+  let acumulado = 0;
+  unidades.forEach((_, idx) => {
+    if (acumulado >= pulsosPorCompas - 1e-9 && idx > compasActual.inicio) {
+      grupos.push({
+        ...compasActual,
+        fin: idx,
+        cuadra: Math.abs(compasActual.pulsosTotal - pulsosPorCompas) < 1e-9,
+      });
+      compasActual = { inicio: idx, pulsosTotal: 0 };
+      acumulado = 0;
+    }
+    compasDeUnidad.push(grupos.length);
+    compasActual.pulsosTotal += pulsos[idx];
+    acumulado += pulsos[idx];
+  });
+  grupos.push({
+    ...compasActual,
+    fin: unidades.length,
+    cuadra: Math.abs(compasActual.pulsosTotal - pulsosPorCompas) < 1e-9,
+  });
+  return { grupos, compasDeUnidad };
 }
 
 // Rango cómodo de práctica por tipo de voz (tesitura central, no el límite

@@ -1405,6 +1405,31 @@ input[type="checkbox"] {
   color: var(--crimson-bright);
 }
 
+/* Botones de puntillo/tresillo/ligadura del Modo Músico: mismo círculo que
+   .celda-marca-btn, pero "activo" cuando la unidad tiene ese campo puesto. */
+.celda-marca-btn.activo {
+  background: var(--crimson);
+  border-color: var(--crimson-bright);
+  color: var(--bone);
+}
+
+.celda-marca-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.celda-marca-btn:disabled:hover {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/* Divisor de compás del Modo Músico -- misma idea que .ritmo-celda.compas-inicio. */
+.cifrado-celda.compas-inicio {
+  margin-left: 0.55rem;
+  border-left: 2px solid var(--line);
+  padding-left: 0.45rem;
+}
+
 /* Selector de figura del editor de ritmo (Personalizada, Modo Simple) --
    misma familia visual que .celda-nota, pero interactivo. */
 .celda-figura {
