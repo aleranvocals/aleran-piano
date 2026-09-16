@@ -278,7 +278,7 @@ body {
 .nav-principal a.activo {
   background: var(--crimson);
   border-color: var(--crimson);
-  color: var(--bone);
+  color: var(--claro-fijo);
 }
 
 /* Separa el menú en "Guía" / practicar / seguimiento / consulta, en vez de
@@ -643,7 +643,7 @@ textarea {
 .ritmo-celda.activa {
   background: var(--crimson);
   border-color: var(--crimson-bright);
-  color: var(--bone);
+  color: var(--claro-fijo);
 }
 
 /* Barra compacta: el metrónomo se puede iniciar/parar y ajustar desde
@@ -691,7 +691,7 @@ textarea {
 .metronomo-flotante .boton.en-marcha {
   background: var(--crimson);
   border-color: var(--crimson);
-  color: var(--bone);
+  color: var(--claro-fijo);
 }
 
 input[type="text"]:focus,
@@ -782,6 +782,7 @@ input[type="checkbox"] {
 .boton.principal {
   background: var(--crimson);
   border-color: var(--crimson);
+  color: var(--claro-fijo);
 }
 
 .boton.principal:hover:not(:disabled) {
@@ -1410,7 +1411,7 @@ input[type="checkbox"] {
 .celda-marca-btn.activo {
   background: var(--crimson);
   border-color: var(--crimson-bright);
-  color: var(--bone);
+  color: var(--claro-fijo);
 }
 
 .celda-marca-btn:disabled {
