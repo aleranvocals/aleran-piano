@@ -318,6 +318,100 @@ async function exportarMp3(eventos, volumen, nombreArchivo) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+// --- Ritmo (palmas) ------------------------------------------------------
+// Sonido de palmada sintetizado (ruido blanco filtrado en banda + envolvente
+// corta) en vez de una nota de piano -- así la pestaña Ritmo no depende para
+// nada de que las muestras del piano hayan cargado, y suena a percusión, no
+// a tecla. reproducirRitmo() agenda todo de una sola vez contra el reloj del
+// AudioContext, igual que reproducirSecuencia() (misma precisión), pero solo
+// con este sonido -- nunca toca pianoEnVivo.
+
+let bufferRuidoPalmada = null;
+function obtenerBufferRuidoPalmada(ctx) {
+  if (bufferRuidoPalmada) return bufferRuidoPalmada;
+  const duracion = 0.09;
+  const tam = Math.floor(ctx.sampleRate * duracion);
+  const buffer = ctx.createBuffer(1, tam, ctx.sampleRate);
+  const datos = buffer.getChannelData(0);
+  for (let i = 0; i < tam; i++) datos[i] = Math.random() * 2 - 1;
+  bufferRuidoPalmada = buffer;
+  return buffer;
+}
+
+function reproducirPalmada(ctx, tiempo, volumen) {
+  const fuente = ctx.createBufferSource();
+  fuente.buffer = obtenerBufferRuidoPalmada(ctx);
+  const filtro = ctx.createBiquadFilter();
+  filtro.type = "bandpass";
+  filtro.frequency.value = 1200;
+  filtro.Q.value = 0.7;
+  const gain = ctx.createGain();
+  const pico = 0.9 * Math.max(0, Math.min(1, volumen));
+  gain.gain.setValueAtTime(0.0001, tiempo);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, pico), tiempo + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.0001, tiempo + 0.09);
+  fuente.connect(filtro).connect(gain).connect(ctx.destination);
+  fuente.start(tiempo);
+  fuente.stop(tiempo + 0.1);
+  return () => {
+    try {
+      fuente.stop();
+    } catch {
+      // ya estaba parada -- no pasa nada
+    }
+  };
+}
+
+/**
+ * eventos: [{ duracion, silencio }]. callbacks admite onEventoInicio(indice,
+ * silencio), onTerminar(). Comparte el mecanismo de cancelación con el piano
+ * (detenerReproduccion también corta un ritmo en marcha).
+ */
+async function reproducirRitmo(eventos, volumen, callbacks = {}) {
+  const { onEventoInicio, onTerminar } = callbacks;
+  const miToken = ++tokenReproduccion;
+  if (pianoEnVivo) pianoEnVivo.stop();
+  cancelarProgramacionActiva();
+
+  const ctx = obtenerContexto();
+  const pulso = tiempoProximoPulsoFuerte();
+  let cuando = pulso !== null ? pulso : ctx.currentTime + 0.05;
+  const ahora = ctx.currentTime;
+
+  const programados = eventos.map((evento, i) => {
+    const tiempoInicio = cuando;
+    cuando += evento.duracion;
+    if (!evento.silencio) {
+      const cancelar = reproducirPalmada(ctx, tiempoInicio, volumen);
+      cancelacionesActivas.push(cancelar);
+    }
+    if (onEventoInicio) {
+      const retrasoMs = Math.max(0, (tiempoInicio - ahora) * 1000);
+      temporizadoresUiActivos.push(
+        setTimeout(() => {
+          if (tokenReproduccion === miToken) onEventoInicio(i, evento.silencio);
+        }, retrasoMs)
+      );
+    }
+    return { midi: evento.silencio ? -1 : -2, duracion: evento.duracion, tiempoInicio };
+  });
+  const tiempoFinal = cuando;
+  // Misma forma que usa reproducirSecuencia -- así si el metrónomo arranca a
+  // mitad de un ritmo, también sabe esperar al final del evento en curso.
+  scheduleActivo = { eventos: programados, tiempoFinal, token: miToken };
+
+  await new Promise((resolve) => {
+    resolverEsperaActiva = resolve;
+    temporizadoresUiActivos.push(
+      setTimeout(() => {
+        if (tokenReproduccion === miToken && onTerminar) onTerminar();
+        resolverEsperaActiva = null;
+        resolve();
+      }, Math.max(0, (tiempoFinal - ahora) * 1000))
+    );
+  });
+}
+
 // --- Metrónomo (50-350 bpm) --------------------------------------------
 // Patrón estándar de "lookahead scheduler": en vez de disparar cada clic con
 // un setTimeout (que se desincroniza con el tiempo real), se programan con
@@ -546,7 +640,7 @@ function detenerEscuchaContinua() {
   escuchaContinuaActiva = false;
 }
 
-window.PianoEngine = { reproducirSecuencia, detenerReproduccion, exportarMp3, silenciarPianoAhora };
+window.PianoEngine = { reproducirSecuencia, reproducirRitmo, detenerReproduccion, exportarMp3, silenciarPianoAhora };
 window.MetronomoEngine = {
   iniciar: iniciarMetronomo,
   detener: detenerMetronomo,

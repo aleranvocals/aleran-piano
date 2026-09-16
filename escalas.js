@@ -59,11 +59,11 @@ function midiAFrecuencia(midi) {
 // Cuántos pulsos de negra dura cada figura. La negra es "1 pulso" siempre:
 // a este número solo le falta multiplicar por (60 / bpm) para tener segundos.
 const FIGURAS = [
-  { id: "redonda", nombre: "Redonda", simbolo: "𝅝", pulsos: 4 },
-  { id: "blanca", nombre: "Blanca", simbolo: "𝅗𝅥", pulsos: 2 },
-  { id: "negra", nombre: "Negra", simbolo: "♩", pulsos: 1 },
-  { id: "corchea", nombre: "Corchea", simbolo: "♪", pulsos: 0.5 },
-  { id: "semicorchea", nombre: "Semicorchea", simbolo: "𝅘𝅥𝅯", pulsos: 0.25 },
+  { id: "redonda", nombre: "Redonda", simbolo: "𝅝", simboloSilencio: "𝄻", pulsos: 4 },
+  { id: "blanca", nombre: "Blanca", simbolo: "𝅗𝅥", simboloSilencio: "𝄼", pulsos: 2 },
+  { id: "negra", nombre: "Negra", simbolo: "♩", simboloSilencio: "𝄽", pulsos: 1 },
+  { id: "corchea", nombre: "Corchea", simbolo: "♪", simboloSilencio: "𝄾", pulsos: 0.5 },
+  { id: "semicorchea", nombre: "Semicorchea", simbolo: "𝅘𝅥𝅯", simboloSilencio: "𝄿", pulsos: 0.25 },
 ];
 
 function figuraPorId(id) {

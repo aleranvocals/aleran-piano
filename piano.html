@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=2" />
+<link rel="stylesheet" href="style.css?v=3" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -90,6 +90,7 @@
     <button class="tab" data-modo="personalizada" role="tab" aria-selected="false">Personalizada</button>
     <button class="tab" data-modo="solfeo" role="tab" aria-selected="false">Solfeo</button>
     <button class="tab" data-modo="metronomo" role="tab" aria-selected="false">Metrónomo</button>
+    <button class="tab" data-modo="ritmo" role="tab" aria-selected="false">Ritmo</button>
   </div>
 
   <section id="panel-individual" class="panel">
@@ -206,6 +207,38 @@
     </div>
   </section>
 
+  <section id="panel-ritmo" class="panel" hidden>
+    <p class="descripcion">
+      Ritmo con palmas — independiente del piano y del metrónomo, con su
+      propio tempo. Elige el nivel (1 = solo negras/blancas/redondas sin
+      silencios, 10 = todo mezclado con semicorcheas y silencios) y dale a
+      "Escuchar": aplaude junto con cada palmada.
+    </p>
+
+    <label class="campo">
+      <span>Nivel: <output id="ritmoNivelValor">1</output> / 10</span>
+      <input type="range" id="ritmoNivel" min="1" max="10" step="1" value="1" />
+    </label>
+    <p id="ritmoNivelDescripcion" class="descripcion"></p>
+
+    <label class="campo">
+      <span>Compases</span>
+      <input type="number" id="ritmoCompases" min="1" max="8" value="4" />
+    </label>
+    <label class="campo">
+      <span>Tempo: <output id="ritmoBpmValor">90</output> BPM</span>
+      <input type="range" id="ritmoBpm" min="40" max="220" step="1" value="90" />
+    </label>
+
+    <div id="ritmoTira" class="ritmo-tira"></div>
+
+    <div class="acciones">
+      <button id="btnRitmoNuevo" class="boton" type="button">🎲 Ritmo nuevo</button>
+      <button id="btnRitmoEscuchar" class="boton principal" type="button">▶ Escuchar</button>
+      <button id="btnRitmoDetener" class="boton" type="button" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
   <section class="panel comunes" id="panelComunes">
     <label class="campo checkbox">
       <input type="checkbox" id="sincronizarTempo" />
@@ -265,9 +298,10 @@
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=1"></script>
 <script src="audio.js"></script>
+<script src="ritmo.js"></script>
 <script src="progreso.js"></script>
 <script src="teclado.js"></script>
-<script src="piano.js?v=1"></script>
+<script src="piano.js?v=2"></script>
 <script src="tema.js"></script>
 <script src="pwa.js"></script>
 </body>

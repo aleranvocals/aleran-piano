@@ -255,20 +255,24 @@ function cambiarModo(modo) {
   el("panel-personalizada").hidden = modo !== "personalizada";
   el("panel-solfeo").hidden = modo !== "solfeo";
   el("panel-metronomo").hidden = modo !== "metronomo";
+  el("panel-ritmo").hidden = modo !== "ritmo";
 
   const esMetronomo = modo === "metronomo";
+  // Ritmo (palmas) es independiente del piano -- no toca teclas, no usa
+  // duración/pausa compartidas ni "cantar y calificar" (no es para cantar).
+  const esRitmo = modo === "ritmo";
   // Personalizada ya no usa duración/pausa compartidas -- cada nota lleva su
   // propia figura musical (Modo Simple del editor de ritmo).
-  el("panelComunes").hidden = esMetronomo || modo === "personalizada";
-  el("accionesPiano").hidden = esMetronomo;
-  el("pianoContenedor").hidden = esMetronomo;
-  el("pianoDesplazamiento").hidden = esMetronomo;
+  el("panelComunes").hidden = esMetronomo || esRitmo || modo === "personalizada";
+  el("accionesPiano").hidden = esMetronomo || esRitmo;
+  el("pianoContenedor").hidden = esMetronomo || esRitmo;
+  el("pianoDesplazamiento").hidden = esMetronomo || esRitmo;
   // "Cantar y calificar": tiene sentido en cualquier modo que genere una
-  // nota o secuencia concreta que repetir (todos menos el metrónomo).
-  el("btnCantar").hidden = esMetronomo;
+  // nota o secuencia concreta que repetir (todos menos el metrónomo y el ritmo).
+  el("btnCantar").hidden = esMetronomo || esRitmo;
   // "Escucha e imita" solo tiene sentido con una frase de varias notas
   // (con una sola nota es exactamente lo mismo que "Cantar y calificar").
-  el("btnImitar").hidden = esMetronomo || modo === "individual";
+  el("btnImitar").hidden = esMetronomo || esRitmo || modo === "individual";
 
   // La barra compacta del metrónomo es redundante con el panel detallado
   // cuando ya se está en la pestaña Metrónomo -- se oculta solo ahí.
@@ -951,6 +955,7 @@ function inicializar() {
   inicializarMetronomo();
   actualizarVisibilidadDuracion();
   inicializarPersonalizada();
+  inicializarRitmo();
   cambiarModo("individual");
   cargarPersonalizadaDesdeCifradoSiHaceFalta();
 
