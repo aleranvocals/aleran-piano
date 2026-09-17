@@ -1333,6 +1333,15 @@ input[type="checkbox"] {
   padding: 0.35rem 0.6rem;
 }
 
+/* Botón "Llevar al editor de ritmo" compacto (líneas 2 en adelante): mismo
+   clic, sin repetir el texto completo en cada línea de la canción. */
+.cifrado-linea-acciones .boton-icono {
+  padding: 0.3rem 0.45rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  min-width: 1.9rem;
+}
+
 .cifrado-celda {
   position: relative;
   grid-row: 1;

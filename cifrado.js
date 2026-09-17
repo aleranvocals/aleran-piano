@@ -508,6 +508,11 @@ const SVG_ESLABON =
 function renderCancion() {
   cerrarMenuMarcas();
   elSalida.innerHTML = "";
+  // Solo la primera línea de verdad (ni "espacio" ni "seccion") lleva el
+  // botón completo con texto -- repetido en cada línea de la canción entera
+  // era demasiado ruido visual. Las demás llevan un ícono chiquito: sigue
+  // siendo clicable en todas, solo ocupa mucho menos espacio.
+  const primeraLinea = cancion.find((b) => b.tipo === "linea");
   cancion.forEach((bloque) => {
     if (bloque.tipo === "espacio") {
       const div = document.createElement("div");
@@ -525,20 +530,22 @@ function renderCancion() {
     const contenedor = document.createElement("div");
     contenedor.className = "cifrado-linea-bloque";
     contenedor.appendChild(renderLinea(bloque));
-    contenedor.appendChild(crearAccionesLinea(bloque));
+    contenedor.appendChild(crearAccionesLinea(bloque, bloque === primeraLinea));
     elSalida.appendChild(contenedor);
   });
   elAcciones.hidden = cancion.length === 0;
 }
 
-function crearAccionesLinea(lineaObj) {
+function crearAccionesLinea(lineaObj, esPrimera) {
   const fila = document.createElement("div");
   fila.className = "cifrado-linea-acciones";
 
   const btnRitmo = document.createElement("button");
   btnRitmo.type = "button";
-  btnRitmo.className = "boton";
-  btnRitmo.textContent = "🎵 Llevar al editor de ritmo";
+  btnRitmo.className = esPrimera ? "boton" : "boton boton-icono";
+  btnRitmo.title = "Llevar al editor de ritmo";
+  btnRitmo.setAttribute("aria-label", "Llevar al editor de ritmo");
+  btnRitmo.textContent = esPrimera ? "🎵 Llevar al editor de ritmo" : "🎵";
   btnRitmo.addEventListener("click", () => llevarLineaAlEditorDeRitmo(lineaObj));
   fila.appendChild(btnRitmo);
 
@@ -809,20 +816,33 @@ function serializarBloque(bloque) {
   };
 }
 
+// Mismo objeto para las 3 formas de guardar la canción entera (autoguardado
+// en localStorage, descarga a archivo): un solo formato, no tres.
+function datosCancionActual() {
+  return {
+    textoEntrada: elEntrada.value,
+    idioma: elIdioma.value,
+    siguienteLineaId,
+    cancion: cancion.map(serializarBloque),
+  };
+}
+
+function aplicarDatosCancion(datos) {
+  elEntrada.value = datos.textoEntrada || "";
+  if (datos.idioma) elIdioma.value = datos.idioma;
+  siguienteLineaId = datos.siguienteLineaId || 1;
+  cancion = (datos.cancion || []).map((bloque) => {
+    if (bloque.tipo !== "linea") return bloque;
+    return { ...bloque, silabas: bloque.silabas.map((s) => ({ ...s, marcas: new Set(s.marcas) })) };
+  });
+}
+
 // Justo antes de navegar a piano.html (por "Llevar al editor de ritmo") hay
 // que guardar TODO el cifrado -- si no, al volver, la navegación se lo habría
 // borrado entero, no solo la línea que se fue a editar.
 function guardarCancionAutoguardado() {
   try {
-    localStorage.setItem(
-      CLAVE_AUTOGUARDADO,
-      JSON.stringify({
-        textoEntrada: elEntrada.value,
-        idioma: elIdioma.value,
-        siguienteLineaId,
-        cancion: cancion.map(serializarBloque),
-      })
-    );
+    localStorage.setItem(CLAVE_AUTOGUARDADO, JSON.stringify(datosCancionActual()));
   } catch {
     /* localStorage lleno o bloqueado (privado/incógnito): no hay mucho más que hacer aquí. */
   }
@@ -837,18 +857,37 @@ function restaurarCancionAutoguardada() {
   }
   if (!crudo) return false;
   try {
-    const datos = JSON.parse(crudo);
-    elEntrada.value = datos.textoEntrada || "";
-    if (datos.idioma) elIdioma.value = datos.idioma;
-    siguienteLineaId = datos.siguienteLineaId || 1;
-    cancion = (datos.cancion || []).map((bloque) => {
-      if (bloque.tipo !== "linea") return bloque;
-      return { ...bloque, silabas: bloque.silabas.map((s) => ({ ...s, marcas: new Set(s.marcas) })) };
-    });
+    aplicarDatosCancion(JSON.parse(crudo));
     return true;
   } catch {
     return false;
   }
+}
+
+// El autoguardado (localStorage) es solo para no perder el trabajo al ir y
+// volver del editor de ritmo, o al recargar por accidente -- pero no
+// sobrevive a borrar datos del navegador ni sirve para pasar la canción a
+// otro dispositivo. Este archivo .json sí: es la copia de respaldo real, para
+// cerrar la página tranquilo y seguir otro día (u otra máquina) donde quedó.
+function descargarCancionJson() {
+  const blob = new Blob([JSON.stringify(datosCancionActual(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = `cifrado-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}.json`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+async function abrirCancionDesdeArchivo(archivo) {
+  const texto = await archivo.text();
+  const datos = JSON.parse(texto);
+  if (!Array.isArray(datos.cancion)) throw new Error("El archivo no tiene el formato esperado");
+  aplicarDatosCancion(datos);
+  renderCancion();
+  guardarCancionAutoguardado();
 }
 
 // Cada línea presente busca si el editor de ritmo dejó un resultado suyo
@@ -965,6 +1004,32 @@ document.getElementById("btnCifradoCopiar").addEventListener("click", async () =
     elEstado.textContent = "Copiado — ya lo puedes pegar donde quieras.";
   } catch {
     elEstado.textContent = "No se pudo copiar automáticamente. Usa Imprimir / PDF en su lugar.";
+  }
+});
+
+document.getElementById("btnCifradoDescargar").addEventListener("click", () => {
+  if (cancion.length === 0) {
+    elEstado.textContent = "No hay nada que descargar todavía.";
+    return;
+  }
+  descargarCancionJson();
+  elEstado.textContent = "Descargado — abre ese archivo con \"📂 Abrir archivo\" para seguir donde quedaste.";
+});
+
+document.getElementById("btnCifradoAbrir").addEventListener("click", () => {
+  document.getElementById("inputCifradoAbrir").click();
+});
+
+document.getElementById("inputCifradoAbrir").addEventListener("change", async (e) => {
+  const archivo = e.target.files[0];
+  if (!archivo) return;
+  try {
+    await abrirCancionDesdeArchivo(archivo);
+    elEstado.textContent = "Canción cargada.";
+  } catch (err) {
+    elEstado.textContent = `No se pudo abrir el archivo: ${err.message}`;
+  } finally {
+    e.target.value = "";
   }
 });
 
