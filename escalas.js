@@ -27,11 +27,20 @@ const ALIAS_BEMOL = { Reb: 1, Mib: 3, Solb: 6, Lab: 8, Sib: 10 };
 const DO1_MIDI = 24;
 const DO6_MIDI = 84;
 
+// Acepta cualquier combinacion de mayusculas/minusculas ("la4", "LA4", "lA4",
+// "La4" son la misma nota) normalizando a como estan guardados los nombres
+// en NOMBRES_NOTA/ALIAS_BEMOL (primera letra mayuscula, resto minuscula; el
+// "#" de sostenido no se ve afectado por toLowerCase()).
+function normalizarNombreNota(letra) {
+  if (letra.length === 0) return letra;
+  return letra.charAt(0).toUpperCase() + letra.slice(1).toLowerCase();
+}
+
 function nombreAMidi(nombre) {
   nombre = nombre.trim();
   let idx = nombre.length;
   while (idx > 0 && /[0-9]/.test(nombre[idx - 1])) idx--;
-  const letra = nombre.slice(0, idx);
+  const letra = normalizarNombreNota(nombre.slice(0, idx));
   const octavaStr = nombre.slice(idx);
   let indice = NOMBRES_NOTA.indexOf(letra);
   if (indice === -1) indice = ALIAS_BEMOL[letra] ?? -1;
