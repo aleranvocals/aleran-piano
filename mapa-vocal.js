@@ -470,6 +470,7 @@ function generarMapaVocal(silencioso) {
 
   if (primerError) {
     el("btnMapaDescargar").hidden = true;
+    el("btnMapaDescargarPdf").hidden = true;
     if (silencioso) return; // todavía escribiendo (campo vacío o nota a medias): sin aviso en el texto de estado
     estado.textContent = primerError.message;
     return;
@@ -484,16 +485,19 @@ function generarMapaVocal(silencioso) {
 
   if (datos.pechoInicio >= datos.passaggio) {
     el("btnMapaDescargar").hidden = true;
+    el("btnMapaDescargarPdf").hidden = true;
     estado.textContent = "La voz de pecho debe empezar antes del passaggio.";
     return;
   }
   if (datos.cabezaInicio >= datos.cabezaFinal) {
     el("btnMapaDescargar").hidden = true;
+    el("btnMapaDescargarPdf").hidden = true;
     estado.textContent = 'El "inicio" de la voz de cabeza debe ser más grave que el "final".';
     return;
   }
   if (datos.cabezaFinal <= datos.passaggio) {
     el("btnMapaDescargar").hidden = true;
+    el("btnMapaDescargarPdf").hidden = true;
     estado.textContent = "La voz de cabeza debe terminar después del passaggio.";
     return;
   }
@@ -506,11 +510,13 @@ function generarMapaVocal(silencioso) {
 
   if (tieneSilbido && datos.silbidoFinal <= datos.cabezaFinal) {
     el("btnMapaDescargar").hidden = true;
+    el("btnMapaDescargarPdf").hidden = true;
     estado.textContent = "El silbido debe llegar más agudo que el final de la voz de cabeza.";
     return;
   }
   if (tieneMongol && datos.mongolInicio >= datos.pechoInicio) {
     el("btnMapaDescargar").hidden = true;
+    el("btnMapaDescargarPdf").hidden = true;
     estado.textContent = "El canto mongol debe llegar más grave que el inicio de la voz de pecho.";
     return;
   }
@@ -519,8 +525,10 @@ function generarMapaVocal(silencioso) {
     const svg = mapaConstruirSvg(datos);
     el("mapaContenedor").innerHTML = svg;
     el("btnMapaDescargar").hidden = false;
+    el("btnMapaDescargarPdf").hidden = false;
   } catch (err) {
     el("btnMapaDescargar").hidden = true;
+    el("btnMapaDescargarPdf").hidden = true;
     estado.textContent = `No se pudo generar el mapa: ${err.message}`;
   }
 }
@@ -875,35 +883,45 @@ function mapaConstruirSvg(datos) {
   </svg>`;
 }
 
-async function descargarMapaVocal() {
+/** Convierte el SVG del mapa ya dibujado en el DOM a un <canvas> rasterizado
+ * en blanco -- paso común que necesitan tanto la descarga en PNG como la de
+ * PDF, así que vive una sola vez aquí en vez de duplicarse en las dos. */
+async function mapaVocalACanvas() {
   const svgElemento = document.getElementById("mapaSvg");
-  if (!svgElemento) return;
+  if (!svgElemento) return null;
+
+  const anchoSvg = parseFloat(svgElemento.getAttribute("width"));
+  const altoSvg = parseFloat(svgElemento.getAttribute("height"));
+  const escala = 2; // más resolución para imprimir
+  const serializador = new XMLSerializer();
+  const textoSvg = serializador.serializeToString(svgElemento);
+  const urlSvg = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(textoSvg);
+
+  const imagen = new Image();
+  await new Promise((resolve, reject) => {
+    imagen.onload = resolve;
+    imagen.onerror = () => reject(new Error("No se pudo convertir el SVG a imagen"));
+    imagen.src = urlSvg;
+  });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = anchoSvg * escala;
+  canvas.height = altoSvg * escala;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(imagen, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+async function descargarMapaVocal() {
   const boton = el("btnMapaDescargar");
   const textoOriginal = boton.textContent;
   boton.disabled = true;
   boton.textContent = "Generando…";
   try {
-    const anchoSvg = parseFloat(svgElemento.getAttribute("width"));
-    const altoSvg = parseFloat(svgElemento.getAttribute("height"));
-    const escala = 2; // más resolución para imprimir
-    const serializador = new XMLSerializer();
-    const textoSvg = serializador.serializeToString(svgElemento);
-    const urlSvg = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(textoSvg);
-
-    const imagen = new Image();
-    await new Promise((resolve, reject) => {
-      imagen.onload = resolve;
-      imagen.onerror = () => reject(new Error("No se pudo convertir el SVG a imagen"));
-      imagen.src = urlSvg;
-    });
-
-    const canvas = document.createElement("canvas");
-    canvas.width = anchoSvg * escala;
-    canvas.height = altoSvg * escala;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(imagen, 0, 0, canvas.width, canvas.height);
+    const canvas = await mapaVocalACanvas();
+    if (!canvas) return;
 
     await new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
@@ -930,6 +948,53 @@ async function descargarMapaVocal() {
   }
 }
 
+// El PDF lleva una cabecera con marca (Áleran Vocals + fecha) y luego el mismo
+// mapa rasterizado como imagen a ancho completo -- así queda listo para
+// imprimir o adjuntar a un email sin depender de que el destinatario tenga
+// un lector de imágenes que respete la resolución.
+async function descargarMapaVocalPdf() {
+  const boton = el("btnMapaDescargarPdf");
+  const textoOriginal = boton.textContent;
+  boton.disabled = true;
+  boton.textContent = "Generando…";
+  try {
+    if (typeof window.jspdf === "undefined") {
+      throw new Error("No se pudo cargar el generador de PDF (revisa tu conexión e inténtalo de nuevo)");
+    }
+    const canvas = await mapaVocalACanvas();
+    if (!canvas) return;
+
+    const { jsPDF } = window.jspdf;
+    const margen = 12;
+    const anchoContenido = 210 - margen * 2; // A4 vertical en mm
+    const altoImagenMm = (canvas.height / canvas.width) * anchoContenido;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(147, 23, 44); // crimson de marca
+    doc.text("Mapa Vocal — Áleran Vocals", margen, margen + 4);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+    doc.text(new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }), margen, margen + 10);
+
+    const imagenPng = canvas.toDataURL("image/png");
+    doc.addImage(imagenPng, "PNG", margen, margen + 16, anchoContenido, altoImagenMm);
+
+    doc.setFontSize(9);
+    doc.setTextColor(140, 140, 140);
+    doc.text("aleranvocals.es", margen, 297 - 8);
+
+    doc.save(`mapa-vocal-${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (err) {
+    el("estadoMapa").textContent = `No se pudo descargar el PDF: ${err.message}`;
+  } finally {
+    boton.disabled = false;
+    boton.textContent = textoOriginal;
+  }
+}
+
 const MAPA_CAMPOS_EN_VIVO = [
   "mapaPechoInicio",
   "mapaPassaggio",
@@ -944,6 +1009,7 @@ const MAPA_CASILLAS_EN_VIVO = ["mapaTieneSilbido", "mapaTieneMongol"];
 function inicializarMapaVocal() {
   el("btnMapaGenerar").addEventListener("click", () => generarMapaVocal(false));
   el("btnMapaDescargar").addEventListener("click", descargarMapaVocal);
+  el("btnMapaDescargarPdf").addEventListener("click", descargarMapaVocalPdf);
 
   MAPA_CAMPOS_EN_VIVO.forEach((id) => el(id).addEventListener("input", mapaProgramarRegeneracionEnVivo));
   MAPA_CASILLAS_EN_VIVO.forEach((id) => el(id).addEventListener("change", () => generarMapaVocal(false)));
