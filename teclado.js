@@ -17,6 +17,12 @@ function construirTeclasPiano() {
   const contenedor = el("piano");
   contenedor.innerHTML = "";
   contenedor.style.setProperty("--tecla-fuente", `${Math.max(7, Math.round(anchoBlanca * 0.32))}px`);
+  // Aparte de --tecla-fuente (pensado para el ancho de una tecla BLANCA): las
+  // negras necesitan su propio tamaño, calculado de SU propio ancho real, no
+  // del de la blanca -- si no, un nombre largo como "Sol#1"/"Sol♭1" no cabe
+  // y se sale de la tecla. (anchoNegra-2)/2.9 es, a ojo, lo más grande que
+  // cabe un nombre de 5 caracteres en negrita sin desbordar.
+  contenedor.style.setProperty("--tecla-fuente-negra", `${Math.max(5, Math.round((anchoNegra - 2) / 2.9))}px`);
   contenedor.classList.toggle("estrecho", anchoNegra < 16);
 
   const crearEtiqueta = (midi) => {

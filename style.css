@@ -109,6 +109,10 @@ body {
   justify-content: center;
   padding-bottom: 4px;
   user-select: none;
+  /* Red de seguridad: si algún nombre (p. ej. "Sol#1"/"Sol♭1", los más
+     largos) no llega a caber del todo con el tamaño de letra calculado,
+     que se recorte en vez de invadir visualmente la tecla de al lado. */
+  overflow: hidden;
 }
 
 .tecla.blanca {
@@ -163,11 +167,16 @@ body {
 
 .tecla.negra .tecla-etiqueta {
   color: var(--claro-fijo);
-  font-size: calc(var(--tecla-fuente, 11px) * 0.82);
+  /* Antes salía de --tecla-fuente (calculado del ancho de la tecla BLANCA),
+     así que nunca se achicaba lo suficiente para la tecla negra real, mucho
+     más angosta -- "Sol#1"/"Sol♭1" (los nombres más largos) se salían de su
+     propia tecla. --tecla-fuente-negra sí sale del ancho real de la negra. */
+  font-size: var(--tecla-fuente-negra, 9px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  max-width: 100%;
 }
 
 /* Sostenido arriba, bemol debajo -- un poco más tenue para que el nombre
