@@ -238,7 +238,7 @@ function mapaAnchoTexto(texto, tamanoFuente) {
  * franja de color sin escribir texto encima de colores que se superponen.
  * Si la franja es más angosta que su propio nombre, el texto se pega al
  * borde del SVG en vez de centrarse y salirse del dibujo. */
-function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs, anclarAlCentroDeTecla, etiquetaArriba) {
+function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs, anclarAlCentroDeTecla, etiquetaArriba, ladoAbierto, espacioArriba) {
   // Por defecto la cota va de borde a borde (todo el ancho de la primera y
   // la última tecla, igual que la franja de color de arriba). Pero para las
   // zonas con guía arriba (Voz de pecho/cabeza, canto mongol, silbido) el
@@ -290,21 +290,47 @@ function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tama
     const [izq, der] = rangoDe(c);
     return izq < x1 - margen || der > x2 + margen;
   };
+  // Para zonas que SIEMPRE tocan a una vecina en un lado fijo (mongol
+  // termina justo donde empieza pecho; silbido empieza justo donde termina
+  // cabeza -- son reglas del propio mapa, no una casualidad de este rango),
+  // `ladoAbierto` dice de qué lado NO hay nadie a quien invadir. Si el
+  // nombre no cabe entero en su propia cota, más vale que se desborde hacia
+  // ESE lado libre y nunca hacia el lado prohibido, donde está la vecina --
+  // así "Voz de silbido"/"EMC" jamás terminan escritos encima de la cota de
+  // al lado, pase lo que pase con el ancho del texto.
+  const cruzaHaciaLaIzquierda = (c) => rangoDe(c)[0] < x1 - margen;
+  const cruzaHaciaLaDerecha = (c) => rangoDe(c)[1] > x2 + margen;
+  const cruzaLadoProhibido = (c) => {
+    if (ladoAbierto === "izquierda") return cruzaHaciaLaDerecha(c);
+    if (ladoAbierto === "derecha") return cruzaHaciaLaIzquierda(c);
+    return false;
+  };
 
   const elegido =
     candidatos.find((c) => !chocaConLinea(c) && !seSaleDeSuPropiaCota(c) && !seSaleDelSvg(c)) ||
-    candidatos.find((c) => !chocaConLinea(c) && !seSaleDelSvg(c)) ||
+    candidatos.find((c) => !chocaConLinea(c) && !cruzaLadoProhibido(c) && !seSaleDelSvg(c)) ||
+    candidatos.find((c) => !cruzaLadoProhibido(c) && !seSaleDelSvg(c)) ||
+    candidatos.find((c) => !cruzaLadoProhibido(c)) ||
     candidatos.find((c) => !seSaleDelSvg(c)) ||
     candidatos[0];
   const { anclaX, anclaTipo } = elegido;
-  // Por defecto el nombre va DEBAJO de la línea (el resto de cotas). Silbido
-  // pidió expresamente ir ENCIMA -- comparte fila con "Voz de cabeza" (nunca
-  // se pisan en rango, pero sus etiquetas quedan pegadas una a la otra al
-  // final de esa fila), así que separarlas arriba/abajo de su propia línea
-  // evita cualquier choque entre las dos sin necesitar una fila aparte NI
-  // agrandar el diagrama: -5 cabe justo en el hueco que ya existe entre el
-  // teclado y esta línea (el mismo alto que ya usan los topes del bracket).
-  const yTexto = etiquetaArriba ? yLinea - 5 : yLinea + 15;
+  // Por defecto el nombre va DEBAJO de la línea, a 15 de yLinea (10 más allá
+  // del tope, que llega hasta yLinea+5) -- ese es el espaciado de siempre,
+  // el mismo en todas las cotas. Silbido pidió ir ENCIMA en vez de debajo
+  // (comparte fila con "Voz de cabeza" y sus etiquetas quedaban pegadas), y
+  // arriba debe verse con ESE MISMO espaciado, no uno más apretado. El
+  // espacio ya existe: `espacioArriba` (lo que ya hay libre entre esta
+  // línea y lo que sea que tenga encima -- el teclado, o la fila anterior)
+  // se lo pasa quien llama, así que aquí solo se usa, sin agrandar nada.
+  const GAP_IDEAL = 15;
+  // -10 = la altura real de la letra (medida: ~8px de caja a fuente 9,
+  // negrita) + 2px de aire, para que el texto de arriba nunca llegue a
+  // tocar lo que tenga encima aunque el hueco disponible sea el mínimo
+  // (probado con el teclado justo debajo: da 0px de margen con -8, y el
+  // margen que se busca con -10). El piso de 3 es solo para no dejar un
+  // hueco negativo si algún día espacioArriba fuera aún más chico.
+  const gapArriba = espacioArriba === undefined ? GAP_IDEAL : Math.min(GAP_IDEAL, Math.max(3, espacioArriba - 10));
+  const yTexto = etiquetaArriba ? yLinea - gapArriba : yLinea + GAP_IDEAL;
   return `
     <line x1="${x1}" y1="${yLinea}" x2="${x2}" y2="${yLinea}" stroke="${color}" stroke-width="2" />
     <line x1="${x1}" y1="${yLinea - 5}" x2="${x1}" y2="${yLinea + 5}" stroke="${color}" stroke-width="2" />
@@ -802,9 +828,22 @@ function mapaConstruirSvg(datos) {
   // alguna de las dos líneas de la zona de paso le pasa por encima -- sin
   // salirse nunca de su propia cota (mapaBracketSvg no la deja cruzar
   // desde/hasta). ------------------------------------------------------
+  // mongol SIEMPRE toca a pecho por su derecha -> el lado libre es la
+  // izquierda. silbido SIEMPRE toca a cabeza por su izquierda -> el lado
+  // libre es la derecha. pecho/cabeza no tienen un lado fijo prohibido (su
+  // vecino cambia según el registro), así que siguen sin restricción extra.
+  const LADO_ABIERTO_POR_TIPO = { mongol: "izquierda", silbido: "derecha" };
   zonas.forEach((zona) => {
     const yLinea = yBrackets + 8 + zona.fila * FILA_ALTO;
-    cuerpo += mapaBracketSvg(pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal, [zpX1, zpX2], true, zona.tipo === "silbido");
+    // Cuánto hueco YA EXISTE por encima de esta línea, sin inventar ninguno
+    // nuevo: si es la primera fila, lo que ya separa al teclado de ella
+    // (yBrackets+8, o sea GAP_TECLADO_BRACKETS+8); si no, la fila de arriba
+    // está justo a FILA_ALTO de distancia, como siempre.
+    const espacioArriba = zona.fila === 0 ? yBrackets + 8 - (yKeyboard + ALTO_BLANCA) : FILA_ALTO;
+    cuerpo += mapaBracketSvg(
+      pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal,
+      [zpX1, zpX2], true, zona.tipo === "silbido", LADO_ABIERTO_POR_TIPO[zona.tipo], espacioArriba
+    );
   });
 
   // --- Zona de paso: dos líneas de cota pequeñas y anidadas ("mix pecho" /
