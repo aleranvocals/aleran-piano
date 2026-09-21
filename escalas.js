@@ -24,6 +24,20 @@ function fechaLocalISO(fecha = new Date()) {
 const NOMBRES_NOTA = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
 const ALIAS_BEMOL = { Reb: 1, Mib: 3, Solb: 6, Lab: 8, Sib: 10 };
 
+// Nomenclatura anglosajona (A-G), la otra forma habitual de escribir notas
+// (afinadores, DAWs, alumnos de fuera). Ningun nombre en español ocupa una
+// sola letra, así que no hay ambigüedad posible entre "La" (español) y "A"
+// (inglés) — se pueden mezclar en la misma búsqueda sin chocar.
+const ALIAS_INGLES = {
+  C: 0, "C#": 1, Db: 1,
+  D: 2, "D#": 3, Eb: 3,
+  E: 4,
+  F: 5, "F#": 6, Gb: 6,
+  G: 7, "G#": 8, Ab: 8,
+  A: 9, "A#": 10, Bb: 10,
+  B: 11,
+};
+
 const DO1_MIDI = 24;
 const DO6_MIDI = 84;
 
@@ -44,10 +58,43 @@ function nombreAMidi(nombre) {
   const octavaStr = nombre.slice(idx);
   let indice = NOMBRES_NOTA.indexOf(letra);
   if (indice === -1) indice = ALIAS_BEMOL[letra] ?? -1;
+  if (indice === -1) indice = ALIAS_INGLES[letra] ?? -1;
   if (indice === -1 || octavaStr === "") {
-    throw new Error(`Nota invalida: "${nombre}" (ejemplos validos: Do4, Fa#3, Sol2)`);
+    throw new Error(`Nota invalida: "${nombre}" (ejemplos validos: Do4, Fa#3, Sib2, A4, C#5)`);
   }
   return 12 * (parseInt(octavaStr, 10) + 1) + indice;
+}
+
+/** Version de nombreAMidi que nunca lanza: para cualquier campo donde el
+ * usuario escribe una nota a mano, así se le puede dar retroalimentación
+ * clara en el momento ("formato inválido") en vez de que el error se pierda
+ * en la consola y la herramienta se quede muda, como pasó con "la2". */
+function interpretarNota(texto) {
+  const limpio = (texto || "").trim();
+  if (!limpio) return { valido: false, vacio: true, midi: null, mensaje: "" };
+  try {
+    return { valido: true, vacio: false, midi: nombreAMidi(limpio), mensaje: "" };
+  } catch {
+    return {
+      valido: false,
+      vacio: false,
+      midi: null,
+      mensaje: `"${limpio}" no es una nota válida (ej: Do4, La4, Fa#3, Sib2, A4, C#5)`,
+    };
+  }
+}
+
+/** Marca visualmente un campo de texto/contenteditable como inválido (borde
+ * rojo real, no el borde de foco normal) y, si se pasa `elMensaje`, escribe
+ * ahí la explicación. Pensado para reusarse en cualquier input de nota del
+ * sitio (Mapa vocal, Cifrado, Piano, Oído...) para que el error SIEMPRE se
+ * vea en el campo mismo, no solo en un texto de estado que se puede pasar
+ * por alto en plena clase. */
+function marcarCampoNotaInvalido(elCampo, invalido, mensaje, elMensaje) {
+  if (!elCampo) return;
+  elCampo.classList.toggle("campo-nota-invalida", !!invalido);
+  elCampo.title = invalido ? mensaje : "";
+  if (elMensaje) elMensaje.textContent = invalido ? mensaje : "";
 }
 
 function midiANombre(midi) {
@@ -528,7 +575,7 @@ function parsearNotasPersonalizadas(texto) {
     try {
       midi = nombreAMidi(token);
     } catch {
-      throw new Error(`No entiendo la nota "${token}" (ejemplos válidos: Do3, Fa#4, Sib2)`);
+      throw new Error(`No entiendo la nota "${token}" (ejemplos válidos: Do3, Fa#4, Sib2, A4, C#5)`);
     }
     if (midi < DO1_MIDI || midi > DO6_MIDI) {
       throw new Error(

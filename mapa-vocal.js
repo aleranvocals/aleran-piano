@@ -36,18 +36,24 @@ const MAPA_COLORES = {
   solapamiento: "#3a2e22",
 };
 
+// Además de leer y validar, marca (o limpia) el borde de error del propio
+// campo -- así el aviso vive donde está el problema, no solo en el texto de
+// estado de más abajo, que en plena clase es fácil no ver a tiempo.
 function mapaLeerNota(idCampo, etiqueta, opcional) {
-  const valor = el(idCampo).value.trim();
+  const campo = el(idCampo);
+  const valor = campo.value.trim();
   if (!valor) {
+    marcarCampoNotaInvalido(campo, false);
     if (opcional) return null;
     throw new Error(`Falta "${etiqueta}".`);
   }
-  let midi;
-  try {
-    midi = nombreAMidi(valor);
-  } catch {
-    throw new Error(`No entiendo la nota "${valor}" en "${etiqueta}" (ejemplos válidos: Do3, Fa#4, Sib2).`);
+  const interpretada = interpretarNota(valor);
+  if (!interpretada.valido) {
+    const mensaje = `No entiendo la nota "${valor}" en "${etiqueta}" (ejemplos válidos: Do3, Fa#4, Sib2, A4, C#5).`;
+    marcarCampoNotaInvalido(campo, true, mensaje);
+    throw new Error(mensaje);
   }
+  const midi = interpretada.midi;
   // nombreAMidi() no valida el rango por sí sola -- acepta "Do0" o "Sol99"
   // igual de bien que "Do3". Este mapa NO está atado al piano interactivo
   // (Do1-Do6, limitado a las muestras cargadas): aquí el registro de silbido
@@ -55,8 +61,11 @@ function mapaLeerNota(idCampo, etiqueta, opcional) {
   // límite de abajo es solo para pillar errores de verdad (typos, un cero de
   // más), no para recortar el rango vocal real.
   if (midi < nombreAMidi("Do0") || midi > nombreAMidi("Do9")) {
-    throw new Error(`"${valor}" en "${etiqueta}" es una nota fuera de cualquier rango vocal real -- revisa si es un error de escritura.`);
+    const mensaje = `"${valor}" en "${etiqueta}" es una nota fuera de cualquier rango vocal real -- revisa si es un error de escritura.`;
+    marcarCampoNotaInvalido(campo, true, mensaje);
+    throw new Error(mensaje);
   }
+  marcarCampoNotaInvalido(campo, false);
   return midi;
 }
 
@@ -229,7 +238,7 @@ function mapaAnchoTexto(texto, tamanoFuente) {
  * franja de color sin escribir texto encima de colores que se superponen.
  * Si la franja es más angosta que su propio nombre, el texto se pega al
  * borde del SVG en vez de centrarse y salirse del dibujo. */
-function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs, anclarAlCentroDeTecla) {
+function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs, anclarAlCentroDeTecla, etiquetaArriba) {
   // Por defecto la cota va de borde a borde (todo el ancho de la primera y
   // la última tecla, igual que la franja de color de arriba). Pero para las
   // zonas con guía arriba (Voz de pecho/cabeza, canto mongol, silbido) el
@@ -269,17 +278,38 @@ function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tama
     const [izq, der] = rangoDe(c);
     return izq < margen || (anchoSvg !== undefined && der > anchoSvg - margen);
   };
+  // Chequeo MÁS estricto que seSaleDelSvg: que no se salga ni un pixel de
+  // [x1, x2] -- la cota de ESTA zona, no todo el SVG. Sin esto, un nombre
+  // largo (ej. "Emulación canto mongol") centrado en una cota angosta podía
+  // "caber en el SVG" perfectamente y aun así invadir la cota vecina de al
+  // lado (así se pisaban con "Voz de pecho"). Se intenta primero encajar
+  // aquí dentro; solo si NINGÚN candidato cabe en su propia cota (el nombre
+  // es más ancho que toda la franja) se recurre al comportamiento de
+  // siempre, dejándolo desbordar hacia el SVG en vez de recortarlo.
+  const seSaleDeSuPropiaCota = (c) => {
+    const [izq, der] = rangoDe(c);
+    return izq < x1 - margen || der > x2 + margen;
+  };
 
   const elegido =
+    candidatos.find((c) => !chocaConLinea(c) && !seSaleDeSuPropiaCota(c) && !seSaleDelSvg(c)) ||
     candidatos.find((c) => !chocaConLinea(c) && !seSaleDelSvg(c)) ||
     candidatos.find((c) => !seSaleDelSvg(c)) ||
     candidatos[0];
   const { anclaX, anclaTipo } = elegido;
+  // Por defecto el nombre va DEBAJO de la línea (el resto de cotas). Silbido
+  // pidió expresamente ir ENCIMA -- comparte fila con "Voz de cabeza" (nunca
+  // se pisan en rango, pero sus etiquetas quedan pegadas una a la otra al
+  // final de esa fila), así que separarlas arriba/abajo de su propia línea
+  // evita cualquier choque entre las dos sin necesitar una fila aparte NI
+  // agrandar el diagrama: -5 cabe justo en el hueco que ya existe entre el
+  // teclado y esta línea (el mismo alto que ya usan los topes del bracket).
+  const yTexto = etiquetaArriba ? yLinea - 5 : yLinea + 15;
   return `
     <line x1="${x1}" y1="${yLinea}" x2="${x2}" y2="${yLinea}" stroke="${color}" stroke-width="2" />
     <line x1="${x1}" y1="${yLinea - 5}" x2="${x1}" y2="${yLinea + 5}" stroke="${color}" stroke-width="2" />
     <line x1="${x2}" y1="${yLinea - 5}" x2="${x2}" y2="${yLinea + 5}" stroke="${color}" stroke-width="2" />
-    <text x="${anclaX}" y="${yLinea + 15}" text-anchor="${anclaTipo}" font-size="${fuente}" font-weight="700" fill="${color}" font-family="'Work Sans', sans-serif">${escaparXml(etiqueta)}</text>
+    <text x="${anclaX}" y="${yTexto}" text-anchor="${anclaTipo}" font-size="${fuente}" font-weight="700" fill="${color}" font-family="'Work Sans', sans-serif">${escaparXml(etiqueta)}</text>
   `;
 }
 
@@ -397,21 +427,38 @@ function generarMapaVocal(silencioso) {
   const tieneMongol = el("mapaTieneMongol").checked;
   const tieneSilbido = el("mapaTieneSilbido").checked;
 
-  let datos;
-  try {
-    datos = {
-      pechoInicio: mapaLeerNota("mapaPechoInicio", "Inicio voz de pecho", false),
-      passaggio: mapaLeerNota("mapaPassaggio", "Passaggio", false),
-      cabezaInicio: mapaLeerNota("mapaCabezaInicio", "Inicio voz de cabeza", false),
-      cabezaFinal: mapaLeerNota("mapaCabezaFinal", "Final voz de cabeza", false),
-      silbidoFinal: tieneSilbido ? mapaLeerNota("mapaSilbidoFinal", "Hasta dónde sube el silbido", false) : null,
-      mongolInicio: tieneMongol ? mapaLeerNota("mapaMongolInicio", "Hasta dónde baja el canto mongol", false) : null,
-      belting: mapaLeerNota("mapaBeltingNota", "Nota de belting", true),
-    };
-  } catch (err) {
+  // Se lee CADA campo por separado (no se corta en el primero que falle)
+  // para que mapaLeerNota pueda marcar o limpiar el borde de error de todos
+  // ellos en la misma pasada -- si no, un campo ya corregido podía quedarse
+  // con el borde de error pegado porque nunca se volvía a evaluar.
+  let primerError = null;
+  const leer = (idCampo, etiqueta, opcional) => {
+    try {
+      return mapaLeerNota(idCampo, etiqueta, opcional);
+    } catch (err) {
+      if (!primerError) primerError = err;
+      return null;
+    }
+  };
+
+  const datos = {
+    pechoInicio: leer("mapaPechoInicio", "Inicio voz de pecho", false),
+    passaggio: leer("mapaPassaggio", "Passaggio", false),
+    cabezaInicio: leer("mapaCabezaInicio", "Inicio voz de cabeza", false),
+    cabezaFinal: leer("mapaCabezaFinal", "Final voz de cabeza", false),
+    silbidoFinal: tieneSilbido ? leer("mapaSilbidoFinal", "Hasta dónde sube el silbido", false) : null,
+    mongolInicio: tieneMongol ? leer("mapaMongolInicio", "Hasta dónde baja el canto mongol", false) : null,
+    belting: leer("mapaBeltingNota", "Nota de belting", true),
+  };
+  // Si se desmarcó silbido/mongol, ese campo deja de evaluarse -- pero si se
+  // había marcado como inválido antes, hay que limpiarlo igual.
+  if (!tieneSilbido) marcarCampoNotaInvalido(el("mapaSilbidoFinal"), false);
+  if (!tieneMongol) marcarCampoNotaInvalido(el("mapaMongolInicio"), false);
+
+  if (primerError) {
     el("btnMapaDescargar").hidden = true;
-    if (silencioso) return; // todavía escribiendo (campo vacío o nota a medias): sin aviso
-    estado.textContent = err.message;
+    if (silencioso) return; // todavía escribiendo (campo vacío o nota a medias): sin aviso en el texto de estado
+    estado.textContent = primerError.message;
     return;
   }
 
@@ -521,7 +568,7 @@ function mapaConstruirSvg(datos) {
   // el 100% de este rango, pero el registro en sí sí llega hasta ahí).
   const zonas = [];
   if (datos.mongolInicio !== null) {
-    zonas.push({ tipo: "mongol", desde: datos.mongolInicio, hasta: datos.mongolFinal, etiqueta: "Emulación canto mongol" });
+    zonas.push({ tipo: "mongol", desde: datos.mongolInicio, hasta: datos.mongolFinal, etiqueta: "EMC" });
   }
   if (datos.silbidoInicio !== null) {
     zonas.push({ tipo: "silbido", desde: datos.silbidoInicio, hasta: datos.silbidoFinal, etiqueta: "Voz de silbido" });
@@ -757,7 +804,7 @@ function mapaConstruirSvg(datos) {
   // desde/hasta). ------------------------------------------------------
   zonas.forEach((zona) => {
     const yLinea = yBrackets + 8 + zona.fila * FILA_ALTO;
-    cuerpo += mapaBracketSvg(pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal, [zpX1, zpX2], true);
+    cuerpo += mapaBracketSvg(pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal, [zpX1, zpX2], true, zona.tipo === "silbido");
   });
 
   // --- Zona de paso: dos líneas de cota pequeñas y anidadas ("mix pecho" /

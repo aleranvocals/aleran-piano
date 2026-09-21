@@ -165,7 +165,9 @@ function empezarSimon() {
   if (el("simonProgramado").checked) {
     try {
       simonSecuenciaProgramada = parsearNotasPersonalizadas(el("simonNotasProgramadas").value);
+      marcarCampoNotaInvalido(el("simonNotasProgramadas"), false);
     } catch (err) {
+      marcarCampoNotaInvalido(el("simonNotasProgramadas"), true, err.message);
       el("simonFeedback").textContent = err.message;
       return;
     }
@@ -263,6 +265,7 @@ function inicializarOido() {
   el("simonProgramado").addEventListener("change", () => {
     el("campoSimonNotas").hidden = !el("simonProgramado").checked;
   });
+  el("simonNotasProgramadas").addEventListener("input", () => marcarCampoNotaInvalido(el("simonNotasProgramadas"), false));
 }
 
 document.addEventListener("DOMContentLoaded", inicializarOido);

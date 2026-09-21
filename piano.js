@@ -417,8 +417,16 @@ function crearCeldaPersonalizada(unidad, indice, agrupado) {
   texto.contentEditable = "true";
   texto.spellcheck = false;
   texto.textContent = unidad.texto;
+  // El texto de la celda no siempre es una nota (puede ser una sílaba
+  // traída de Cifrado), así que no se valida en cada tecleo como en Mapa
+  // vocal/Cifrado -- eso daría falsos positivos constantes. Solo se marca
+  // cuando este texto vino de un "Do3" puesto como relleno automático (ver
+  // silencioBtn más abajo), y se limpia en cuanto la persona la toca.
+  if (unidad._necesitaCorregirNota) marcarCampoNotaInvalido(texto, true, "Nota puesta automáticamente -- revisa y corrige si hace falta.");
   texto.addEventListener("input", () => {
     unidad.texto = texto.textContent;
+    unidad._necesitaCorregirNota = false;
+    marcarCampoNotaInvalido(texto, false);
   });
   wrap.appendChild(texto);
 
@@ -447,10 +455,21 @@ function crearCeldaPersonalizada(unidad, indice, agrupado) {
   silencioBtn.textContent = esSilencio ? "🔇" : "🔊";
   silencioBtn.addEventListener("click", () => {
     if (unidad.midi === null) {
-      try {
-        unidad.midi = nombreAMidi(unidad.texto);
-      } catch {
-        unidad.midi = unidad._ultimoMidi ?? nombreAMidi("Do3");
+      // OJO: el texto de la celda no siempre es un nombre de nota -- si esta
+      // unidad llegó de Cifrado como sílaba ("la", "vi"...) el texto es la
+      // letra de la canción, no una nota, así que nombreAMidi() falla aquí a
+      // propósito. Antes eso se resolvía sustituyendo Do3 en silencio, sin
+      // avisar de nada; ahora se avisa con claridad y se marca la celda para
+      // que quede obvio cuál hay que corregir a mano.
+      const r = interpretarNota(unidad.texto);
+      if (r.valido) {
+        unidad.midi = r.midi;
+      } else if (unidad._ultimoMidi != null) {
+        unidad.midi = unidad._ultimoMidi;
+      } else {
+        unidad.midi = nombreAMidi("Do3");
+        unidad._necesitaCorregirNota = true;
+        el("estado").textContent = `"${unidad.texto || "(vacío)"}" no es una nota reconocible -- se le puso Do3 de punto de partida, corrígela escribiendo el nombre real (ej. Do4, A4, Fa#3) en esa celda.`;
       }
     } else {
       unidad._ultimoMidi = unidad.midi;
@@ -570,14 +589,17 @@ function inicializarPersonalizada() {
     try {
       midis = parsearNotasPersonalizadas(el("notasPersonalizadas").value);
     } catch (err) {
+      marcarCampoNotaInvalido(el("notasPersonalizadas"), true, err.message);
       el("estado").textContent = err.message;
       return;
     }
+    marcarCampoNotaInvalido(el("notasPersonalizadas"), false);
     midis.forEach((midi) => unidadesPersonalizadas.push({ texto: midiANombre(midi), midi, figura: "negra" }));
     el("notasPersonalizadas").value = "";
     invalidarSecuencia();
     renderPersonalizada();
   });
+  el("notasPersonalizadas").addEventListener("input", () => marcarCampoNotaInvalido(el("notasPersonalizadas"), false));
 
   el("btnLimpiarPersonalizada").addEventListener("click", () => {
     if (unidadesPersonalizadas.length && !confirm("¿Vaciar toda la lista de Personalizada?")) return;

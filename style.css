@@ -703,6 +703,27 @@ textarea:focus {
   outline-offset: 1px;
 }
 
+/* Nota mal escrita en cualquier campo del sitio (Mapa vocal, Cifrado,
+   Piano, Oído...). Deliberadamente NO usa crimson: todo el tema ya es
+   rojo/crimson (marca, foco, botones), así que un borde rojo más ahí no
+   se lee como "error" — se confunde con "seleccionado". Ámbar grueso +
+   fondo tintado sí se distingue a simple vista. */
+.campo-nota-invalida {
+  border: 2px solid #ffb347;
+  background: rgba(255, 179, 71, 0.12);
+}
+
+.campo-nota-invalida:focus {
+  outline-color: #ffb347;
+}
+
+.campo-nota-mensaje {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  color: #ffb347;
+}
+
 input[type="range"] {
   accent-color: var(--crimson-bright);
   width: 100%;

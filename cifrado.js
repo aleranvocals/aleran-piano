@@ -668,13 +668,24 @@ function crearNotaGrupo(lineaObj, grupo) {
   span.textContent = silabaBase.nota;
   span.style.gridColumn = `${2 * grupo.inicio + 1} / ${2 * grupo.fin + 2}`;
   span.style.gridRow = "2";
+  marcarNotaCeldaSiInvalida(span, silabaBase.nota);
   span.addEventListener("input", () => {
     // Si queda vacía, limpia también el <br> residual que deja contenteditable
     // para que ":empty" (el punto de placeholder) siga funcionando.
     if (span.textContent.trim() === "") span.innerHTML = "";
     silabaBase.nota = span.textContent;
+    marcarNotaCeldaSiInvalida(span, silabaBase.nota);
   });
   return span;
+}
+
+// Nota mal escrita en una sílaba: se marca con un borde ámbar sobre la
+// propia celda (mismo helper que usan Mapa vocal/Piano) en vez de fallar en
+// silencio -- antes una nota como "la2" simplemente sonaba a silencio al
+// reproducir, sin ningún aviso de por qué.
+function marcarNotaCeldaSiInvalida(span, notaTexto) {
+  const r = interpretarNota(notaTexto);
+  marcarCampoNotaInvalido(span, !r.valido && !r.vacio, r.mensaje);
 }
 
 /* =========================================================
