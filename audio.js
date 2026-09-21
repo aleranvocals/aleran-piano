@@ -620,16 +620,30 @@ function frecuenciaAMidi(freq) {
   return 69 + 12 * Math.log2(freq / 440);
 }
 
-let escuchaContinuaActiva = false;
+// Token de generación (mismo patrón que tokenReproduccion más arriba): un
+// simple booleano "activa" no basta, porque Entrenamiento cambia de submodo
+// (Rango vocal, SOVT, Nota sostenida...) llamando a detenerContinuo() y
+// luego, casi en el mismo instante, a escucharContinuo() del modo nuevo. Con
+// un booleano compartido existe una ventana real donde el bucle viejo aún no
+// ha revisado el flag (duerme en el `await esperar(40)` de abajo) cuando el
+// bucle nuevo ya lo puso otra vez en `true` -- el viejo "revive" al
+// despertar, y quedan DOS bucles corriendo a la vez, cada uno marcando/
+// desmarcando su propia tecla en el teclado según lo que detecta el
+// micrófono en ese instante: el síntoma es exactamente teclas que se quedan
+// pegadas en rojo, porque el bucle que las encendió ya no es el que el resto
+// del código cree que es el activo. Con un contador que se incrementa en
+// cada llamada, un bucle viejo solo puede compararse con SU propio número de
+// generación, nunca con el de uno que arrancó después.
+let escuchaContinuaToken = 0;
 
 /** Escucha el micrófono de forma continua (sin nota objetivo ni límite de
  * tiempo) hasta que se llame a detenerEscuchaContinua(). La usan el medidor
  * de rango vocal y el cronómetro de nota sostenida. `onLectura` recibe
  * `{ frecuencia, midiExacto, claridad }` o `null` cuando no hay voz clara. */
 async function escucharContinuo(onLectura) {
-  escuchaContinuaActiva = true;
+  const miToken = ++escuchaContinuaToken;
   escuchaMicrofonoCancelada = false;
-  while (escuchaContinuaActiva && !escuchaMicrofonoCancelada) {
+  while (escuchaContinuaToken === miToken && !escuchaMicrofonoCancelada) {
     const lectura = leerPitchInstantaneo();
     onLectura(lectura ? { ...lectura, midiExacto: frecuenciaAMidi(lectura.frecuencia) } : null);
     await esperar(40); // ~25 lecturas/seg
@@ -637,7 +651,7 @@ async function escucharContinuo(onLectura) {
 }
 
 function detenerEscuchaContinua() {
-  escuchaContinuaActiva = false;
+  escuchaContinuaToken++; // invalida cualquier bucle en curso, sin poder "revivirlo" luego
 }
 
 window.PianoEngine = { reproducirSecuencia, reproducirRitmo, detenerReproduccion, exportarMp3, silenciarPianoAhora };
