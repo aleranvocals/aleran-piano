@@ -164,6 +164,21 @@ body {
 .tecla.negra .tecla-etiqueta {
   color: var(--claro-fijo);
   font-size: calc(var(--tecla-fuente, 11px) * 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+/* Sostenido arriba, bemol debajo -- un poco más tenue para que el nombre
+   "principal" (el sostenido) siga siendo el que más resalta a simple vista. */
+.tecla-etiqueta-linea {
+  display: block;
+}
+
+.tecla-etiqueta-bemol {
+  font-size: 0.82em;
+  opacity: 0.72;
 }
 
 /* Con teclas negras muy estrechas (zoom bajo) el texto no cabe en horizontal:

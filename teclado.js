@@ -22,7 +22,21 @@ function construirTeclasPiano() {
   const crearEtiqueta = (midi) => {
     const etiqueta = document.createElement("span");
     etiqueta.className = "tecla-etiqueta";
-    etiqueta.textContent = midiANombre(midi);
+    // Una tecla negra tiene dos nombres (Fa#2 = Solb2, según de dónde venga el
+    // alumno) -- se muestran las dos, sostenido arriba y bemol debajo, en vez
+    // de forzar uno solo. Una tecla blanca es siempre natural: un nombre basta.
+    const nombreBemol = midiANombreBemol(midi);
+    if (nombreBemol) {
+      const lineaSostenido = document.createElement("span");
+      lineaSostenido.className = "tecla-etiqueta-linea";
+      lineaSostenido.textContent = midiANombre(midi);
+      const lineaBemol = document.createElement("span");
+      lineaBemol.className = "tecla-etiqueta-linea tecla-etiqueta-bemol";
+      lineaBemol.textContent = nombreBemol.replace("b", "♭"); // "Solb2" -> "Sol♭2"
+      etiqueta.append(lineaSostenido, lineaBemol);
+    } else {
+      etiqueta.textContent = midiANombre(midi);
+    }
     return etiqueta;
   };
 

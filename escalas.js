@@ -102,6 +102,23 @@ function midiANombre(midi) {
   return `${NOMBRES_NOTA[((midi % 12) + 12) % 12]}${octava}`;
 }
 
+// Reverso de ALIAS_BEMOL (semitono -> nombre en bemol), para poder mostrar el
+// equivalente en bemol de cada tecla negra junto a su sostenido en el
+// teclado visual, sin mantener esa relacion escrita dos veces.
+const NOMBRE_BEMOL_POR_SEMITONO = Object.fromEntries(
+  Object.entries(ALIAS_BEMOL).map(([nombre, semitono]) => [semitono, nombre])
+);
+
+/** Igual que midiANombre() pero en bemol -- null en una tecla blanca (no
+ * tiene equivalente en bemol, "Re" no es el bemol de nada). */
+function midiANombreBemol(midi) {
+  const semitono = ((midi % 12) + 12) % 12;
+  const nombreBase = NOMBRE_BEMOL_POR_SEMITONO[semitono];
+  if (!nombreBase) return null;
+  const octava = Math.floor(midi / 12) - 1;
+  return `${nombreBase}${octava}`;
+}
+
 function midiAFrecuencia(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
