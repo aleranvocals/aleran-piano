@@ -238,7 +238,7 @@ function mapaAnchoTexto(texto, tamanoFuente) {
  * franja de color sin escribir texto encima de colores que se superponen.
  * Si la franja es más angosta que su propio nombre, el texto se pega al
  * borde del SVG en vez de centrarse y salirse del dibujo. */
-function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs, anclarAlCentroDeTecla, etiquetaArriba, ladoAbierto, espacioArriba) {
+function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tamanoFuente, anchoSvg, evitarXs, anclarAlCentroDeTecla, ladoAbierto) {
   // Por defecto la cota va de borde a borde (todo el ancho de la primera y
   // la última tecla, igual que la franja de color de arriba). Pero para las
   // zonas con guía arriba (Voz de pecho/cabeza, canto mongol, silbido) el
@@ -314,28 +314,15 @@ function mapaBracketSvg(pos, desdeMidi, hastaMidi, yLinea, color, etiqueta, tama
     candidatos.find((c) => !seSaleDelSvg(c)) ||
     candidatos[0];
   const { anclaX, anclaTipo } = elegido;
-  // Por defecto el nombre va DEBAJO de la línea, a 15 de yLinea (10 más allá
-  // del tope, que llega hasta yLinea+5) -- ese es el espaciado de siempre,
-  // el mismo en todas las cotas. Silbido pidió ir ENCIMA en vez de debajo
-  // (comparte fila con "Voz de cabeza" y sus etiquetas quedaban pegadas), y
-  // arriba debe verse con ESE MISMO espaciado, no uno más apretado. El
-  // espacio ya existe: `espacioArriba` (lo que ya hay libre entre esta
-  // línea y lo que sea que tenga encima -- el teclado, o la fila anterior)
-  // se lo pasa quien llama, así que aquí solo se usa, sin agrandar nada.
-  const GAP_IDEAL = 15;
-  // -10 = la altura real de la letra (medida: ~8px de caja a fuente 9,
-  // negrita) + 2px de aire, para que el texto de arriba nunca llegue a
-  // tocar lo que tenga encima aunque el hueco disponible sea el mínimo
-  // (probado con el teclado justo debajo: da 0px de margen con -8, y el
-  // margen que se busca con -10). El piso de 3 es solo para no dejar un
-  // hueco negativo si algún día espacioArriba fuera aún más chico.
-  const gapArriba = espacioArriba === undefined ? GAP_IDEAL : Math.min(GAP_IDEAL, Math.max(3, espacioArriba - 10));
-  const yTexto = etiquetaArriba ? yLinea - gapArriba : yLinea + GAP_IDEAL;
+  // El nombre siempre va DEBAJO de la línea, a 15 de yLinea (10 más allá del
+  // tope, que llega hasta yLinea+5) -- un único criterio para todas las
+  // cotas, sin excepciones "esta va arriba". Lo que evita que se peguen con
+  // la cota vecina es `ladoAbierto` (arriba), no una altura distinta.
   return `
     <line x1="${x1}" y1="${yLinea}" x2="${x2}" y2="${yLinea}" stroke="${color}" stroke-width="2" />
     <line x1="${x1}" y1="${yLinea - 5}" x2="${x1}" y2="${yLinea + 5}" stroke="${color}" stroke-width="2" />
     <line x1="${x2}" y1="${yLinea - 5}" x2="${x2}" y2="${yLinea + 5}" stroke="${color}" stroke-width="2" />
-    <text x="${anclaX}" y="${yTexto}" text-anchor="${anclaTipo}" font-size="${fuente}" font-weight="700" fill="${color}" font-family="'Work Sans', sans-serif">${escaparXml(etiqueta)}</text>
+    <text x="${anclaX}" y="${yLinea + 15}" text-anchor="${anclaTipo}" font-size="${fuente}" font-weight="700" fill="${color}" font-family="'Work Sans', sans-serif">${escaparXml(etiqueta)}</text>
   `;
 }
 
@@ -603,16 +590,21 @@ function mapaConstruirSvg(datos) {
   zonas.push({ tipo: "cabeza", desde: datos.cabezaInicio, hasta: datos.cabezaFinal, etiqueta: "Voz de cabeza" });
 
   // El único solapamiento real es pecho/cabeza: son los únicos dos que
-  // necesitan alturas distintas para sus "cotas" de abajo. Mongol nunca se
-  // pisa con pecho (termina justo antes de que empiece) y silbido nunca se
-  // pisa con cabeza (empieza justo después de que termina), así que cada
-  // uno puede ir PEGADO, en la misma fila que su vecino, en vez de saltar a
-  // una fila propia — eso es lo que generaba tanto espacio en blanco abajo.
+  // necesitan alturas distintas para sus "cotas" de abajo -- cabeza salta a
+  // su propia fila solo cuando de verdad se solapa con pecho. Mongol y
+  // silbido nunca se pisan EN RANGO con pecho (mongol termina justo antes
+  // de que empiece pecho; silbido con cabeza), pero eso no significa que
+  // sus ETIQUETAS deban compartir fila con su vecino inmediato -- ahí es
+  // donde se pegaban ("Voz de silbido" comiéndose el tope de "Voz de
+  // cabeza"). Mongol y silbido van con pecho, en el mismo plano de altura
+  // (una sola fila, sin líos de "arriba/abajo" por zona): mongol nunca
+  // llega a tocar a pecho de verdad (mismo motivo de siempre) y silbido
+  // nunca llega a tocar a pecho ni de lejos (cabeza entera queda en medio).
   const hayColapsoPechoCabeza = datos.cabezaInicio <= datos.pechoFinal;
   const filaPechoGrupo = 0;
   const filaCabezaGrupo = hayColapsoPechoCabeza ? 1 : 0;
   zonas.forEach((zona) => {
-    zona.fila = zona.tipo === "mongol" || zona.tipo === "pecho" ? filaPechoGrupo : filaCabezaGrupo;
+    zona.fila = zona.tipo === "cabeza" ? filaCabezaGrupo : filaPechoGrupo;
   });
   const filasZonas = hayColapsoPechoCabeza ? 2 : 1;
 
@@ -821,28 +813,25 @@ function mapaConstruirSvg(datos) {
   }
 
   // --- Líneas de cota con el nombre de cada zona, DEBAJO del teclado,
-  // pegadas a él. Solo pecho y cabeza (el único solapamiento real) usan
-  // alturas distintas; mongol comparte la fila de pecho y silbido la de
-  // cabeza, porque nunca se pisan con ellas. Se les pasa zpX1/zpX2 para que
-  // la etiqueta ("Voz de pecho"/"Voz de cabeza"...) se corra a un lado si
-  // alguna de las dos líneas de la zona de paso le pasa por encima -- sin
-  // salirse nunca de su propia cota (mapaBracketSvg no la deja cruzar
-  // desde/hasta). ------------------------------------------------------
+  // pegadas a él, TODAS al mismo plano de altura dentro de su propia fila
+  // (sin excepciones "esta va arriba, esa más abajo" -- un solo criterio,
+  // fácil de seguir). Solo cabeza salta a una fila propia, y solo cuando de
+  // verdad se solapa con pecho (ver más arriba). Se les pasa zpX1/zpX2 para
+  // que la etiqueta se corra a un lado si alguna de las dos líneas de la
+  // zona de paso le pasa por encima -- sin salirse nunca de su propia cota
+  // (mapaBracketSvg no la deja cruzar desde/hasta). --------------------
   // mongol SIEMPRE toca a pecho por su derecha -> el lado libre es la
   // izquierda. silbido SIEMPRE toca a cabeza por su izquierda -> el lado
-  // libre es la derecha. pecho/cabeza no tienen un lado fijo prohibido (su
-  // vecino cambia según el registro), así que siguen sin restricción extra.
-  const LADO_ABIERTO_POR_TIPO = { mongol: "izquierda", silbido: "derecha" };
+  // libre es la derecha. cabeza puede terminar compartiendo fila con
+  // silbido cuando no hay colapso con pecho, así que tampoco cruza hacia su
+  // derecha. pecho es el único sin un vecino fijo (cambia según el
+  // registro), así que sigue sin restricción extra.
+  const LADO_ABIERTO_POR_TIPO = { mongol: "izquierda", silbido: "derecha", cabeza: "izquierda" };
   zonas.forEach((zona) => {
     const yLinea = yBrackets + 8 + zona.fila * FILA_ALTO;
-    // Cuánto hueco YA EXISTE por encima de esta línea, sin inventar ninguno
-    // nuevo: si es la primera fila, lo que ya separa al teclado de ella
-    // (yBrackets+8, o sea GAP_TECLADO_BRACKETS+8); si no, la fila de arriba
-    // está justo a FILA_ALTO de distancia, como siempre.
-    const espacioArriba = zona.fila === 0 ? yBrackets + 8 - (yKeyboard + ALTO_BLANCA) : FILA_ALTO;
     cuerpo += mapaBracketSvg(
       pos, zona.desde, zona.hasta, yLinea, MAPA_COLORES[zona.tipo], zona.etiqueta, 9, pos.anchoTotal,
-      [zpX1, zpX2], true, zona.tipo === "silbido", LADO_ABIERTO_POR_TIPO[zona.tipo], espacioArriba
+      [zpX1, zpX2], true, false, LADO_ABIERTO_POR_TIPO[zona.tipo]
     );
   });
 
