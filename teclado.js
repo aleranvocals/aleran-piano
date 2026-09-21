@@ -115,6 +115,15 @@ function inicializarPiano(manejarClic) {
     clic(parseInt(tecla.dataset.midi, 10));
   });
 
+  // El teclado va de Do1 a Do6, pero arrancar mostrando el extremo mas grave
+  // (Do1) no le sirve a casi nadie -- se abre ya centrado en Do3-Do5, el
+  // rango donde canta la mayoria, en vez de obligar a desplazarse a mano
+  // cada vez que se abre la pagina. Tiene que ir ANTES de
+  // configurarDesplazamientoPiano() para que el slider de abajo nazca ya
+  // sincronizado con este scroll inicial, no con el 0 por defecto.
+  const teclaDo3 = el("piano").querySelector('[data-midi="48"]');
+  if (teclaDo3) el("pianoContenedor").scrollLeft = teclaDo3.offsetLeft;
+
   configurarDesplazamientoPiano();
   configurarZoomPiano();
 }
