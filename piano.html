@@ -192,6 +192,10 @@
     <div class="acciones" id="accionesVolverCifrado" hidden>
       <button id="btnGuardarYVolver" class="boton principal" type="button">💾 Guardar y volver al Cifrado</button>
     </div>
+    <!-- Aviso propio de este panel: el #estado compartido de más abajo queda
+         demasiado lejos de estos botones (varias secciones de por medio), así
+         que un error aquí pasaba desapercibido, sobre todo en móvil. -->
+    <p id="estadoPersonalizada" class="estado" aria-live="polite"></p>
   </section>
 
   <section id="panel-solfeo" class="panel" hidden>
@@ -322,7 +326,7 @@
 <script src="ritmo.js"></script>
 <script src="progreso.js"></script>
 <script src="teclado.js?v=5"></script>
-<script src="piano.js?v=4"></script>
+<script src="piano.js?v=5"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

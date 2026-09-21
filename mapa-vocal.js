@@ -471,6 +471,10 @@ function generarMapaVocal(silencioso) {
   if (primerError) {
     el("btnMapaDescargar").hidden = true;
     el("btnMapaDescargarPdf").hidden = true;
+    // Sin esto, el último mapa válido se quedaba visible debajo del aviso de
+    // error -- parecía que ese mapa (ya desactualizado) seguía siendo bueno,
+    // aunque los botones de descarga ya estuvieran ocultos.
+    el("mapaContenedor").innerHTML = "";
     if (silencioso) return; // todavía escribiendo (campo vacío o nota a medias): sin aviso en el texto de estado
     estado.textContent = primerError.message;
     return;

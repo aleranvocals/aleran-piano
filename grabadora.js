@@ -109,7 +109,15 @@ async function renderizarTomas() {
     const info = document.createElement("div");
     info.className = "grabacion-info";
     const nombre = toma.etiqueta || "Toma sin nombre";
-    info.innerHTML = `<span class="grabacion-etiqueta">${nombre}</span><span class="grabacion-detalle">${formatoFechaGrabacion(toma.fecha)} · ${formatoDuracionGrabacion(toma.duracionSeg)}</span>`;
+    // El nombre lo escribe el propio usuario -- nunca a innerHTML sin
+    // escapar, o un nombre como "<img src=x onerror=...>" se ejecutaría.
+    const etiquetaEl = document.createElement("span");
+    etiquetaEl.className = "grabacion-etiqueta";
+    etiquetaEl.textContent = nombre;
+    const detalleEl = document.createElement("span");
+    detalleEl.className = "grabacion-detalle";
+    detalleEl.textContent = `${formatoFechaGrabacion(toma.fecha)} · ${formatoDuracionGrabacion(toma.duracionSeg)}`;
+    info.append(etiquetaEl, detalleEl);
 
     const audio = document.createElement("audio");
     audio.controls = true;

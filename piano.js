@@ -469,7 +469,7 @@ function crearCeldaPersonalizada(unidad, indice, agrupado) {
       } else {
         unidad.midi = nombreAMidi("Do3");
         unidad._necesitaCorregirNota = true;
-        el("estado").textContent = `"${unidad.texto || "(vacío)"}" no es una nota reconocible -- se le puso Do3 de punto de partida, corrígela escribiendo el nombre real (ej. Do4, A4, Fa#3) en esa celda.`;
+        avisarPersonalizada(`"${unidad.texto || "(vacío)"}" no es una nota reconocible -- se le puso Do3 de punto de partida, corrígela escribiendo el nombre real (ej. Do4, A4, Fa#3) en esa celda.`);
       }
     } else {
       unidad._ultimoMidi = unidad.midi;
@@ -576,6 +576,16 @@ function cargarPersonalizadaDesdeCifradoSiHaceFalta() {
   }
 }
 
+// El #estado compartido de la página queda varias secciones por debajo de
+// los botones propios de Personalizada (Usar notas/Descargar/Abrir) -- sin
+// esto, un error ahí era técnicamente visible pero fuera de la vista en
+// cualquier pantalla que no fuera muy alta, sobre todo en móvil.
+function avisarPersonalizada(mensaje) {
+  el("estado").textContent = mensaje;
+  const local = el("estadoPersonalizada");
+  if (local) local.textContent = mensaje;
+}
+
 function inicializarPersonalizada() {
   el("btnModoSimple").addEventListener("click", () => fijarModoMusico(false));
   el("btnModoMusico").addEventListener("click", () => fijarModoMusico(true));
@@ -590,10 +600,11 @@ function inicializarPersonalizada() {
       midis = parsearNotasPersonalizadas(el("notasPersonalizadas").value);
     } catch (err) {
       marcarCampoNotaInvalido(el("notasPersonalizadas"), true, err.message);
-      el("estado").textContent = err.message;
+      avisarPersonalizada(err.message);
       return;
     }
     marcarCampoNotaInvalido(el("notasPersonalizadas"), false);
+    avisarPersonalizada("");
     midis.forEach((midi) => unidadesPersonalizadas.push({ texto: midiANombre(midi), midi, figura: "negra" }));
     el("notasPersonalizadas").value = "";
     invalidarSecuencia();
@@ -611,7 +622,7 @@ function inicializarPersonalizada() {
 
   el("btnDescargarMelodia").addEventListener("click", () => {
     if (unidadesPersonalizadas.length === 0) {
-      el("estado").textContent = "No hay nada que descargar todavía.";
+      avisarPersonalizada("No hay nada que descargar todavía.");
       return;
     }
     const datos = {
@@ -648,9 +659,9 @@ function inicializarPersonalizada() {
       fijarModoMusico(!!datos.modoMusico);
       personalizadaLineaId = null;
       invalidarSecuencia();
-      el("estado").textContent = "Melodía cargada.";
+      avisarPersonalizada("Melodía cargada.");
     } catch (err) {
-      el("estado").textContent = `No se pudo abrir el archivo: ${err.message}`;
+      avisarPersonalizada(`No se pudo abrir el archivo: ${err.message}`);
     } finally {
       e.target.value = "";
     }
