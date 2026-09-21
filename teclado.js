@@ -58,12 +58,27 @@ function construirTeclasPiano() {
 
 /** Al tocar una tecla sin más contexto (páginas que no necesitan decidir
  * nada especial), simplemente se previsualiza la nota. */
+let ultimaNotaPrevisualizada = null;
+
 function previsualizarNotaPiano(midi) {
   if (!window.PianoEngine) return;
+  // reproducirSecuencia() usa un token compartido para poder cortar en seco
+  // una reproducción vieja cuando arranca una nueva (correcto para
+  // secuencias largas) -- pero eso significa que si tocas otra tecla antes
+  // de que termine la previsualización de 0.6s de la anterior, el onNotaFin
+  // de la vieja NUNCA llega a dispararse (el token ya cambió), y esa tecla
+  // se queda "encendida" para siempre aunque ya no suene nada. Se apaga a
+  // mano aquí, sin depender de ese callback que puede no llegar.
+  if (ultimaNotaPrevisualizada !== null) marcarTeclaActiva(ultimaNotaPrevisualizada, false);
+  ultimaNotaPrevisualizada = midi;
+
   const volumen = parseFloat(el("volumen") ? el("volumen").value : "0.85") || 0.85;
   window.PianoEngine.reproducirSecuencia([{ midi, duracion: 0.6 }], volumen, {
     onNotaInicio: (m) => marcarTeclaActiva(m, true),
-    onNotaFin: (m) => marcarTeclaActiva(m, false),
+    onNotaFin: (m) => {
+      marcarTeclaActiva(m, false);
+      if (ultimaNotaPrevisualizada === m) ultimaNotaPrevisualizada = null;
+    },
   });
 }
 
