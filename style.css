@@ -892,6 +892,43 @@ input[type="checkbox"] {
   padding-bottom: 0.35rem;
 }
 
+.panel-vincular {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.25rem 1.25rem;
+  margin-top: 1.75rem;
+}
+
+.panel-vincular .titulo-seccion {
+  margin-top: 0;
+}
+
+.vincular-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.vincular-fila input[type="text"] {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.boton.pequeno {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.nota-vincular {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.75rem 0 0;
+  line-height: 1.5;
+}
+
 .calendario-grid {
   display: flex;
   gap: 3px;
