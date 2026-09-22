@@ -30,6 +30,10 @@ function renderizarProgreso() {
   const intTotal = Progreso.obtener("intervalosTotal", 0);
   agregar("Intervalos acertados", intTotal > 0 ? `${intAciertos}/${intTotal} (${Math.round((intAciertos / intTotal) * 100)}%)` : "—");
 
+  const acAciertos = Progreso.obtener("acordesAciertos", 0);
+  const acTotal = Progreso.obtener("acordesTotal", 0);
+  agregar("Acordes acertados", acTotal > 0 ? `${acAciertos}/${acTotal} (${Math.round((acAciertos / acTotal) * 100)}%)` : "—");
+
   const notaAciertos = Progreso.obtener("notasquizAciertos", 0);
   const notaTotal = Progreso.obtener("notasquizTotal", 0);
   agregar(
@@ -115,16 +119,16 @@ const LOGROS = [
   {
     icono: "👂",
     nombre: "Oído entrenado",
-    descripcion: "Responde 50 preguntas entre Intervalos y Adivina la nota.",
-    cumplido: (d) => (d.intervalosTotal || 0) + (d.notasquizTotal || 0) >= 50,
+    descripcion: "Responde 50 preguntas entre Intervalos, Acordes y Adivina la nota.",
+    cumplido: (d) => (d.intervalosTotal || 0) + (d.acordesTotal || 0) + (d.notasquizTotal || 0) >= 50,
   },
   {
     icono: "🎯",
     nombre: "Precisión de oro",
     descripcion: "Al menos 20 preguntas de oído respondidas con 80% de aciertos o más.",
     cumplido: (d) => {
-      const total = (d.intervalosTotal || 0) + (d.notasquizTotal || 0);
-      const aciertos = (d.intervalosAciertos || 0) + (d.notasquizAciertos || 0);
+      const total = (d.intervalosTotal || 0) + (d.acordesTotal || 0) + (d.notasquizTotal || 0);
+      const aciertos = (d.intervalosAciertos || 0) + (d.acordesAciertos || 0) + (d.notasquizAciertos || 0);
       return total >= 20 && aciertos / total >= 0.8;
     },
   },

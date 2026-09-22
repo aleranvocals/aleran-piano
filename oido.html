@@ -5,14 +5,14 @@
 <script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Oído — Áleran Vocals</title>
-<meta name="description" content="Juegos de entrenamiento auditivo: adivina el intervalo, adivina la nota en el piano, y Simon dice. No necesitan micrófono." />
+<meta name="description" content="Juegos de entrenamiento auditivo: intervalos, acordes, adivina la nota y Simon dice, con niveles de dificultad progresivos. No necesitan micrófono." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://aleran-piano.vercel.app/oido.html" />
 <meta property="og:title" content="Oído — Áleran Vocals" />
-<meta property="og:description" content="Juegos de entrenamiento auditivo: adivina el intervalo, adivina la nota en el piano, y Simon dice. No necesitan micrófono." />
+<meta property="og:description" content="Juegos de entrenamiento auditivo: intervalos, acordes, adivina la nota y Simon dice, con niveles de dificultad progresivos. No necesitan micrófono." />
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Oído — Áleran Vocals" />
-<meta name="twitter:description" content="Juegos de entrenamiento auditivo: adivina el intervalo, adivina la nota en el piano, y Simon dice. No necesitan micrófono." />
+<meta name="twitter:description" content="Juegos de entrenamiento auditivo: intervalos, acordes, adivina la nota y Simon dice, con niveles de dificultad progresivos. No necesitan micrófono." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
@@ -27,7 +27,7 @@
 <div class="app">
   <header class="cabecera">
     <h1>🧠 Oído</h1>
-    <p class="subtitulo">Intervalos, adivina la nota y Simon dice — entrenamiento auditivo, sin micrófono.</p>
+    <p class="subtitulo">Intervalos, acordes, adivina la nota y Simon dice — entrenamiento auditivo, sin micrófono.</p>
   </header>
 
   <nav class="nav-principal">
@@ -63,19 +63,56 @@
 
   <div class="tabs" role="tablist">
     <button class="subtab activo" data-oido="intervalos" role="tab" aria-selected="true">Intervalos</button>
+    <button class="subtab" data-oido="acordes" role="tab" aria-selected="false">Acordes</button>
     <button class="subtab" data-oido="notas" role="tab" aria-selected="false">Adivina la nota</button>
     <button class="subtab" data-oido="simon" role="tab" aria-selected="false">Simon dice</button>
   </div>
 
   <section id="panel-intervalos" class="panel">
-    <p class="descripcion">Suenan dos notas seguidas. ¿Qué intervalo es?</p>
+    <p class="descripcion">¿Qué intervalo suena?</p>
     <p class="marcador">Aciertos: <strong id="intervalosAciertos">0</strong> / <span id="intervalosTotal">0</span> · Racha: <strong id="intervalosRacha">0</strong></p>
+    <label class="campo">
+      <span>Nivel: <output id="intervalosNivelValor">1</output> / 8</span>
+      <input type="range" id="intervalosNivel" min="1" max="8" step="1" value="1" />
+    </label>
+    <p id="intervalosNivelDescripcion" class="descripcion"></p>
+    <label class="campo">
+      <span>Cómo suena</span>
+      <select id="intervalosDireccion">
+        <option value="ascendente">Ascendente (grave → agudo)</option>
+        <option value="descendente">Descendente (agudo → grave)</option>
+        <option value="armonico">Armónico (las dos notas juntas)</option>
+      </select>
+    </label>
     <div class="acciones">
       <button id="btnIntervaloNueva" class="boton principal">🔊 Nueva pregunta</button>
       <button id="btnIntervaloRepetir" class="boton" disabled>🔁 Repetir sonido</button>
     </div>
     <div id="intervalosOpciones" class="opciones-quiz"></div>
     <p id="intervalosFeedback" class="estado" aria-live="polite"></p>
+  </section>
+
+  <section id="panel-acordes" class="panel" hidden>
+    <p class="descripcion">Suena un acorde. ¿Qué tipo es?</p>
+    <p class="marcador">Aciertos: <strong id="acordesAciertos">0</strong> / <span id="acordesTotal">0</span> · Racha: <strong id="acordesRacha">0</strong></p>
+    <label class="campo">
+      <span>Nivel: <output id="acordesNivelValor">1</output> / 6</span>
+      <input type="range" id="acordesNivel" min="1" max="6" step="1" value="1" />
+    </label>
+    <p id="acordesNivelDescripcion" class="descripcion"></p>
+    <label class="campo">
+      <span>Cómo suena</span>
+      <select id="acordesModo">
+        <option value="armonico">Armónico (todas las notas juntas)</option>
+        <option value="arpegiado">Arpegiado (una nota tras otra)</option>
+      </select>
+    </label>
+    <div class="acciones">
+      <button id="btnAcordeNueva" class="boton principal">🔊 Nueva pregunta</button>
+      <button id="btnAcordeRepetir" class="boton" disabled>🔁 Repetir sonido</button>
+    </div>
+    <div id="acordesOpciones" class="opciones-quiz"></div>
+    <p id="acordesFeedback" class="estado" aria-live="polite"></p>
   </section>
 
   <section id="panel-notasquiz" class="panel" hidden>
@@ -126,10 +163,10 @@
 
 <script src="smplr.iife.js"></script>
 <script src="escalas.js?v=6"></script>
-<script src="audio.js?v=2"></script>
+<script src="audio.js?v=3"></script>
 <script src="progreso.js?v=1"></script>
 <script src="teclado.js?v=5"></script>
-<script src="oido.js?v=2"></script>
+<script src="oido.js?v=3"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

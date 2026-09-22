@@ -125,28 +125,36 @@ async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
   let cuando = pulso !== null ? pulso : ctx.currentTime + 0.05;
 
   const ahora = ctx.currentTime;
+  // `midi` normalmente es un número (o -1 para silencio) -- pero también
+  // puede ser un array de números, para un ACORDE: todas esas notas arrancan
+  // en el mismo instante `tiempoInicio` y comparten la misma duración, en vez
+  // de sonar una tras otra. Se agenda igual que una nota suelta (mismo
+  // piano.start/time), así que sigue viviendo en el mismo reloj y en el
+  // mismo sistema de cancelación que el resto -- "Detener" también corta un
+  // acorde a medias.
   const programados = eventos.map(({ midi, duracion }) => {
     const tiempoInicio = cuando;
     cuando += duracion;
-    if (midi !== -1) {
-      const cancelar = piano.start({ note: clampMidi(midi), duration: duracion, time: tiempoInicio });
+    const notas = Array.isArray(midi) ? midi : midi !== -1 ? [midi] : [];
+    notas.forEach((nota) => {
+      const cancelar = piano.start({ note: clampMidi(nota), duration: duracion, time: tiempoInicio });
       if (typeof cancelar === "function") cancelacionesActivas.push(cancelar);
       const retrasoMs = Math.max(0, (tiempoInicio - ahora) * 1000);
       if (onNotaInicio) {
         temporizadoresUiActivos.push(
           setTimeout(() => {
-            if (tokenReproduccion === miToken) onNotaInicio(midi);
+            if (tokenReproduccion === miToken) onNotaInicio(nota);
           }, retrasoMs)
         );
       }
       if (onNotaFin) {
         temporizadoresUiActivos.push(
           setTimeout(() => {
-            if (tokenReproduccion === miToken) onNotaFin(midi);
+            if (tokenReproduccion === miToken) onNotaFin(nota);
           }, retrasoMs + duracion * 1000)
         );
       }
-    }
+    });
     return { midi, duracion, tiempoInicio };
   });
   const tiempoFinal = cuando;
