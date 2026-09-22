@@ -71,7 +71,12 @@ function mostrarEstadoDesvinculado() {
 }
 
 function inicializarVincularCoach() {
-  const codigoGuardado = localStorage.getItem(PROGRESO_CODIGO_CLAVE);
+  let codigoGuardado = null;
+  try {
+    codigoGuardado = localStorage.getItem(PROGRESO_CODIGO_CLAVE);
+  } catch {
+    // almacenamiento no disponible (modo privado, cuota llena...): se sigue sin código guardado
+  }
 
   if (codigoGuardado) {
     mostrarEstadoVinculado(codigoGuardado);
@@ -95,7 +100,11 @@ function inicializarVincularCoach() {
     boton.disabled = false;
     boton.textContent = "Sincronizar";
     if (ok) {
-      localStorage.setItem(PROGRESO_CODIGO_CLAVE, codigo);
+      try {
+        localStorage.setItem(PROGRESO_CODIGO_CLAVE, codigo);
+      } catch {
+        // almacenamiento no disponible: la sincronización de este envío igual funcionó
+      }
       mostrarEstadoVinculado(codigo);
     }
   });
@@ -103,12 +112,22 @@ function inicializarVincularCoach() {
   el("btnVincularActualizar").addEventListener("click", async () => {
     const boton = el("btnVincularActualizar");
     boton.disabled = true;
-    await sincronizarProgreso(codigoGuardado || localStorage.getItem(PROGRESO_CODIGO_CLAVE));
+    let codigoActual = codigoGuardado;
+    try {
+      codigoActual = codigoGuardado || localStorage.getItem(PROGRESO_CODIGO_CLAVE);
+    } catch {
+      // almacenamiento no disponible: se usa el código ya cargado al inicio, si había
+    }
+    await sincronizarProgreso(codigoActual);
     boton.disabled = false;
   });
 
   el("btnVincularQuitar").addEventListener("click", () => {
-    localStorage.removeItem(PROGRESO_CODIGO_CLAVE);
+    try {
+      localStorage.removeItem(PROGRESO_CODIGO_CLAVE);
+    } catch {
+      // almacenamiento no disponible: no hay nada que borrar de verdad
+    }
     mostrarEstadoDesvinculado();
     el("vincularAviso").textContent = "";
   });
