@@ -1761,4 +1761,36 @@ input[type="checkbox"] {
   .cabecera h1 {
     font-size: 1.7rem;
   }
+
+  /* El menú de 11 enlaces se envolvía en 5 filas en el celular -- toda la
+     primera pantalla era navegación, y el contenido de verdad (el piano, el
+     ejercicio) quedaba fuera de vista sin hacer scroll. Una sola fila que se
+     desliza horizontalmente (patrón de pestañas típico en apps móviles)
+     ocupa una fracción de esa altura y sigue mostrando cada enlace, solo que
+     hay que deslizar para ver los de más allá -- la página activa siempre
+     se ve resaltada, así que nunca se pierde de dónde estás. */
+  .nav-principal {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.2rem;
+    margin-left: -1.25rem;
+    margin-right: -1.25rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .nav-principal::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-principal a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .nav-sep {
+    flex: 0 0 auto;
+  }
 }
