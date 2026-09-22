@@ -1763,34 +1763,34 @@ input[type="checkbox"] {
   }
 
   /* El menú de 11 enlaces se envolvía en 5 filas en el celular -- toda la
-     primera pantalla era navegación, y el contenido de verdad (el piano, el
-     ejercicio) quedaba fuera de vista sin hacer scroll. Una sola fila que se
-     desliza horizontalmente (patrón de pestañas típico en apps móviles)
-     ocupa una fracción de esa altura y sigue mostrando cada enlace, solo que
-     hay que deslizar para ver los de más allá -- la página activa siempre
-     se ve resaltada, así que nunca se pierde de dónde estás. */
+     primera pantalla era navegación, antes de ver nada de contenido real.
+     Un carrusel horizontal lo arreglaba en altura, pero escondía enlaces
+     fuera de vista sin ningún indicio de que había más (probado: no se
+     notaba que hubiera varios modos). Una cuadrícula fija de 3 columnas deja
+     ver los 11 de un vistazo, sin desplazar nada, y con celdas iguales se ve
+     como un menú de verdad -- no como botones sueltos de tamaño variable. */
   .nav-principal {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 0.2rem;
-    margin-left: -1.25rem;
-    margin-right: -1.25rem;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
-  }
-
-  .nav-principal::-webkit-scrollbar {
-    display: none;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
   }
 
   .nav-principal a {
-    flex: 0 0 auto;
-    white-space: nowrap;
+    flex: initial;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.55rem 0.3rem;
+    font-size: 0.82rem;
+    line-height: 1.25;
   }
 
+  /* Los separadores agrupaban visualmente el menú en una fila (Guía |
+     herramientas | Progreso | consulta) -- en una cuadrícula de 3 columnas
+     ya no caen entre los grupos correctos, así que estorban más de lo que
+     ayudan. La cuadrícula misma ya se ve ordenada sin ellos. */
   .nav-sep {
-    flex: 0 0 auto;
+    display: none;
   }
 }
