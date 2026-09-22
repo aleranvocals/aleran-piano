@@ -52,6 +52,7 @@
     <p class="descripcion">Sobre cómo usar alguna herramienta, sobre técnica vocal, o sobre clases -- escribe y responde él mismo, no un bot.</p>
     <div class="acciones">
       <a
+        id="btnDudaWhatsapp"
         class="boton principal"
         href="https://wa.me/34632926726?text=Hola%20%C3%81leran!%20Tengo%20una%20duda%20sobre%20las%20herramientas%20de%20pr%C3%A1ctica%3A%20"
         target="_blank"
@@ -63,27 +64,27 @@
     <p class="descripcion">
       Cuenta qué herramienta era, qué hiciste justo antes y qué pasó (o qué
       esperabas que pasara) -- cuanto más concreto, más rápido se puede
-      arreglar. Va directo a Áleran, nunca a un chat compartido.
+      arreglar. Escríbelo aquí abajo (opcional, pero ayuda mucho) y se manda
+      completo a Telegram al toque, además de dejarlo ya escrito en
+      WhatsApp o email.
     </p>
+    <label class="campo">
+      <span>¿Qué pasó?</span>
+      <textarea id="falloDetalle" rows="3" placeholder="Ej: en el Mapa Vocal, al darle Generar no pasó nada..."></textarea>
+    </label>
     <div class="acciones">
-      <a
-        class="boton principal"
-        href="https://wa.me/34632926726?text=Hola%20%C3%81leran!%20Encontr%C3%A9%20un%20fallo%20en%20las%20herramientas%20de%20pr%C3%A1ctica.%0A%0A%F0%9F%93%B1%20Herramienta%3A%20%0A%F0%9F%93%B2%20Dispositivo%2Fnavegador%3A%20%0A%F0%9F%90%9B%20Qu%C3%A9%20pas%C3%B3%3A%20"
-        target="_blank"
-        rel="noopener"
-      >🐛 Reportar por WhatsApp</a>
-      <a
-        class="boton"
-        href="mailto:aleranvocals@gmail.com?subject=Fallo%20en%20herramientas%20de%20pr%C3%A1ctica&body=Herramienta%3A%20%0ADispositivo%2Fnavegador%3A%20%0AQu%C3%A9%20pas%C3%B3%3A%20"
-      >📧 Reportar por email</a>
+      <button id="btnFalloWhatsapp" type="button" class="boton principal">🐛 Reportar por WhatsApp</button>
+      <button id="btnFalloEmail" type="button" class="boton">📧 Reportar por email</button>
     </div>
   </section>
 
   <footer class="pie">
-    <p>Nada de esto se envía a ningún sistema automático -- lo lee Áleran directamente.</p>
+    <p>Cada botón también manda un aviso a Telegram en paralelo, como respaldo -- para que nada se quede sin ver aunque no termines de enviarlo en WhatsApp o en el correo. Nada de esto pasa por un sistema automático que responda por Áleran: siempre lo lee y contesta él.</p>
   </footer>
 </div>
 
+<script src="escalas.js?v=6"></script>
+<script src="soporte.js?v=1"></script>
 <script src="nav.js?v=1"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
