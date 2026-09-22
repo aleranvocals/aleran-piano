@@ -93,19 +93,33 @@
       queda una sola casilla. Toca el <strong>+</strong> de una sílaba para
       marcarla con una técnica (vibrato, twang, voz de cabeza...). Todo el
       texto y las notas son editables — corrige lo que el programa se
-      equivoque. El botón <strong>🎵 Llevar al editor de ritmo</strong> de
-      cada línea manda esa frase (con las notas que le pongas) al editor de
-      ritmo de Piano; al volver de ahí, esa línea tiene un botón
-      <strong>▶ Reproducir</strong> que la toca con tono y ritmo reales.
+      equivoque. Cada línea tiene su propio botón
+      <strong>▶ Reproducir</strong> que la toca con las notas que le
+      pusiste (una nota = una negra, por defecto). El botón
+      <strong>🎵 Llevar al editor de ritmo</strong> es opcional, solo para
+      cuando quieras un ritmo real (con silencios, corcheas, compases...)
+      en vez de negras parejas.
     </p>
     <label class="campo">
       <span>Tempo para reproducir (BPM)</span>
       <input type="number" id="cifradoBpm" min="30" max="300" value="100" />
     </label>
+    <label class="campo">
+      <span>Métrica del metrónomo (tiempos de pausa entre cada frase/renglón)</span>
+      <select id="cifradoMetrica">
+        <option value="2">2 tiempos (2/4)</option>
+        <option value="3">3 tiempos (3/4)</option>
+        <option value="4" selected>4 tiempos (4/4)</option>
+      </select>
+    </label>
     <div class="piano-zoom">
       <span aria-hidden="true">🔍−</span>
       <input type="range" id="cifradoZoom" min="0.8" max="1.6" step="0.1" value="1" aria-label="Tamaño y espacio del cifrado" />
       <span aria-hidden="true">🔍+</span>
+    </div>
+    <div class="acciones" id="cifradoAccionesCancion" hidden>
+      <button id="btnCifradoReproducirTodo" class="boton principal" type="button">▶ Reproducir toda la canción</button>
+      <button id="btnCifradoDetenerTodo" class="boton" type="button" disabled>⏹ Detener</button>
     </div>
     <div id="cifradoSalida"></div>
     <div class="acciones" id="cifradoAcciones" hidden>
@@ -131,8 +145,8 @@
 
 <script src="smplr.iife.js"></script>
 <script src="escalas.js?v=6"></script>
-<script src="audio.js?v=3"></script>
-<script src="cifrado.js?v=10"></script>
+<script src="audio.js?v=4"></script>
+<script src="cifrado.js?v=11"></script>
 <script src="nav.js?v=1"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>

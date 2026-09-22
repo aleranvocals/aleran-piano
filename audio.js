@@ -100,10 +100,17 @@ function cancelarProgramacionActiva() {
  * de audio) aunque hubiera empezado perfecto. Al anclar todo al mismo
  * reloj, ninguno de los dos se desvía del otro sin importar cuánto dure.
  *
- * callbacks admite: onCargando(bool), onNotaInicio(midi), onNotaFin(midi), onTerminar().
+ * callbacks admite: onCargando(bool), onNotaInicio(midi), onNotaFin(midi),
+ * onEventoInicio(indice), onEventoFin(indice), onTerminar().
+ *
+ * onNotaInicio/onNotaFin identifican la nota por su midi -- ambiguo si dos
+ * eventos distintos comparten la misma nota (pasa seguido en una canción
+ * completa). onEventoInicio/onEventoFin identifican por posición en el
+ * array `eventos` en cambio, sin ambigüedad -- para resaltar la celda
+ * exacta que está sonando (Cifrado), no solo "alguna nota igual a esta".
  */
 async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
-  const { onCargando, onNotaInicio, onNotaFin, onTerminar } = callbacks;
+  const { onCargando, onNotaInicio, onNotaFin, onEventoInicio, onEventoFin, onTerminar } = callbacks;
   const miToken = ++tokenReproduccion;
   const piano = obtenerPianoEnVivo();
   piano.stop();
@@ -132,14 +139,14 @@ async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
   // piano.start/time), así que sigue viviendo en el mismo reloj y en el
   // mismo sistema de cancelación que el resto -- "Detener" también corta un
   // acorde a medias.
-  const programados = eventos.map(({ midi, duracion }) => {
+  const programados = eventos.map(({ midi, duracion }, indice) => {
     const tiempoInicio = cuando;
     cuando += duracion;
     const notas = Array.isArray(midi) ? midi : midi !== -1 ? [midi] : [];
+    const retrasoMs = Math.max(0, (tiempoInicio - ahora) * 1000);
     notas.forEach((nota) => {
       const cancelar = piano.start({ note: clampMidi(nota), duration: duracion, time: tiempoInicio });
       if (typeof cancelar === "function") cancelacionesActivas.push(cancelar);
-      const retrasoMs = Math.max(0, (tiempoInicio - ahora) * 1000);
       if (onNotaInicio) {
         temporizadoresUiActivos.push(
           setTimeout(() => {
@@ -155,6 +162,20 @@ async function reproducirSecuencia(eventos, volumen, callbacks = {}) {
         );
       }
     });
+    if (onEventoInicio) {
+      temporizadoresUiActivos.push(
+        setTimeout(() => {
+          if (tokenReproduccion === miToken) onEventoInicio(indice);
+        }, retrasoMs)
+      );
+    }
+    if (onEventoFin) {
+      temporizadoresUiActivos.push(
+        setTimeout(() => {
+          if (tokenReproduccion === miToken) onEventoFin(indice);
+        }, retrasoMs + duracion * 1000)
+      );
+    }
     return { midi, duracion, tiempoInicio };
   });
   const tiempoFinal = cuando;

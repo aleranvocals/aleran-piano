@@ -1618,6 +1618,15 @@ input[type="checkbox"] {
   outline: 1px solid var(--crimson-bright);
 }
 
+/* La nota que está sonando ahora mismo (reproducir línea o canción
+   completa) -- mismo lenguaje visual que .tecla.activa en el piano, para
+   que "esto está sonando" se vea igual en todo el sitio. */
+.celda-nota.sonando {
+  background: var(--crimson-bright) !important;
+  color: var(--claro-fijo) !important;
+  border-color: var(--crimson-bright);
+}
+
 .marcas-menu {
   position: absolute;
   z-index: 40;

@@ -534,6 +534,7 @@ function renderCancion() {
     elSalida.appendChild(contenedor);
   });
   elAcciones.hidden = cancion.length === 0;
+  document.getElementById("cifradoAccionesCancion").hidden = cancion.length === 0;
 }
 
 function crearAccionesLinea(lineaObj, esPrimera) {
@@ -549,14 +550,14 @@ function crearAccionesLinea(lineaObj, esPrimera) {
   btnRitmo.addEventListener("click", () => llevarLineaAlEditorDeRitmo(lineaObj));
   fila.appendChild(btnRitmo);
 
-  if (lineaObj.ritmo) {
-    const btnReproducir = document.createElement("button");
-    btnReproducir.type = "button";
-    btnReproducir.className = "boton principal";
-    btnReproducir.textContent = "▶ Reproducir";
-    btnReproducir.addEventListener("click", () => reproducirLinea(lineaObj));
-    fila.appendChild(btnReproducir);
-  }
+  // Siempre visible, tenga o no ritmo real asignado -- sin .ritmo suena en
+  // negras parejas con las notas que ya haya en la línea (ver eventosLinea).
+  const btnReproducir = document.createElement("button");
+  btnReproducir.type = "button";
+  btnReproducir.className = "boton principal";
+  btnReproducir.textContent = "▶ Reproducir";
+  btnReproducir.addEventListener("click", () => reproducirLinea(lineaObj));
+  fila.appendChild(btnReproducir);
 
   lineaObj._elAcciones = fila;
   return fila;
@@ -955,19 +956,146 @@ function llevarLineaAlEditorDeRitmo(lineaObj) {
   window.location.href = "piano.html";
 }
 
+// Sin pasar por el editor de ritmo, cada grupo de notas (gruposDeNotas ya
+// junta las sílabas enlazadas en una sola) suena como negra pareja -- un
+// ritmo neutro pero real, para poder escuchar la melodía de inmediato sin
+// obligar a nadie a armar un ritmo primero. Nota vacía o mal escrita ->
+// silencio (nunca rompe la reproducción, igual que el resto del sitio).
+function unidadesLineaPorDefecto(lineaObj) {
+  return gruposDeNotas(lineaObj).map((grupo) => {
+    const notaTexto = (lineaObj.silabas[grupo.inicio].nota || "").trim();
+    let midi = null;
+    if (notaTexto) {
+      try {
+        midi = nombreAMidi(notaTexto);
+      } catch {
+        midi = null;
+      }
+    }
+    return { midi, figura: "negra" };
+  });
+}
+
+// Único punto que decide "qué suena" para una línea: ritmo real si ya pasó
+// por el editor de ritmo (Modo Simple/Músico), negras parejas si no.
+function eventosLinea(lineaObj, bpm) {
+  const unidades = lineaObj.ritmo ? lineaObj.ritmo.unidades : unidadesLineaPorDefecto(lineaObj);
+  return unidadesAEventos(unidades, bpm);
+}
+
 async function reproducirLinea(lineaObj) {
   if (!window.PianoEngine) {
     elEstado.textContent = "El motor de audio todavía se está inicializando, espera un segundo…";
     return;
   }
-  if (!lineaObj.ritmo) return;
-  const bpm = parseInt(elBpm.value, 10) || lineaObj.ritmo.bpm || 100;
-  const eventos = unidadesAEventos(lineaObj.ritmo.unidades, bpm);
+  const bpm = parseInt(elBpm.value, 10) || (lineaObj.ritmo && lineaObj.ritmo.bpm) || 100;
+  const eventos = eventosLinea(lineaObj, bpm);
+  if (eventos.length === 0) return;
+
+  // El resaltado por índice solo es exacto cuando NO hay ligaduras (Modo
+  // Músico puede fundir varias unidades en un solo evento, desalineando el
+  // índice del evento con el de la celda) -- en negras parejas (el caso
+  // por defecto, sin .ritmo) el índice de evento y el de celda-nota
+  // siempre coinciden 1 a 1, así que ahí sí se resalta con seguridad.
+  const notasEl = !lineaObj.ritmo && lineaObj._el ? Array.from(lineaObj._el.querySelectorAll(".celda-nota")) : [];
+  const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
+  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(bpm, metrica);
   try {
-    await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {});
+    await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {
+      onEventoInicio: (i) => {
+        if (notasEl[i]) notasEl[i].classList.add("sonando");
+      },
+      onEventoFin: (i) => {
+        if (notasEl[i]) notasEl[i].classList.remove("sonando");
+      },
+    });
   } catch (err) {
     elEstado.textContent = `Error de audio: ${err.message}`;
+  } finally {
+    if (window.MetronomoEngine) window.MetronomoEngine.detener();
   }
+}
+
+// Junta las líneas de toda la canción en UNA sola llamada a
+// reproducirSecuencia (mismo reloj de audio para todo, sin ir encadenando
+// awaits línea por línea) con una pausa entre cada frase del largo de un
+// compás completo según la métrica elegida (2, 3 o 4 tiempos -- el mismo
+// número que acentúa el metrónomo) -- tanto entre líneas seguidas como tras
+// un encabezado de sección ([Verso], [Coro]...), para que suene como una
+// pausa real de respiración, no una nota pegada a la siguiente. Devuelve
+// también el mapa de qué índice de evento resalta qué celda -- solo para
+// las líneas sin .ritmo (ver nota de más arriba sobre por qué).
+function eventosCancionCompleta(bpm, metrica) {
+  const PAUSA_ENTRE_FRASES = metrica * figuraASegundos("negra", bpm);
+  const eventos = [];
+  const resaltarPorIndice = new Map();
+
+  cancion.forEach((bloque) => {
+    if (bloque.tipo === "seccion") {
+      if (eventos.length > 0) eventos.push({ midi: -1, duracion: PAUSA_ENTRE_FRASES });
+      return;
+    }
+    if (bloque.tipo !== "linea") return; // "espacio": sin notas, se salta
+
+    const eventosLineaActual = eventosLinea(bloque, bpm);
+    if (eventosLineaActual.length === 0) return;
+    const notasEl = !bloque.ritmo && bloque._el ? Array.from(bloque._el.querySelectorAll(".celda-nota")) : [];
+    eventosLineaActual.forEach((ev, i) => {
+      if (notasEl[i]) resaltarPorIndice.set(eventos.length, notasEl[i]);
+      eventos.push(ev);
+    });
+    eventos.push({ midi: -1, duracion: PAUSA_ENTRE_FRASES });
+  });
+
+  return { eventos, resaltarPorIndice };
+}
+
+let cancionCompletaReproduciendo = false;
+
+async function reproducirCancionCompleta() {
+  if (!window.PianoEngine || cancionCompletaReproduciendo) return;
+  const bpm = parseInt(elBpm.value, 10) || 100;
+  const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
+  const { eventos, resaltarPorIndice } = eventosCancionCompleta(bpm, metrica);
+  if (eventos.length === 0) {
+    elEstado.textContent = "No hay ninguna línea con notas para reproducir todavía.";
+    return;
+  }
+
+  cancionCompletaReproduciendo = true;
+  const btnReproducir = document.getElementById("btnCifradoReproducirTodo");
+  const btnDetener = document.getElementById("btnCifradoDetenerTodo");
+  btnReproducir.disabled = true;
+  btnDetener.disabled = false;
+  elEstado.textContent = "";
+  // El metrónomo suena por defecto mientras se reproduce, acentuando cada
+  // "metrica" tiempos -- el mismo número que se usa para la pausa entre
+  // frases, así el clic y la pausa cuentan el mismo compás.
+  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(bpm, metrica);
+  try {
+    await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {
+      onEventoInicio: (i) => {
+        const el = resaltarPorIndice.get(i);
+        if (el) el.classList.add("sonando");
+      },
+      onEventoFin: (i) => {
+        const el = resaltarPorIndice.get(i);
+        if (el) el.classList.remove("sonando");
+      },
+    });
+  } catch (err) {
+    elEstado.textContent = `Error de audio: ${err.message}`;
+  } finally {
+    cancionCompletaReproduciendo = false;
+    btnReproducir.disabled = false;
+    btnDetener.disabled = true;
+    if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  }
+}
+
+function detenerCancionCompleta() {
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  if (window.MetronomoEngine) window.MetronomoEngine.detener();
 }
 
 /* =========================================================
@@ -1007,6 +1135,9 @@ document.getElementById("btnCifradoReiniciar").addEventListener("click", () => {
 document.getElementById("btnCifradoImprimir").addEventListener("click", () => {
   window.print();
 });
+
+document.getElementById("btnCifradoReproducirTodo").addEventListener("click", reproducirCancionCompleta);
+document.getElementById("btnCifradoDetenerTodo").addEventListener("click", detenerCancionCompleta);
 
 document.getElementById("btnCifradoCopiar").addEventListener("click", async () => {
   const texto = generarTextoPlano();
