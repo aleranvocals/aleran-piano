@@ -5,7 +5,6 @@
  */
 
 let oidoModoActual = "intervalos";
-let pianoOidoYaCentrado = false;
 
 function volumenActual() {
   return parseFloat(el("volumen").value) || 0.85;
@@ -22,27 +21,17 @@ function cambiarSubmodoOido(modo) {
   el("panel-acordes").hidden = modo !== "acordes";
   el("panel-notasquiz").hidden = modo !== "notas";
   el("panel-simon").hidden = modo !== "simon";
-  // Intervalos y Acordes son de opción múltiple -- no hace falta tocar el
-  // piano para responder, así que no tiene sentido obligar a pasarlo de
-  // largo antes de llegar a la pregunta. Adivina la nota y Simon dice sí lo
-  // necesitan de verdad.
-  const necesitaPiano = modo === "notas" || modo === "simon";
-  el("bloquePianoOido").hidden = !necesitaPiano;
-
-  // inicializarPiano() centró el teclado en Do3 mientras este bloque estaba
-  // oculto (display:none) -- con el contenedor en 0x0 en ese momento, ese
-  // centrado (y el slider de desplazamiento, que se sincroniza a partir del
-  // mismo scroll) quedó en un estado inválido. Se repite UNA sola vez, la
-  // primera vez que el bloque se vuelve visible de verdad -- nunca más
-  // después, para no deshacerle a alguien un scroll manual que ya hizo.
-  if (necesitaPiano && !pianoOidoYaCentrado) {
-    pianoOidoYaCentrado = true;
-    const contenedor = el("pianoContenedor");
-    const teclaDo3 = el("piano").querySelector('[data-midi="48"]');
-    if (teclaDo3) contenedor.scrollLeft = teclaDo3.offsetLeft;
-    contenedor.dispatchEvent(new Event("scroll")); // resincroniza el slider de desplazamiento
-  }
 }
+
+// El piano es la ayuda visual central del kit: cada nota (o cada nota de un
+// acorde) se resalta al sonar, para que el cantante asocie lo que oye con
+// dónde vive en el teclado -- en vez de solo escuchar sin ver nada. Pasado
+// como callbacks a reproducirSecuencia(); con un acorde (midi = array),
+// audio.js llama a estos callbacks una vez por cada nota del array.
+const RESALTAR_TECLAS = {
+  onNotaInicio: (midi) => marcarTeclaActiva(midi, true),
+  onNotaFin: (midi) => marcarTeclaActiva(midi, false),
+};
 
 // --- Intervalos -------------------------------------------------------
 
@@ -119,7 +108,7 @@ function reproducirIntervalo() {
   window.PianoEngine.reproducirSecuencia(
     eventosIntervalo(intervaloRaiz, intervaloCorrecto, intervaloDireccionActual),
     volumenActual(),
-    {}
+    RESALTAR_TECLAS
   );
 }
 
@@ -230,7 +219,7 @@ function reproducirAcordeActual() {
   window.PianoEngine.reproducirSecuencia(
     eventosAcorde(acordeRaiz, acordeCorrecto, el("acordesModo").value),
     volumenActual(),
-    {}
+    RESALTAR_TECLAS
   );
 }
 
