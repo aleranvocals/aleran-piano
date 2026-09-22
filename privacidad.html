@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacidad — Áleran Vocals</title>
+<meta name="description" content="Qué datos usan las herramientas de práctica de Áleran Vocals, para qué, y qué se envía o no fuera de tu dispositivo." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://aleran-piano.vercel.app/privacidad.html" />
+<meta property="og:title" content="Privacidad — Áleran Vocals" />
+<meta property="og:description" content="Qué datos usan las herramientas de práctica de Áleran Vocals, para qué, y qué se envía o no fuera de tu dispositivo." />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Privacidad — Áleran Vocals" />
+<meta name="twitter:description" content="Qué datos usan las herramientas de práctica de Áleran Vocals, para qué, y qué se envía o no fuera de tu dispositivo." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css?v=13" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#93172c" />
+<link rel="icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🔒 Privacidad</h1>
+    <p class="subtitulo">Qué datos usan estas herramientas, para qué, y qué sale o no de tu dispositivo. En lenguaje llano, sin letra pequeña.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <a href="index.html">🏠 Inicio</a>
+    <a href="guia.html">🧭 Guía</a>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <a href="piano.html">🎹 Piano</a>
+    <a href="entrenamiento.html">🎤 Entrena</a>
+    <a href="oido.html">🧠 Oído</a>
+    <a href="rutina.html">📋 Rutina</a>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <a href="progreso.html">📈 Progreso</a>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <a href="catalogo.html">🎼 Catálogo</a>
+    <a href="glosario.html">📖 Glosario</a>
+    <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+    <a href="cifrado.html">🎵 Cifrado</a>
+    <a href="soporte.html">💬 Soporte</a>
+  </nav>
+
+  <section class="panel">
+    <h2 class="titulo-seccion">Resumen rápido</h2>
+    <p class="descripcion">
+      Esta app no tiene cuentas, no te pide registro, y no tiene ningún rastreador ni analítica de terceros.
+      Tu progreso vive en tu propio dispositivo. Solo salen datos de aquí en dos casos puntuales, y siempre porque tú decides hacerlo.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2 class="titulo-seccion">🎤 Micrófono</h2>
+    <p class="descripcion">
+      Herramientas como Entrenamiento, Oído y "Cantar y calificar" piden permiso de micrófono para detectar el tono y el volumen de tu voz en tiempo real.
+      Ese audio se procesa <strong>solo dentro de tu propio dispositivo</strong> — nunca se graba en archivo, nunca se envía a ningún servidor, y no queda guardado en ningún lado salvo que tú uses la Grabadora a propósito.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2 class="titulo-seccion">🎙️ Grabadora</h2>
+    <p class="descripcion">
+      Si usas la Grabadora, las tomas que hagas se guardan en el almacenamiento local de tu propio navegador/dispositivo (IndexedDB).
+      No se suben a ningún servidor. Si desinstalas la app o borras los datos del sitio, esas tomas desaparecen contigo, no quedan en ningún otro lado.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2 class="titulo-seccion">📈 Progreso y rachas</h2>
+    <p class="descripcion">
+      Tus récords (rango vocal, mejores tiempos, aciertos, racha de práctica, insignias) se guardan solo en tu dispositivo, con el navegador (localStorage).
+      No se sincronizan a ningún lado por defecto, y no tenemos forma de verlos nosotros.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2 class="titulo-seccion">🔗 Vincular con tu coach (opcional)</h2>
+    <p class="descripcion">
+      En la pestaña Progreso hay un botón opcional para vincular tu progreso con tu ficha de alumno, escribiendo el código que te dio tu profesor.
+      Si lo usas, se envía un resumen de tus récords (rango vocal, tiempos, aciertos, racha, insignias — nunca audio ni grabaciones) al sistema de gestión de alumnos de Áleran Vocals, para que tu profesor pueda verlo.
+      Esto solo pasa si tú escribes el código y le das al botón — nunca automáticamente.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2 class="titulo-seccion">💬 Soporte</h2>
+    <p class="descripcion">
+      Los botones de la sección Soporte (dudas o reportes de fallos) mandan el texto que escribas ahí a un canal privado de contacto de Áleran, para poder responderte.
+      Solo se envía si tú usas esos botones.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2 class="titulo-seccion">Lo que no hacemos</h2>
+    <p class="descripcion">
+      No usamos analítica de terceros, no usamos publicidad, no vendemos ni compartimos datos con nadie, no creamos perfiles, y no hay ningún inicio de sesión ni cuenta que crear.
+    </p>
+  </section>
+
+  <div class="cta-clases">
+    <p>¿Dudas sobre esto? Escríbele directo a Áleran desde <a href="soporte.html">Soporte</a>, o a <a href="mailto:aleranvocals@gmail.com">aleranvocals@gmail.com</a>.</p>
+  </div>
+
+  <footer class="pie">
+    <p>Última actualización: septiembre de 2026.</p>
+  </footer>
+</div>
+
+<script src="tema.js?v=1"></script>
+<script src="pwa.js?v=1"></script>
+</body>
+</html>
