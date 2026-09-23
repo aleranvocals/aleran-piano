@@ -278,17 +278,26 @@ body {
    la regla base siempre, en vez de vivir solo dentro de una media query de
    móvil. Antes, fuera de esa media query (cualquier ventana >480px, que es
    la mayoría de los navegadores de escritorio), el menú caía en flex-wrap y
-   se envolvía en filas irregulares de ancho variable -- una cuadrícula fija
-   de 4 columnas (12 enlaces = 3 filas exactas) se ve ordenada en cualquier
-   tamaño de ventana, no solo en el celular angosto. */
+   se envolvía en filas irregulares de ancho variable. Ahora el agrupamiento
+   es explícito en el HTML (una .nav-fila por fila con el número de enlaces
+   que le corresponde) en vez de depender de que una cuadrícula de N
+   columnas los reparta bien solo -- así Inicio/Guía pueden verse más
+   anchos, y las herramientas potentes quedan juntas en su propia fila. */
 .nav-principal {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
 }
 
+.nav-fila {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .nav-principal a {
+  flex: 1 1 0;
+  min-width: 0;
   appearance: none;
   border: 1px solid var(--line);
   background: var(--panel-2);
@@ -335,14 +344,6 @@ body {
 .nav-principal a.destacado.activo {
   background: var(--crimson);
   border-color: var(--crimson-bright);
-}
-
-/* Antes agrupaban visualmente el menú en una fila (Guía | herramientas |
-   Progreso | consulta) -- en una cuadrícula ya no caen entre los grupos
-   correctos, así que estorban más de lo que ayudan. La cuadrícula misma ya
-   se ve ordenada sin ellos. */
-.nav-sep {
-  display: none;
 }
 
 .hub-grid {
@@ -1200,6 +1201,31 @@ input[type="checkbox"] {
   margin: 0;
 }
 
+/* Soporte ya no vive en el menú de arriba (sobraba espacio ahí) pero sigue
+   siendo importante -- un botón visible al final de cada página, no un
+   link de texto perdido entre el resto del pie. */
+.pie-soporte {
+  margin: 0 0 0.9rem;
+}
+
+.pie-soporte a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--crimson-bright);
+  border-radius: 999px;
+  color: var(--bone);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.pie-soporte a:hover {
+  background: var(--panel-2);
+}
+
 .cta-clases {
   margin: 1.75rem 0 0;
   padding: 0.9rem 1.1rem;
@@ -1920,10 +1946,14 @@ input[type="checkbox"] {
   }
 }
 
-/* Solo en el celular más angosto de verdad, 4 columnas queda apretado con
-   nombres largos ("Mapa vocal") -- baja a 3 (4 filas) únicamente ahí. */
+/* Solo en el celular más angosto de verdad, la fila de 4 (Solfeo/Entrena/
+   Oído/Ritmo) queda apretada -- se parte en dos líneas de 2 únicamente ahí. */
 @media (max-width: 360px) {
-  .nav-principal {
-    grid-template-columns: repeat(3, 1fr);
+  .nav-fila {
+    flex-wrap: wrap;
+  }
+
+  .nav-principal a {
+    flex-basis: 45%;
   }
 }
