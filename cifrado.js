@@ -551,7 +551,7 @@ function crearAccionesLinea(lineaObj, esPrimera) {
   fila.appendChild(btnRitmo);
 
   // Siempre visible, tenga o no ritmo real asignado -- sin .ritmo suena en
-  // negras parejas con las notas que ya haya en la línea (ver eventosLinea).
+  // negras parejas con las notas que ya haya en la línea (ver reproducirLinea).
   const btnReproducir = document.createElement("button");
   btnReproducir.type = "button";
   btnReproducir.className = "boton principal";
@@ -976,37 +976,39 @@ function unidadesLineaPorDefecto(lineaObj) {
   });
 }
 
-// Único punto que decide "qué suena" para una línea: ritmo real si ya pasó
-// por el editor de ritmo (Modo Simple/Músico), negras parejas si no.
-function eventosLinea(lineaObj, bpm) {
-  const unidades = lineaObj.ritmo ? lineaObj.ritmo.unidades : unidadesLineaPorDefecto(lineaObj);
-  return unidadesAEventos(unidades, bpm);
-}
-
 async function reproducirLinea(lineaObj) {
   if (!window.PianoEngine) {
     elEstado.textContent = "El motor de audio todavía se está inicializando, espera un segundo…";
     return;
   }
   const bpm = parseInt(elBpm.value, 10) || (lineaObj.ritmo && lineaObj.ritmo.bpm) || 100;
-  const eventos = eventosLinea(lineaObj, bpm);
+  const unidades = lineaObj.ritmo ? lineaObj.ritmo.unidades : unidadesLineaPorDefecto(lineaObj);
+  const eventos = unidadesAEventos(unidades, bpm);
   if (eventos.length === 0) return;
 
-  // El resaltado por índice solo es exacto cuando NO hay ligaduras (Modo
-  // Músico puede fundir varias unidades en un solo evento, desalineando el
-  // índice del evento con el de la celda) -- en negras parejas (el caso
-  // por defecto, sin .ritmo) el índice de evento y el de celda-nota
-  // siempre coinciden 1 a 1, así que ahí sí se resalta con seguridad.
-  const notasEl = !lineaObj.ritmo && lineaObj._el ? Array.from(lineaObj._el.querySelectorAll(".celda-nota")) : [];
+  // Una ligadura (solo posible tras pasar por el editor de ritmo, Modo
+  // Músico) puede fundir varias unidades/celdas en un solo evento de audio,
+  // desalineando el índice de evento del índice de celda -- mapaUnidadAEvento
+  // (escalas.js) dice, para cada celda, a qué evento le tocó de verdad, así
+  // que el resaltado sigue siendo exacto en vez de tener que desactivarlo
+  // entero para cualquier línea que ya tuviera ritmo asignado.
+  const celdas = lineaObj._el ? Array.from(lineaObj._el.querySelectorAll(".celda-nota")) : [];
+  const mapaEventos = mapaUnidadAEvento(unidades);
+  const celdasPorEvento = [];
+  unidades.forEach((u, i) => {
+    if (!celdas[i]) return;
+    const evIdx = mapaEventos[i];
+    (celdasPorEvento[evIdx] || (celdasPorEvento[evIdx] = [])).push(celdas[i]);
+  });
   const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
   if (window.MetronomoEngine) window.MetronomoEngine.iniciar(bpm, metrica);
   try {
     await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {
       onEventoInicio: (i) => {
-        if (notasEl[i]) notasEl[i].classList.add("sonando");
+        (celdasPorEvento[i] || []).forEach((celda) => celda.classList.add("sonando"));
       },
       onEventoFin: (i) => {
-        if (notasEl[i]) notasEl[i].classList.remove("sonando");
+        (celdasPorEvento[i] || []).forEach((celda) => celda.classList.remove("sonando"));
       },
     });
   } catch (err) {
@@ -1023,8 +1025,9 @@ async function reproducirLinea(lineaObj) {
 // número que acentúa el metrónomo) -- tanto entre líneas seguidas como tras
 // un encabezado de sección ([Verso], [Coro]...), para que suene como una
 // pausa real de respiración, no una nota pegada a la siguiente. Devuelve
-// también el mapa de qué índice de evento resalta qué celda -- solo para
-// las líneas sin .ritmo (ver nota de más arriba sobre por qué).
+// también el mapa de qué índice de evento resalta qué celda(s) -- una
+// ligadura (Modo Músico) puede fundir varias celdas en un solo evento, de
+// ahí la lista en vez de una sola celda (ver mapaUnidadAEvento en escalas.js).
 function eventosCancionCompleta(bpm, metrica) {
   const PAUSA_ENTRE_FRASES = metrica * figuraASegundos("negra", bpm);
   const eventos = [];
@@ -1037,13 +1040,20 @@ function eventosCancionCompleta(bpm, metrica) {
     }
     if (bloque.tipo !== "linea") return; // "espacio": sin notas, se salta
 
-    const eventosLineaActual = eventosLinea(bloque, bpm);
+    const unidades = bloque.ritmo ? bloque.ritmo.unidades : unidadesLineaPorDefecto(bloque);
+    const eventosLineaActual = unidadesAEventos(unidades, bpm);
     if (eventosLineaActual.length === 0) return;
-    const notasEl = !bloque.ritmo && bloque._el ? Array.from(bloque._el.querySelectorAll(".celda-nota")) : [];
-    eventosLineaActual.forEach((ev, i) => {
-      if (notasEl[i]) resaltarPorIndice.set(eventos.length, notasEl[i]);
-      eventos.push(ev);
+
+    const celdas = bloque._el ? Array.from(bloque._el.querySelectorAll(".celda-nota")) : [];
+    const mapaEventos = mapaUnidadAEvento(unidades);
+    const offsetEventos = eventos.length;
+    unidades.forEach((u, i) => {
+      if (!celdas[i]) return;
+      const evIdxGlobal = offsetEventos + mapaEventos[i];
+      if (!resaltarPorIndice.has(evIdxGlobal)) resaltarPorIndice.set(evIdxGlobal, []);
+      resaltarPorIndice.get(evIdxGlobal).push(celdas[i]);
     });
+    eventos.push(...eventosLineaActual);
     eventos.push({ midi: -1, duracion: PAUSA_ENTRE_FRASES });
   });
 
@@ -1075,12 +1085,10 @@ async function reproducirCancionCompleta() {
   try {
     await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {
       onEventoInicio: (i) => {
-        const el = resaltarPorIndice.get(i);
-        if (el) el.classList.add("sonando");
+        (resaltarPorIndice.get(i) || []).forEach((el) => el.classList.add("sonando"));
       },
       onEventoFin: (i) => {
-        const el = resaltarPorIndice.get(i);
-        if (el) el.classList.remove("sonando");
+        (resaltarPorIndice.get(i) || []).forEach((el) => el.classList.remove("sonando"));
       },
     });
   } catch (err) {

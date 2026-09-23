@@ -204,6 +204,29 @@ function unidadesAEventos(unidades, bpm) {
   return eventos;
 }
 
+// Para cada unidad (por índice), a qué índice de EVENTO le tocó en
+// unidadesAEventos() de arriba -- misma lógica de fusión por ligadura, pero
+// devolviendo índices en vez de eventos. Sirve para resaltar la celda
+// correcta durante la reproducción cuando una ligadura fundió varias
+// unidades en un solo evento (si no hay ninguna ligadura, es simplemente
+// 0,1,2,3... -- el índice de unidad y de evento coinciden).
+function mapaUnidadAEvento(unidades) {
+  const mapa = [];
+  let indiceEventoActual = -1;
+  let midiActual = null;
+  let ligaPendiente = false;
+  unidades.forEach((u) => {
+    const midi = u.midi === null || u.midi === undefined ? -1 : u.midi;
+    if (!(indiceEventoActual >= 0 && ligaPendiente && midi === midiActual)) {
+      indiceEventoActual++;
+      midiActual = midi;
+    }
+    mapa.push(indiceEventoActual);
+    ligaPendiente = !!u.ligadura && midi !== -1;
+  });
+  return mapa;
+}
+
 // Igual que arriba pero en pulsos "crudos" (sin bpm) -- para agrupar en
 // compases y detectar cuáles no cuadran con la métrica elegida.
 function unidadesAPulsos(unidades) {
