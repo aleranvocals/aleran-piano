@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=22" />
+<link rel="stylesheet" href="style.css?v=23" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -282,10 +282,10 @@
 
   <section class="panel comunes" id="panelComunes">
     <label class="campo checkbox">
-      <input type="checkbox" id="sincronizarTempo" />
+      <input type="checkbox" id="sincronizarTempo" checked />
       <span>Vincular la duración al tempo del metrónomo (en vez del slider de segundos)</span>
     </label>
-    <label class="campo" id="campoFiguraRitmica" hidden>
+    <label class="campo" id="campoFiguraRitmica">
       <span>A este tempo (<output id="tempoSincronizadoBpm">100</output> BPM), cada nota dura: <output id="duracionCalculadaTexto">0.60s</output></span>
       <select id="figuraRitmica">
         <option value="4">Redonda</option>
@@ -296,11 +296,11 @@
         <option value="0.25">Semicorchea</option>
       </select>
     </label>
-    <label class="campo" id="campoDuracionManual">
+    <label class="campo" id="campoDuracionManual" hidden>
       <span>Duración por nota: <output id="duracionNotaValor">0.45s</output></span>
       <input type="range" id="duracionNota" min="0.08" max="10" step="0.02" value="0.45" />
     </label>
-    <label class="campo" id="campoPausa">
+    <label class="campo" id="campoPausa" hidden>
       <span>Pausa entre notas: <output id="pausaValor">0.12s</output></span>
       <input type="range" id="pausa" min="0" max="2" step="0.02" value="0.12" />
     </label>
@@ -331,7 +331,7 @@
   </div>
 
   <footer class="pie">
-    <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? Escríbenos a Soporte →</a></p>
+    <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
     <p>Los rangos de voz son una tesitura cómoda de práctica, no el límite extremo de cada cuerda vocal. El piano son muestras reales de un Steinway de cola (librería "SplendidGrandPiano"), reproducidas a la velocidad exacta para cada nota. El detector de afinación usa el micrófono del dispositivo (requiere permiso y conexión HTTPS).</p>
     <p><a href="privacidad.html">Política de privacidad</a></p>
   </footer>

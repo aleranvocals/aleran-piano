@@ -51,20 +51,28 @@ function actualizarInfoMetronomoRitmo() {
   acentoTexto.textContent = valorAcento > 0 ? `${valorAcento} pulsos por compás` : "sin acento fijo, 4 pulsos por compás";
 }
 
-// unidades: [{ figura: idDeFigura, silencio: bool }]. No fuerza alineación
-// estricta a compás -- aquí basta con sentir el pulso y la subdivisión.
+// unidades: [{ figura: idDeFigura, silencio: bool }]. Se rellena COMPÁS POR
+// COMPÁS, no la secuencia entera de un tirón -- antes se elegía cada figura
+// solo mirando cuánto quedaba de la secuencia COMPLETA, así que una redonda
+// podía arrancar a mitad de un compás y terminar a mitad del siguiente
+// (nada raro en una partitura real, ahí se ata con una ligadura -- pero
+// Ritmo/Modo Simple no tiene ligaduras, así que se sentía como que los
+// compases venían mal contados y el acento caía en cualquier lado). Reiniciar
+// el resto disponible en cada compás garantiza que cada figura queda
+// completa DENTRO de su compás, sin cruzarlo nunca.
 function generarRitmoNivel(nivel, compases, pulsosPorCompas) {
   const cfg = configNivelRitmo(nivel);
-  const totalPulsos = Math.max(1, compases) * pulsosPorCompas;
   const unidades = [];
-  let restante = totalPulsos;
-  while (restante > 1e-6) {
-    const candidatas = cfg.figuras.filter((id) => figuraPorId(id).pulsos <= restante + 1e-9);
-    const elegibles = candidatas.length > 0 ? candidatas : ["semicorchea"];
-    const figura = elegibles[Math.floor(Math.random() * elegibles.length)];
-    const silencio = Math.random() < cfg.probSilencio;
-    unidades.push({ figura, silencio });
-    restante -= figuraPorId(figura).pulsos;
+  for (let c = 0; c < Math.max(1, compases); c++) {
+    let restanteCompas = pulsosPorCompas;
+    while (restanteCompas > 1e-6) {
+      const candidatas = cfg.figuras.filter((id) => figuraPorId(id).pulsos <= restanteCompas + 1e-9);
+      const elegibles = candidatas.length > 0 ? candidatas : ["semicorchea"];
+      const figura = elegibles[Math.floor(Math.random() * elegibles.length)];
+      const silencio = Math.random() < cfg.probSilencio;
+      unidades.push({ figura, silencio });
+      restanteCompas -= figuraPorId(figura).pulsos;
+    }
   }
   return unidades;
 }
@@ -295,10 +303,18 @@ function crearUsoNota(figuraId, silencio, x, y, width, height, extraAttrs) {
   return uso;
 }
 
-const RUEDA_CENTRO = { x: 220, y: 220 };
+// Centro y radios iguales en las dos ruedas (antes cada <svg> tenía su
+// propio viewBox descuadrado con este centro) -- y el hueco entre la punta
+// del rayo y la etiqueta se agrandó a propósito: con notas todas del mismo
+// tamaño real (ver ICONOS_FIGURA_VIEWBOX), una fila de 4 semicorcheas mide
+// ~105 de ancho, y en un rayo en diagonal esa fila se acerca a la etiqueta
+// de al lado mucho más de lo que parece a simple vista -- terminaban
+// pisándose. 90 de hueco (100 a 190) deja sitio de sobra incluso para la
+// fila más ancha en el ángulo más desfavorable.
+const RUEDA_CENTRO = { x: 250, y: 250 };
 const RUEDA_RADIO_HUB = 34;
-const RUEDA_RADIO_SPOKE = 108;
-const RUEDA_RADIO_LABEL = 150;
+const RUEDA_RADIO_SPOKE = 100;
+const RUEDA_RADIO_LABEL = 190;
 
 let ruedaCeldasActuales = [];
 let ruedaPuntos = [];
@@ -551,8 +567,11 @@ function inicializarMetronomoFlotanteRitmo() {
   acento.addEventListener("change", () => {
     if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarAcento(parseInt(acento.value, 10));
     actualizarInfoMetronomoRitmo();
-    if (ritmoReproduciendo) detenerRitmoUI();
-    renderRitmoTira(); // las rayas de compás dependen del acento -- se recalculan sin tocar el contenido ya generado
+    // Ahora que cada figura queda DENTRO de su compás (nunca lo cruza), el
+    // número de pulsos por compás es parte real de cómo se generó la
+    // secuencia -- cambiar la métrica sin regenerar dejaría las rayas de
+    // compás mostrando límites que ya no corresponden a las figuras.
+    nuevoRitmo();
   });
 
   volumen.addEventListener("input", () => {

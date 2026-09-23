@@ -1292,6 +1292,13 @@ input[type="checkbox"] {
   font-weight: 600;
   font-size: 0.85rem;
   text-decoration: none;
+  /* En celular angosto, el texto largo partía la píldora en dos líneas --
+     nowrap la mantiene siempre de una, y max-width+overflow es el respaldo
+     por si algún día el texto crece más de lo que cabe en la pantalla. */
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: background 0.15s ease;
 }
 
