@@ -296,12 +296,6 @@ function fijarBpm(bpm) {
     invalidarSecuencia();
   }
   if (modoActual === "personalizada") invalidarSecuencia();
-  if (modoActual === "ritmo") {
-    actualizarInfoMetronomoRitmo();
-    // Un ritmo ya agendado suena al tempo de cuando arrancó (igual que un
-    // ejercicio de Rutina) -- cambiarlo a mitad de camino solo lo desincroniza.
-    if (ritmoReproduciendo) detenerRitmoUI();
-  }
 }
 
 function fijarVolumenMetronomo(volumen) {
@@ -329,33 +323,20 @@ function cambiarModo(modo) {
   el("panel-solfeo").hidden = modo !== "solfeo";
   el("panel-giros").hidden = modo !== "giros";
   el("panel-metronomo").hidden = modo !== "metronomo";
-  el("panel-ritmo").hidden = modo !== "ritmo";
-
-  // El texto de "esto usa el tempo/métrica del metrónomo de arriba" y las
-  // rayas de compás de la tira dependen del acento actual -- se refrescan al
-  // entrar a la pestaña en vez de mantenerlos sincronizados todo el tiempo
-  // desde otras pestañas, que no hace falta.
-  if (modo === "ritmo") {
-    actualizarInfoMetronomoRitmo();
-    renderRitmoTira();
-  }
 
   const esMetronomo = modo === "metronomo";
-  // Ritmo (palmas) es independiente del piano -- no toca teclas, no usa
-  // duración/pausa compartidas ni "cantar y calificar" (no es para cantar).
-  const esRitmo = modo === "ritmo";
   // Personalizada ya no usa duración/pausa compartidas -- cada nota lleva su
   // propia figura musical (Modo Simple del editor de ritmo).
-  el("panelComunes").hidden = esMetronomo || esRitmo || modo === "personalizada";
-  el("accionesPiano").hidden = esMetronomo || esRitmo;
-  el("pianoContenedor").hidden = esMetronomo || esRitmo;
-  el("pianoDesplazamiento").hidden = esMetronomo || esRitmo;
+  el("panelComunes").hidden = esMetronomo || modo === "personalizada";
+  el("accionesPiano").hidden = esMetronomo;
+  el("pianoContenedor").hidden = esMetronomo;
+  el("pianoDesplazamiento").hidden = esMetronomo;
   // "Cantar y calificar": tiene sentido en cualquier modo que genere una
-  // nota o secuencia concreta que repetir (todos menos el metrónomo y el ritmo).
-  el("btnCantar").hidden = esMetronomo || esRitmo;
+  // nota o secuencia concreta que repetir (todos menos el metrónomo).
+  el("btnCantar").hidden = esMetronomo;
   // "Escucha e imita" solo tiene sentido con una frase de varias notas
   // (con una sola nota es exactamente lo mismo que "Cantar y calificar").
-  el("btnImitar").hidden = esMetronomo || esRitmo || modo === "individual";
+  el("btnImitar").hidden = esMetronomo || modo === "individual";
 
   // La barra compacta del metrónomo es redundante con el panel detallado
   // cuando ya se está en la pestaña Metrónomo -- se oculta solo ahí.
@@ -1183,11 +1164,6 @@ function inicializarMetronomo() {
     acentoSelect.value = valor;
     metroFlotAcento.value = valor;
     if (metronomoEnMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarAcento(parseInt(valor, 10));
-    if (modoActual === "ritmo") {
-      actualizarInfoMetronomoRitmo();
-      if (ritmoReproduciendo) detenerRitmoUI();
-      renderRitmoTira(); // las rayas de compás dependen del acento -- se recalculan, sin tocar el contenido ya generado
-    }
   }
   acentoSelect.addEventListener("change", () => fijarAcento(acentoSelect.value));
   metroFlotAcento.addEventListener("change", () => fijarAcento(metroFlotAcento.value));
@@ -1231,8 +1207,11 @@ function inicializar() {
   inicializarMetronomo();
   actualizarVisibilidadDuracion();
   inicializarPersonalizada();
-  inicializarRitmo();
-  cambiarModo("individual");
+  // Si se llegó desde Guía con "Ir a la herramienta" (?tab=messa, etc.), abre
+  // esa pestaña de entrada -- si no hay parámetro o no coincide con ninguna
+  // pestaña real, se queda en "individual" como siempre.
+  const tabPedida = new URLSearchParams(window.location.search).get("tab");
+  cambiarModo(tabPedida && document.querySelector(`.tab[data-modo="${tabPedida}"]`) ? tabPedida : "individual");
   cargarPersonalizadaDesdeCifradoSiHaceFalta();
 
   document.querySelectorAll(".tab").forEach((btn) => {

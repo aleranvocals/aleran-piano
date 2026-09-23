@@ -318,6 +318,25 @@ body {
   color: var(--claro-fijo);
 }
 
+/* Oído, Entrena y Solfeo son las tres herramientas "potentes" del kit
+   (pedido explícito, por consejo de un profesor de canto) -- un borde y
+   texto más marcados las distinguen del resto del menú en cualquier
+   momento, no solo al estar activas. */
+.nav-principal a.destacado {
+  border-color: var(--crimson-bright);
+  color: var(--bone);
+  font-weight: 700;
+}
+
+.nav-principal a.destacado:hover {
+  background: var(--panel);
+}
+
+.nav-principal a.destacado.activo {
+  background: var(--crimson);
+  border-color: var(--crimson-bright);
+}
+
 /* Antes agrupaban visualmente el menú en una fila (Guía | herramientas |
    Progreso | consulta) -- en una cuadrícula ya no caen entre los grupos
    correctos, así que estorban más de lo que ayudan. La cuadrícula misma ya
@@ -347,6 +366,21 @@ body {
 .hub-tarjeta:hover {
   border-color: var(--crimson);
   transform: translateY(-2px);
+}
+
+/* Oído, Entrenamiento y Solfeo son las herramientas "potentes" del kit
+   (mismo criterio que .destacado en el menú de arriba) -- un borde marcado
+   las distingue también aquí, en la portada. */
+.hub-tarjeta.destacada {
+  border-color: var(--crimson-bright);
+}
+
+.hub-tarjeta.destacada .hub-nombre::after {
+  content: "★";
+  color: var(--crimson-bright);
+  font-size: 0.8rem;
+  margin-left: 0.4em;
+  vertical-align: middle;
 }
 
 .hub-icono {

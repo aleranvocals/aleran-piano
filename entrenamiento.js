@@ -850,6 +850,14 @@ function inicializarEntrenamiento() {
   el("btnAireDetener").addEventListener("click", detenerAire);
   el("btnEspectroIniciar").addEventListener("click", iniciarEspectro);
   el("btnEspectroDetener").addEventListener("click", detenerEspectro);
+
+  // Si se llegó desde Guía con "Ir a la herramienta" (?tab=messa, etc.), abre
+  // esa pestaña de entrada -- si no hay parámetro o no coincide con ninguna
+  // pestaña real, se queda en "rango" (la que ya marca el HTML por defecto).
+  const tabPedida = new URLSearchParams(window.location.search).get("tab");
+  if (tabPedida && document.querySelector(`.subtab[data-entren="${tabPedida}"]`)) {
+    cambiarSubmodoEntrenamiento(tabPedida);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", inicializarEntrenamiento);

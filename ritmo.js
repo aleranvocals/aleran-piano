@@ -165,3 +165,70 @@ function inicializarRitmo() {
   actualizarDescripcionNivelRitmo();
   nuevoRitmo();
 }
+
+/** Ritmo ya no vive dentro de Piano -- tiene su propia página con su propia
+ * barra de metrónomo compacta (mismo HTML que Piano/Rutina), así que
+ * necesita su propio cableado en vez de compartir el de piano.js. */
+function inicializarMetronomoFlotanteRitmo() {
+  const toggle = el("metroFlotToggle");
+  const bpm = el("metroFlotBpm");
+  const bpmNumero = el("metroFlotBpmNumero");
+  const acento = el("metroFlotAcento");
+  const volumen = el("metroFlotVolumen");
+  const punto = el("metronomoPuntoMini");
+  let enMarcha = false;
+
+  function aplicarBpm(valor) {
+    valor = Math.max(50, Math.min(350, parseInt(valor, 10) || 100));
+    bpm.value = valor;
+    bpmNumero.value = valor;
+    if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(valor);
+    actualizarInfoMetronomoRitmo();
+    if (ritmoReproduciendo) detenerRitmoUI();
+  }
+  bpm.addEventListener("input", () => aplicarBpm(bpm.value));
+  // "change" (al salir del campo o Enter), no "input" (cada tecleo) -- si no,
+  // escribir "100" pasa primero por "1" y aplicarBpm() lo recorta a 50 (el
+  // mínimo) a mitad de tecleo, peleando contra lo que la persona está escribiendo.
+  bpmNumero.addEventListener("change", () => aplicarBpm(bpmNumero.value));
+
+  acento.addEventListener("change", () => {
+    if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarAcento(parseInt(acento.value, 10));
+    actualizarInfoMetronomoRitmo();
+    if (ritmoReproduciendo) detenerRitmoUI();
+    renderRitmoTira(); // las rayas de compás dependen del acento -- se recalculan sin tocar el contenido ya generado
+  });
+
+  volumen.addEventListener("input", () => {
+    if (window.MetronomoEngine) window.MetronomoEngine.ajustarVolumen(parseFloat(volumen.value));
+  });
+
+  toggle.addEventListener("click", () => {
+    if (!window.MetronomoEngine) return;
+    if (enMarcha) {
+      window.MetronomoEngine.detener();
+      enMarcha = false;
+      toggle.textContent = "▶";
+      toggle.classList.remove("en-marcha");
+      return;
+    }
+    enMarcha = true;
+    toggle.textContent = "⏹";
+    toggle.classList.add("en-marcha");
+    window.MetronomoEngine.ajustarVolumen(parseFloat(volumen.value));
+    window.MetronomoEngine.iniciar(parseInt(bpm.value, 10), parseInt(acento.value, 10), (acento2) => {
+      punto.classList.remove("pulso", "acento");
+      void punto.offsetWidth; // fuerza reflow para reiniciar la animación en cada pulso
+      punto.classList.add("pulso");
+      if (acento2) punto.classList.add("acento");
+    });
+  });
+}
+
+function inicializarPaginaRitmo() {
+  if (window.Progreso) Progreso.marcarHerramientaUsada("ritmo");
+  inicializarMetronomoFlotanteRitmo();
+  inicializarRitmo();
+}
+
+document.addEventListener("DOMContentLoaded", inicializarPaginaRitmo);

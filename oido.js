@@ -336,6 +336,26 @@ let simonReproduciendo = false;
 
 let simonSecuenciaProgramada = [];
 
+const SIMON_RANGO_MAXIMO_SEMITONOS = 24; // 2 octavas
+
+// Mientras juega, el textarea queda oculto/bloqueado -- si no, con la
+// secuencia ya escrita ahí delante, "repetir de oído" es leer, no jugar.
+// Guarda el texto real para devolverlo cuando el juego termina (o se vuelve
+// a pulsar Empezar para editarla).
+let simonNotasProgramadasTexto = "";
+
+function ocultarNotasProgramadasSimon(ocultar) {
+  const campo = el("simonNotasProgramadas");
+  if (ocultar) {
+    simonNotasProgramadasTexto = campo.value;
+    campo.value = "🔒 Oculto mientras juegas -- se puede ver otra vez al terminar la ronda.";
+    campo.disabled = true;
+  } else {
+    campo.value = simonNotasProgramadasTexto;
+    campo.disabled = false;
+  }
+}
+
 function empezarSimon() {
   simonSecuencia = [];
   simonNivel = 0;
@@ -343,6 +363,10 @@ function empezarSimon() {
   el("simonRecord").textContent = Progreso.obtener("simonMejorNivel", 0);
 
   if (el("simonProgramado").checked) {
+    // Si el campo ya estaba oculto de una ronda anterior, hay que restaurar
+    // el texto real ANTES de volver a parsearlo (si no, se parsea el
+    // mensaje de "🔒 Oculto...").
+    if (el("simonNotasProgramadas").disabled) ocultarNotasProgramadasSimon(false);
     try {
       simonSecuenciaProgramada = parsearNotasPersonalizadas(el("simonNotasProgramadas").value);
       marcarCampoNotaInvalido(el("simonNotasProgramadas"), false);
@@ -351,6 +375,19 @@ function empezarSimon() {
       el("simonFeedback").textContent = err.message;
       return;
     }
+    const alto = Math.max(...simonSecuenciaProgramada);
+    const bajo = Math.min(...simonSecuenciaProgramada);
+    if (alto - bajo > SIMON_RANGO_MAXIMO_SEMITONOS) {
+      const mensaje = `La secuencia abarca más de 2 octavas (de ${midiANombre(bajo)} a ${midiANombre(alto)}) -- acórtala para que quepa en el piano sin desplazarlo.`;
+      marcarCampoNotaInvalido(el("simonNotasProgramadas"), true, mensaje);
+      el("simonFeedback").textContent = mensaje;
+      return;
+    }
+    // Deja a la vista, sin desplazar, la nota más grave de la secuencia --
+    // con el tope de 2 octavas de arriba, el resto entra sin scrollear.
+    const teclaBajo = el("piano").querySelector(`[data-midi="${bajo}"]`);
+    if (teclaBajo) el("pianoContenedor").scrollLeft = teclaBajo.offsetLeft;
+    ocultarNotasProgramadasSimon(true);
   }
   siguienteRondaSimon();
 }
@@ -359,6 +396,7 @@ function siguienteRondaSimon() {
   if (el("simonProgramado").checked) {
     if (simonNivel >= simonSecuenciaProgramada.length) {
       el("simonFeedback").textContent = "🎉 ¡Completaste la secuencia entera! Pulsa Empezar para repetirla.";
+      ocultarNotasProgramadasSimon(false);
       return;
     }
     simonSecuencia.push(simonSecuenciaProgramada[simonNivel]);
@@ -406,6 +444,7 @@ function manejarClicSimon(midi) {
     const record = Progreso.actualizarRecord("simonMejorNivel", nivelAlcanzado, (n, a) => n > a);
     el("simonFeedback").textContent = `❌ Fallaste en el nivel ${simonNivel}. ${record ? "🏆 ¡Nuevo récord!" : ""} Pulsa Empezar para reintentar.`;
     el("simonRecord").textContent = Progreso.obtener("simonMejorNivel", 0);
+    if (el("simonProgramado").checked) ocultarNotasProgramadasSimon(false);
     return true;
   }
   if (simonEntrada.length === simonSecuencia.length) {
@@ -453,6 +492,14 @@ function inicializarOido() {
     el("campoSimonNotas").hidden = !el("simonProgramado").checked;
   });
   el("simonNotasProgramadas").addEventListener("input", () => marcarCampoNotaInvalido(el("simonNotasProgramadas"), false));
+
+  // Si se llegó desde Guía con "Ir a la herramienta" (?tab=notas, etc.), abre
+  // esa pestaña de entrada -- si no hay parámetro o no coincide con ninguna
+  // pestaña real, se queda en "intervalos" (la que ya marca el HTML por defecto).
+  const tabPedida = new URLSearchParams(window.location.search).get("tab");
+  if (tabPedida && document.querySelector(`.subtab[data-oido="${tabPedida}"]`)) {
+    cambiarSubmodoOido(tabPedida);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", inicializarOido);
