@@ -731,6 +731,69 @@ textarea {
   color: var(--claro-fijo);
 }
 
+/* Rueda de patrones: vista alternativa a la tira, un patrón de un pulso a
+   la vez en vez de una secuencia larga -- pensada para ser más gráfica y
+   "de juego" (pedido explícito, inspirado en videos de ruedas de ritmo). */
+.rueda-contenedor {
+  display: flex;
+  justify-content: center;
+}
+
+.rueda-svg {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+}
+
+.rueda-rayo {
+  stroke: var(--line);
+  stroke-width: 2;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.rueda-rayo.activa {
+  stroke: var(--crimson-bright);
+  stroke-width: 3;
+}
+
+.rueda-simbolo {
+  fill: var(--bone);
+  font-size: 26px;
+  transition: fill 0.2s ease;
+}
+
+.rueda-simbolo.activa {
+  fill: var(--crimson-bright);
+}
+
+.rueda-etiqueta {
+  fill: var(--muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  transition: fill 0.2s ease;
+}
+
+.rueda-etiqueta.activa {
+  fill: var(--bone);
+  font-weight: 600;
+}
+
+.rueda-hub {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.rueda-hub-texto {
+  fill: var(--bone-dim);
+  font-size: 22px;
+}
+
+.rueda-bola {
+  fill: var(--crimson-bright);
+  filter: drop-shadow(0 0 6px var(--crimson));
+}
+
 /* Barra compacta: el metrónomo se puede iniciar/parar y ajustar desde
    cualquier pestaña de la página, no solo desde la pestaña "Metrónomo". */
 .metronomo-flotante {

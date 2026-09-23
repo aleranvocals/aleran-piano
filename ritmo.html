@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=18" />
+<link rel="stylesheet" href="style.css?v=19" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -78,9 +78,8 @@
   <section class="panel">
     <p class="descripcion">
       Elige el nivel (1 = solo negras/blancas/redondas sin silencios, 10 = todo
-      mezclado con semicorcheas y silencios) y dale a "Escuchar": aplaude junto
-      con cada palmada. Usa el mismo tempo y la misma métrica de la barra del
-      metrónomo de arriba (ahora mismo <output id="ritmoBpmTexto">100</output> BPM,
+      mezclado con semicorcheas y silencios). Usa el mismo tempo y la misma
+      métrica de la barra del metrónomo de arriba (ahora mismo <output id="ritmoBpmTexto">100</output> BPM,
       <output id="ritmoAcentoTexto">sin acento fijo, 4 pulsos por compás</output>).
     </p>
 
@@ -90,17 +89,40 @@
     </label>
     <p id="ritmoNivelDescripcion" class="descripcion"></p>
 
-    <label class="campo">
-      <span>Compases</span>
-      <input type="number" id="ritmoCompases" min="1" max="8" value="4" />
-    </label>
+    <div class="tabs" role="tablist">
+      <button type="button" class="subtab activo" id="btnRitmoVistaTira" role="tab" aria-selected="true">📏 Tira larga</button>
+      <button type="button" class="subtab" id="btnRitmoVistaRueda" role="tab" aria-selected="false">🎡 Rueda de patrones</button>
+    </div>
 
-    <div id="ritmoTira" class="ritmo-tira"></div>
+    <div id="panelRitmoTira">
+      <label class="campo">
+        <span>Compases</span>
+        <input type="number" id="ritmoCompases" min="1" max="8" value="4" />
+      </label>
 
-    <div class="acciones">
-      <button id="btnRitmoNuevo" class="boton" type="button">🎲 Ritmo nuevo</button>
-      <button id="btnRitmoEscuchar" class="boton principal" type="button">▶ Escuchar</button>
-      <button id="btnRitmoDetener" class="boton" type="button" disabled>⏹ Detener</button>
+      <div id="ritmoTira" class="ritmo-tira"></div>
+
+      <div class="acciones">
+        <button id="btnRitmoNuevo" class="boton" type="button">🎲 Ritmo nuevo</button>
+        <button id="btnRitmoEscuchar" class="boton principal" type="button">▶ Escuchar</button>
+        <button id="btnRitmoDetener" class="boton" type="button" disabled>⏹ Detener</button>
+      </div>
+    </div>
+
+    <div id="panelRitmoRueda" hidden>
+      <p class="descripcion">
+        Gira la rueda: la bolita elige uno de los patrones disponibles a este
+        nivel, lo resalta y lo aplaude ella sola un pulso completo, al tempo
+        del metrónomo. Aplaude tú el mismo patrón después, o junto con ella.
+      </p>
+      <div class="rueda-contenedor">
+        <svg id="ruedaSvg" viewBox="0 0 400 420" class="rueda-svg" role="img" aria-label="Rueda de patrones rítmicos"></svg>
+      </div>
+      <p id="ruedaEstado" class="estado" aria-live="polite">Dale a "Girar" para empezar.</p>
+      <div class="acciones">
+        <button id="btnRuedaGirar" class="boton principal" type="button">🎲 Girar</button>
+        <button id="btnRuedaRepetir" class="boton" type="button" disabled>🔁 Repetir patrón</button>
+      </div>
     </div>
   </section>
 
@@ -119,7 +141,7 @@
 <script src="escalas.js?v=8"></script>
 <script src="audio.js?v=4"></script>
 <script src="progreso.js?v=1"></script>
-<script src="ritmo.js?v=3"></script>
+<script src="ritmo.js?v=4"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

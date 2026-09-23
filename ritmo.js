@@ -156,6 +156,7 @@ function inicializarRitmo() {
   el("ritmoNivel").addEventListener("input", () => {
     actualizarDescripcionNivelRitmo();
     nuevoRitmo();
+    renderRuedaSvg();
   });
   el("ritmoCompases").addEventListener("change", nuevoRitmo);
   el("btnRitmoNuevo").addEventListener("click", nuevoRitmo);
@@ -164,6 +165,188 @@ function inicializarRitmo() {
 
   actualizarDescripcionNivelRitmo();
   nuevoRitmo();
+}
+
+// -- Rueda de patrones -------------------------------------------------
+// Complemento visual a la tira: en vez de una secuencia larga para leer,
+// la rueda muestra de un vistazo los patrones de UN pulso disponibles a
+// este nivel (mismo catálogo de figuras que NIVELES_RITMO, pero fijo y
+// curado -- no tendría sentido generar "un pulso" al azar con las mismas
+// probabilidades que una tira larga: casi siempre saldría una negra sola).
+// Girar elige uno al azar, lo resalta con una bolita que viaja desde el
+// centro, y lo aplaude por ti una vez -- pensado para practicar patrón por
+// patrón en vez de leer una tira entera de corrido.
+const CELDAS_RUEDA = [
+  { id: "negra", nombreCorto: "Negra", nombre: "Negra (un solo golpe)", nivelMin: 1, unidades: [{ figura: "negra", silencio: false }] },
+  { id: "silencio", nombreCorto: "Silencio", nombre: "Silencio de negra (no aplaudas)", nivelMin: 1, unidades: [{ figura: "negra", silencio: true }] },
+  { id: "dos-corcheas", nombreCorto: "2 corcheas", nombre: "Dos corcheas", nivelMin: 3, unidades: [{ figura: "corchea", silencio: false }, { figura: "corchea", silencio: false }] },
+  { id: "corchea-semi-semi", nombreCorto: "♪ + 2 semi", nombre: "Corchea + dos semicorcheas", nivelMin: 5, unidades: [{ figura: "corchea", silencio: false }, { figura: "semicorchea", silencio: false }, { figura: "semicorchea", silencio: false }] },
+  { id: "semi-semi-corchea", nombreCorto: "2 semi + ♪", nombre: "Dos semicorcheas + corchea", nivelMin: 5, unidades: [{ figura: "semicorchea", silencio: false }, { figura: "semicorchea", silencio: false }, { figura: "corchea", silencio: false }] },
+  { id: "cuatro-semi", nombreCorto: "4 semicorcheas", nombre: "Cuatro semicorcheas", nivelMin: 7, unidades: [{ figura: "semicorchea", silencio: false }, { figura: "semicorchea", silencio: false }, { figura: "semicorchea", silencio: false }, { figura: "semicorchea", silencio: false }] },
+];
+
+function celdasRuedaDesbloqueadas(nivel) {
+  return CELDAS_RUEDA.filter((c) => c.nivelMin <= nivel);
+}
+
+function simboloCelda(celda) {
+  return celda.unidades.map((u) => (u.silencio ? figuraPorId(u.figura).simboloSilencio : figuraPorId(u.figura).simbolo)).join(" ");
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+function crearElementoSvg(tag, attrs) {
+  const elemento = document.createElementNS(SVG_NS, tag);
+  for (const clave in attrs) elemento.setAttribute(clave, attrs[clave]);
+  return elemento;
+}
+
+const RUEDA_CENTRO = { x: 220, y: 220 };
+const RUEDA_RADIO_HUB = 34;
+const RUEDA_RADIO_SPOKE = 108;
+const RUEDA_RADIO_LABEL = 150;
+
+let ruedaCeldasActuales = [];
+let ruedaPuntos = [];
+let ruedaIndiceActivo = -1;
+let ruedaGirando = false;
+
+function renderRuedaSvg() {
+  const svg = el("ruedaSvg");
+  if (!svg) return;
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  svg.innerHTML = "";
+  const nivel = parseInt(el("ritmoNivel").value, 10) || 1;
+  ruedaCeldasActuales = celdasRuedaDesbloqueadas(nivel);
+  ruedaPuntos = [];
+  ruedaIndiceActivo = -1;
+  ruedaGirando = false;
+  const n = ruedaCeldasActuales.length;
+
+  ruedaCeldasActuales.forEach((celda, i) => {
+    const angulo = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    const puntaX = RUEDA_CENTRO.x + RUEDA_RADIO_SPOKE * Math.cos(angulo);
+    const puntaY = RUEDA_CENTRO.y + RUEDA_RADIO_SPOKE * Math.sin(angulo);
+    const labelX = RUEDA_CENTRO.x + RUEDA_RADIO_LABEL * Math.cos(angulo);
+    const labelY = RUEDA_CENTRO.y + RUEDA_RADIO_LABEL * Math.sin(angulo);
+    ruedaPuntos.push({ x: puntaX, y: puntaY });
+
+    svg.appendChild(crearElementoSvg("line", {
+      x1: RUEDA_CENTRO.x, y1: RUEDA_CENTRO.y, x2: puntaX, y2: puntaY,
+      class: "rueda-rayo", "data-indice": i,
+    }));
+
+    const simbolo = crearElementoSvg("text", {
+      x: puntaX, y: puntaY, class: "rueda-simbolo", "data-indice": i,
+      "text-anchor": "middle", "dominant-baseline": "middle",
+    });
+    simbolo.textContent = simboloCelda(celda);
+    svg.appendChild(simbolo);
+
+    const etiqueta = crearElementoSvg("text", {
+      x: labelX, y: labelY, class: "rueda-etiqueta", "data-indice": i,
+      "text-anchor": "middle", "dominant-baseline": "middle",
+    });
+    etiqueta.textContent = celda.nombreCorto;
+    svg.appendChild(etiqueta);
+  });
+
+  svg.appendChild(crearElementoSvg("circle", {
+    cx: RUEDA_CENTRO.x, cy: RUEDA_CENTRO.y, r: RUEDA_RADIO_HUB, class: "rueda-hub",
+  }));
+  const hubTexto = crearElementoSvg("text", {
+    x: RUEDA_CENTRO.x, y: RUEDA_CENTRO.y, class: "rueda-hub-texto",
+    "text-anchor": "middle", "dominant-baseline": "middle",
+  });
+  hubTexto.textContent = "♩";
+  svg.appendChild(hubTexto);
+
+  svg.appendChild(crearElementoSvg("circle", {
+    cx: RUEDA_CENTRO.x, cy: RUEDA_CENTRO.y, r: 9, class: "rueda-bola", id: "ruedaBola", opacity: 0,
+  }));
+
+  if (el("btnRuedaRepetir")) el("btnRuedaRepetir").disabled = true;
+  if (el("ruedaEstado")) el("ruedaEstado").textContent = 'Dale a "Girar" para empezar.';
+}
+
+function easeOutCubicRueda(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function animarBolaRuedaHacia(destino, duracionMs) {
+  return new Promise((resolve) => {
+    const bola = el("ruedaBola");
+    const origenX = RUEDA_CENTRO.x;
+    const origenY = RUEDA_CENTRO.y;
+    bola.setAttribute("opacity", "1");
+    const inicio = performance.now();
+    function paso(ahora) {
+      const t = Math.min(1, (ahora - inicio) / duracionMs);
+      const p = easeOutCubicRueda(t);
+      bola.setAttribute("cx", String(origenX + (destino.x - origenX) * p));
+      bola.setAttribute("cy", String(origenY + (destino.y - origenY) * p));
+      if (t < 1) requestAnimationFrame(paso);
+      else resolve();
+    }
+    requestAnimationFrame(paso);
+  });
+}
+
+function limpiarActivaRueda() {
+  el("ruedaSvg").querySelectorAll(".activa").forEach((nodo) => nodo.classList.remove("activa"));
+}
+
+function marcarActivaRueda(indice) {
+  el("ruedaSvg").querySelectorAll(`[data-indice="${indice}"]`).forEach((nodo) => nodo.classList.add("activa"));
+}
+
+async function reproducirCeldaRueda(celda) {
+  if (!window.PianoEngine) return;
+  const bpm = parseInt(el("metroFlotBpm").value, 10) || 100;
+  const eventos = unidadesRitmoAEventos(celda.unidades, bpm);
+  el("ruedaEstado").textContent = `Patrón: ${celda.nombre} — aplaude tú también.`;
+  await window.PianoEngine.reproducirRitmo(eventos, 0.9, {});
+}
+
+async function girarRueda() {
+  if (ruedaGirando || ruedaCeldasActuales.length === 0) return;
+  ruedaGirando = true;
+  el("btnRuedaGirar").disabled = true;
+  el("btnRuedaRepetir").disabled = true;
+  limpiarActivaRueda();
+  el("ruedaEstado").textContent = "Girando…";
+  const indice = Math.floor(Math.random() * ruedaCeldasActuales.length);
+  await animarBolaRuedaHacia(ruedaPuntos[indice], 550);
+  ruedaIndiceActivo = indice;
+  marcarActivaRueda(indice);
+  await reproducirCeldaRueda(ruedaCeldasActuales[indice]);
+  ruedaGirando = false;
+  el("btnRuedaGirar").disabled = false;
+  el("btnRuedaRepetir").disabled = false;
+}
+
+function repetirCeldaRueda() {
+  if (ruedaGirando || ruedaIndiceActivo < 0) return;
+  reproducirCeldaRueda(ruedaCeldasActuales[ruedaIndiceActivo]);
+}
+
+function cambiarVistaRitmo(vista) {
+  const esRueda = vista === "rueda";
+  el("panelRitmoTira").hidden = esRueda;
+  el("panelRitmoRueda").hidden = !esRueda;
+  el("btnRitmoVistaTira").classList.toggle("activo", !esRueda);
+  el("btnRitmoVistaTira").setAttribute("aria-selected", String(!esRueda));
+  el("btnRitmoVistaRueda").classList.toggle("activo", esRueda);
+  el("btnRitmoVistaRueda").setAttribute("aria-selected", String(esRueda));
+  if (ritmoReproduciendo) detenerRitmoUI();
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+}
+
+function inicializarRuedaRitmo() {
+  el("btnRitmoVistaTira").addEventListener("click", () => cambiarVistaRitmo("tira"));
+  el("btnRitmoVistaRueda").addEventListener("click", () => cambiarVistaRitmo("rueda"));
+  el("btnRuedaGirar").addEventListener("click", girarRueda);
+  el("btnRuedaRepetir").addEventListener("click", repetirCeldaRueda);
+  renderRuedaSvg();
 }
 
 /** Ritmo ya no vive dentro de Piano -- tiene su propia página con su propia
@@ -229,6 +412,7 @@ function inicializarPaginaRitmo() {
   if (window.Progreso) Progreso.marcarHerramientaUsada("ritmo");
   inicializarMetronomoFlotanteRitmo();
   inicializarRitmo();
+  inicializarRuedaRitmo();
 }
 
 document.addEventListener("DOMContentLoaded", inicializarPaginaRitmo);
