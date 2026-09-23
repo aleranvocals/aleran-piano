@@ -1802,40 +1802,109 @@ input[type="checkbox"] {
   flex-shrink: 0;
 }
 
+/* Imprimir/PDF de Cifrado: antes esto imprimía literalmente la interfaz
+   (botones que no funcionan en papel, casillas con fondo oscuro) -- ahora
+   solo queda la letra en sílabas con su nota tipografiada encima, como una
+   partitura sencilla, sin nada de la app alrededor. */
 @media print {
   .nav-principal,
+  .metronomo-flotante,
+  .boton-tema,
   #cifradoEntradaPanel,
   .cifrado-resultado > .descripcion,
+  #cifradoAccionesCancion,
   #cifradoAcciones,
+  .cifrado-linea-acciones,
   .cifrado-eslabon,
   .celda-marca-btn,
   .cta-clases,
-  .pie {
+  .pie,
+  label:has(#cifradoBpm),
+  label:has(#cifradoMetrica),
+  .piano-zoom {
     display: none !important;
+  }
+
+  @page {
+    margin: 1.5cm;
   }
 
   body,
   .app {
-    background: #fff;
-    color: #000;
+    background: #fff !important;
+    color: #1a1414;
     max-width: 100%;
   }
 
+  /* El panel de resultado y el de la leyenda son los que de verdad se
+     imprimen -- sin esto seguían con su fondo oscuro normal (la "captura de
+     pantalla" de la que se quejó), aunque el body ya fuera blanco. */
+  .panel {
+    background: #fff !important;
+    border-color: #ddd;
+    box-shadow: none;
+  }
+
+  .cabecera {
+    padding-right: 0;
+  }
+
+  .cabecera h1 {
+    color: #1a1414;
+    font-size: 1.6rem;
+  }
+
+  .subtitulo {
+    display: none;
+  }
+
+  /* Cada línea de la canción, con su bloque de sección (si tiene), no se
+     corta a media línea entre una página y la siguiente. */
+  .cifrado-linea-bloque {
+    break-inside: avoid;
+  }
+
+  .cifrado-linea {
+    overflow: visible !important;
+  }
+
+  /* Sin fondo, sin borde, sin "pastilla" -- que se lea como texto
+     tipografiado (sílaba arriba, nota abajo) y no como una interfaz. */
+  .celda-texto,
+  .celda-nota {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    outline: none !important;
+  }
+
   .celda-texto {
-    border-color: #999;
-    color: #000;
+    color: #1a1414;
+    font-weight: 600;
   }
 
   .celda-nota {
-    border-color: #999;
     color: #93172c !important;
+    font-size: calc(0.6rem * var(--cifrado-escala, 1));
+    font-weight: 500;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* El punto de "sin nota puesta" solo tiene sentido como placeholder en
+     pantalla mientras se edita -- en el papel, una celda sin nota mejor
+     que quede en blanco de verdad. */
+  .celda-nota:empty::before {
+    content: "" !important;
   }
 
   .cifrado-chip {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  .cifrado-leyenda-panel {
+    break-inside: avoid;
   }
 
   .leyenda-swatch,
