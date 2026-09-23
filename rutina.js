@@ -172,6 +172,12 @@ function inicializarMetronomoFlotante() {
   bpm.addEventListener("input", () => {
     bpmValor.textContent = bpm.value;
     if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(parseInt(bpm.value, 10));
+    // Un ejercicio ya agendó TODAS sus notas de una vez al tempo de cuando
+    // arrancó (ver reproducirSecuencia en audio.js) -- cambiar el BPM a
+    // mitad de camino no puede "re-agendar" eso en caliente. Mejor cortarlo
+    // que dejarlo sonar desincronizado del metrónomo nuevo sin que se note
+    // por qué: se para, y basta con pulsar ▶ de nuevo para oírlo ya al tempo correcto.
+    if (ejercicioEnReproduccion) detenerEjercicioRutina();
   });
 
   acento.addEventListener("change", () => {
