@@ -84,12 +84,13 @@ function previsualizarNotaPiano(midi) {
   if (!window.PianoEngine) return;
   // reproducirSecuencia() usa un token compartido para poder cortar en seco
   // una reproducción vieja cuando arranca una nueva (correcto para
-  // secuencias largas) -- pero eso significa que si tocas otra tecla antes
-  // de que termine la previsualización de 0.6s de la anterior, el onNotaFin
-  // de la vieja NUNCA llega a dispararse (el token ya cambió), y esa tecla
-  // se queda "encendida" para siempre aunque ya no suene nada. Se apaga a
-  // mano aquí, sin depender de ese callback que puede no llegar.
-  if (ultimaNotaPrevisualizada !== null) marcarTeclaActiva(ultimaNotaPrevisualizada, false);
+  // secuencias largas) -- pero eso significa que si tocas una tecla mientras
+  // suena OTRA cosa (otra previsualización, o una secuencia larga como un
+  // ejercicio de Rutina), el onNotaFin de lo que sonaba antes NUNCA llega a
+  // dispararse (el token ya cambió), y esa tecla se queda "encendida" para
+  // siempre aunque ya no suene nada. limpiarTeclasActivas() (en vez de solo
+  // apagar la última previsualizada) cubre cualquier caso, no solo el propio.
+  limpiarTeclasActivas();
   ultimaNotaPrevisualizada = midi;
 
   const volumen = parseFloat(el("volumen") ? el("volumen").value : "0.85") || 0.85;

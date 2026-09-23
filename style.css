@@ -273,11 +273,19 @@ body {
   text-align: center;
 }
 
+/* .app nunca pasa de 640px de ancho (ver más abajo), así que no hay un caso
+   real de "escritorio ancho" distinto del móvil -- por eso la cuadrícula es
+   la regla base siempre, en vez de vivir solo dentro de una media query de
+   móvil. Antes, fuera de esa media query (cualquier ventana >480px, que es
+   la mayoría de los navegadores de escritorio), el menú caía en flex-wrap y
+   se envolvía en filas irregulares de ancho variable -- una cuadrícula fija
+   de 4 columnas (12 enlaces = 3 filas exactas) se ve ordenada en cualquier
+   tamaño de ventana, no solo en el celular angosto. */
 .nav-principal {
-  display: flex;
-  gap: 0.4rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
   margin-bottom: 1.25rem;
-  flex-wrap: wrap;
 }
 
 .nav-principal a {
@@ -286,9 +294,14 @@ body {
   background: var(--panel-2);
   color: var(--bone-dim);
   font-family: var(--font-body);
-  font-size: 0.9rem;
   font-weight: 500;
-  padding: 0.5rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.55rem 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.25;
   border-radius: 999px;
   cursor: pointer;
   text-decoration: none;
@@ -305,13 +318,12 @@ body {
   color: var(--claro-fijo);
 }
 
-/* Separa el menú en "Guía" / practicar / seguimiento / consulta, en vez de
-   una lista plana de 10 enlaces sin ninguna jerarquía entre ellos. */
+/* Antes agrupaban visualmente el menú en una fila (Guía | herramientas |
+   Progreso | consulta) -- en una cuadrícula ya no caen entre los grupos
+   correctos, así que estorban más de lo que ayudan. La cuadrícula misma ya
+   se ve ordenada sin ellos. */
 .nav-sep {
-  width: 1px;
-  align-self: stretch;
-  background: var(--line);
-  margin: 0.15rem 0.15rem;
+  display: none;
 }
 
 .hub-grid {
@@ -502,6 +514,14 @@ body {
 
 .rutina-item button:hover {
   border-color: var(--crimson);
+}
+
+/* Mismo botón hace de play y de pausa -- necesita verse "encendido" mientras
+   suena, si no parece que ▶ no hizo nada al pulsarlo otra vez. */
+.rutina-item button.en-marcha {
+  background: var(--crimson);
+  border-color: var(--crimson);
+  color: var(--claro-fijo);
 }
 
 .rutina-item input[type="checkbox"] {
@@ -1771,36 +1791,12 @@ input[type="checkbox"] {
   .cabecera h1 {
     font-size: 1.7rem;
   }
+}
 
-  /* El menú de 11 enlaces se envolvía en 5 filas en el celular -- toda la
-     primera pantalla era navegación, antes de ver nada de contenido real.
-     Un carrusel horizontal lo arreglaba en altura, pero escondía enlaces
-     fuera de vista sin ningún indicio de que había más (probado: no se
-     notaba que hubiera varios modos). Una cuadrícula fija de 3 columnas deja
-     ver los 11 de un vistazo, sin desplazar nada, y con celdas iguales se ve
-     como un menú de verdad -- no como botones sueltos de tamaño variable. */
+/* Solo en el celular más angosto de verdad, 4 columnas queda apretado con
+   nombres largos ("Mapa vocal") -- baja a 3 (4 filas) únicamente ahí. */
+@media (max-width: 360px) {
   .nav-principal {
-    display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-  }
-
-  .nav-principal a {
-    flex: initial;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0.55rem 0.3rem;
-    font-size: 0.82rem;
-    line-height: 1.25;
-  }
-
-  /* Los separadores agrupaban visualmente el menú en una fila (Guía |
-     herramientas | Progreso | consulta) -- en una cuadrícula de 3 columnas
-     ya no caen entre los grupos correctos, así que estorban más de lo que
-     ayudan. La cuadrícula misma ya se ve ordenada sin ellos. */
-  .nav-sep {
-    display: none;
   }
 }

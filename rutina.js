@@ -58,7 +58,38 @@ function marcarRutinaCompletadaHoy() {
   el("rutinaRacha").textContent = racha;
 }
 
+// Ejercicio que suena ahora mismo (botón + su icono), o null -- permite que
+// el botón sirva de play/pausa real (pulsarlo otra vez detiene) y que, si se
+// interrumpe desde OTRO lado (otro ejercicio, o tocar el piano a mano), su
+// icono y las teclas encendidas no se queden "pillados".
+let ejercicioEnReproduccion = null;
+
+function detenerEjercicioRutina() {
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  if (ejercicioEnReproduccion) {
+    ejercicioEnReproduccion.boton.textContent = "▶";
+    ejercicioEnReproduccion.boton.classList.remove("en-marcha");
+    ejercicioEnReproduccion = null;
+  }
+  limpiarTeclasActivas();
+}
+
 function reproducirEjercicioRutina(patronClave, boton) {
+  // Pulsar el mismo botón que ya está sonando = Pausa/Detener.
+  if (ejercicioEnReproduccion && ejercicioEnReproduccion.boton === boton) {
+    detenerEjercicioRutina();
+    return;
+  }
+  // Si había otro ejercicio sonando, se corta primero -- si no, su botón se
+  // queda pegado en "⏹" (nunca llega su propio onTerminar) y sus teclas
+  // encendidas también quedan pegadas.
+  detenerEjercicioRutina();
+
+  // Velocidad SIEMPRE la del metrónomo de la propia página (un solo BPM
+  // compartido por todos los ejercicios, no uno fijo aparte) -- una nota =
+  // un pulso, sin pausa extra, para que quede pegado al metrónomo de verdad
+  // en vez de solo "parecido".
+  const bpm = parseInt(el("metroFlotBpm").value, 10) || 100;
   let resultado;
   try {
     resultado = eventosModoEscala({
@@ -67,18 +98,32 @@ function reproducirEjercicioRutina(patronClave, boton) {
       notaInicial: null,
       pasoSemitonos: 1,
       soloSubida: false,
-      duracionNota: 0.4,
-      pausa: 0.1,
+      duracionNota: 60 / bpm,
+      pausa: 0,
     });
   } catch (err) {
     return; // patrón no cabe en el rango por defecto: no debería pasar con estas categorías, pero por si acaso
   }
-  boton.disabled = true;
-  window.PianoEngine.reproducirSecuencia(resultado.eventos, parseFloat(el("volumen").value) || 0.85, {
-    onNotaInicio: (midi) => marcarTeclaActiva(midi, true),
-    onNotaFin: (midi) => marcarTeclaActiva(midi, false),
-    onTerminar: () => (boton.disabled = false),
-  });
+
+  ejercicioEnReproduccion = { boton };
+  boton.textContent = "⏹";
+  boton.classList.add("en-marcha");
+  window.PianoEngine
+    .reproducirSecuencia(resultado.eventos, parseFloat(el("volumen").value) || 0.85, {
+      onNotaInicio: (midi) => marcarTeclaActiva(midi, true),
+      onNotaFin: (midi) => marcarTeclaActiva(midi, false),
+    })
+    .then(() => {
+      // Se dispara tanto si terminó solo como si lo cortó otra cosa (otro
+      // ejercicio, el piano) -- si para entonces YA es dueño otro ejercicio
+      // de "ejercicioEnReproduccion", este botón ya se limpió por su cuenta
+      // y no hay que tocar nada.
+      if (ejercicioEnReproduccion && ejercicioEnReproduccion.boton === boton) {
+        boton.textContent = "▶";
+        boton.classList.remove("en-marcha");
+        ejercicioEnReproduccion = null;
+      }
+    });
 }
 
 function renderizarRutina() {
@@ -167,6 +212,9 @@ function inicializarRutina() {
   el("rutinaRacha").textContent = Progreso.obtener("rutinaRachaDias", 0);
 
   el("btnRutinaNueva").addEventListener("click", () => {
+    // Si algo estaba sonando, sus botones van a desaparecer con el re-render
+    // de abajo -- hay que cortarlo primero o se queda sonando sin control.
+    detenerEjercicioRutina();
     rutinaVarianteExtra++;
     rutinaEjercicios = generarRutina(rutinaVarianteExtra);
     renderizarRutina();
