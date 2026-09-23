@@ -44,6 +44,17 @@ const SOLFEO_GRADOS = {
   7: "Sol", 8: "Le", 9: "La", 10: "Te", 11: "Si", 12: "Do",
 };
 
+// "Solfeo silábico de grados" -- alternativa al Do movible pedida por Áleran:
+// nombra el GRADO con una sílaba numérica fija (1=Un, 2=Do, 3=Tri...) en vez
+// del nombre de nota Do-Re-Mi, para no confundir "Do" (grado 2 aquí) con el
+// "Do" de Do movible (grado 1 allá). Reglas dadas: 2/b2=Do/Da, 3/b3=Tri/Tre,
+// 6/b6=Se/Sa, 7/b7=Ti/Ta. La 4ª aumentada/5ª disminuida (semitono 6, la única
+// que aparece en Lidio/Locrio) no tiene sílaba propia confirmada todavía.
+const GRADOS_NUMERICOS = {
+  0: "Un", 1: "Da", 2: "Do", 3: "Tre", 4: "Tri", 5: "Cua", 6: "?",
+  7: "Cin", 8: "Sa", 9: "Se", 10: "Ta", 11: "Ti", 12: "Un",
+};
+
 const SOLFEO_CATEGORIAS = {
   basicos: "Básicos",
   escalas: "Escalas",
@@ -138,10 +149,18 @@ function silabaSolfeo(semitono) {
   return SOLFEO_GRADOS[semitono] || "?";
 }
 
+function silabaGrado(semitono) {
+  return GRADOS_NUMERICOS[semitono] || "?";
+}
+
 /** Nombre que se le muestra al alumno para una nota: absoluto (Sol3) en
- * casi todos los modos, o su sílaba de solfeo (Sol) si está en modo Solfeo. */
+ * casi todos los modos, o la sílaba de solfeo (Sol / Cin, según la casilla de
+ * Do movible) si está en modo Solfeo. */
 function etiquetaNota(midi) {
-  if (modoActual === "solfeo") return silabaSolfeo(midi - solfeoTonicaMidi);
+  if (modoActual === "solfeo") {
+    const semitono = midi - solfeoTonicaMidi;
+    return el("solfeoDoMovible").checked ? silabaSolfeo(semitono) : silabaGrado(semitono);
+  }
   return midiANombre(midi);
 }
 
@@ -158,6 +177,9 @@ function poblarSelects() {
   const selectPatron = el("patron");
   const gruposPorCategoria = {};
   for (const [clave, patron] of Object.entries(PATRONES)) {
+    // Los giros melódicos tienen su propia pestaña dedicada (con su propio
+    // selector de tónica) -- no duplicarlos aquí, ya bastante largo este menú.
+    if (patron.categoria === "giros") continue;
     const categoria = patron.categoria || "otras";
     if (!gruposPorCategoria[categoria]) {
       const grupo = document.createElement("optgroup");
@@ -196,6 +218,24 @@ function poblarSelects() {
     opt.textContent = patron.nombre;
     gruposSolfeoPorCategoria[categoria].appendChild(opt);
   }
+
+  const selectGirosTonica = el("girosTonica");
+  for (let midi = nombreAMidi("Do2"); midi <= nombreAMidi("Fa4"); midi++) {
+    const opt = document.createElement("option");
+    opt.value = midiANombre(midi);
+    opt.textContent = midiANombre(midi);
+    selectGirosTonica.appendChild(opt);
+  }
+  selectGirosTonica.value = "Do3";
+
+  const selectGirosPatron = el("girosPatron");
+  for (const [clave, patron] of Object.entries(PATRONES)) {
+    if (patron.categoria !== "giros") continue;
+    const opt = document.createElement("option");
+    opt.value = clave;
+    opt.textContent = patron.nombre;
+    selectGirosPatron.appendChild(opt);
+  }
 }
 
 function actualizarDescripcionPatron() {
@@ -204,8 +244,26 @@ function actualizarDescripcionPatron() {
   el("descripcionPatron").textContent = `${patron.descripcion} (técnicas: ${tecnicas})`;
 }
 
-function actualizarVisibilidadNotaInicial() {
-  el("campoNotaInicial").hidden = el("escalera").checked;
+function esGlissando() {
+  return el("patron").value === "sirena";
+}
+
+function actualizarVisibilidadCamposEscala() {
+  const glissando = esGlissando();
+  const escaleraActiva = el("escalera").checked;
+
+  // El glissando no recorre un rango de voz ni tiene "nota inicial" sola --
+  // se define con dos notas propias (desde/hasta), así que se sale del todo
+  // del esquema normal de escalera/nota-inicial/opciones-avanzadas.
+  el("campoVoz").hidden = glissando; // el glissando se define por las dos notas, no por un rango de voz
+  el("campoEscaleraCheckbox").hidden = glissando;
+  el("campoGlissando").hidden = !glissando;
+  el("avisoGlissandoTempo").hidden = !glissando;
+  el("campoNotaInicial").hidden = glissando || escaleraActiva;
+  // "Paso entre repeticiones"/"Solo subida" solo aplican con la escalera
+  // activada (con una nota inicial fija no hay repeticiones que espaciar) --
+  // mostrarlas igual era justo lo que hacía confuso "Opciones avanzadas".
+  el("detallesAvanzado").hidden = glissando || !escaleraActiva;
 }
 
 function invalidarSecuencia() {
@@ -226,10 +284,11 @@ function detenerMetronomoSiHaceFalta() {
  * detallada y la barra compacta), al motor si está sonando, y a la
  * duración de nota si está vinculada al tempo. */
 function fijarBpm(bpm) {
+  bpm = Math.max(50, Math.min(350, bpm || 100));
   el("bpmSlider").value = bpm;
-  el("bpmValor").textContent = bpm;
+  el("bpmNumero").value = bpm;
   el("metroFlotBpm").value = bpm;
-  el("metroFlotBpmValor").textContent = bpm;
+  el("metroFlotBpmNumero").value = bpm;
   el("personalizadaBpmTexto").textContent = bpm;
   if (metronomoEnMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(bpm);
   if (el("sincronizarTempo").checked) {
@@ -237,6 +296,12 @@ function fijarBpm(bpm) {
     invalidarSecuencia();
   }
   if (modoActual === "personalizada") invalidarSecuencia();
+  if (modoActual === "ritmo") {
+    actualizarInfoMetronomoRitmo();
+    // Un ritmo ya agendado suena al tempo de cuando arrancó (igual que un
+    // ejercicio de Rutina) -- cambiarlo a mitad de camino solo lo desincroniza.
+    if (ritmoReproduciendo) detenerRitmoUI();
+  }
 }
 
 function fijarVolumenMetronomo(volumen) {
@@ -262,8 +327,18 @@ function cambiarModo(modo) {
   el("panel-escala").hidden = modo !== "escala";
   el("panel-personalizada").hidden = modo !== "personalizada";
   el("panel-solfeo").hidden = modo !== "solfeo";
+  el("panel-giros").hidden = modo !== "giros";
   el("panel-metronomo").hidden = modo !== "metronomo";
   el("panel-ritmo").hidden = modo !== "ritmo";
+
+  // El texto de "esto usa el tempo/métrica del metrónomo de arriba" y las
+  // rayas de compás de la tira dependen del acento actual -- se refrescan al
+  // entrar a la pestaña en vez de mantenerlos sincronizados todo el tiempo
+  // desde otras pestañas, que no hace falta.
+  if (modo === "ritmo") {
+    actualizarInfoMetronomoRitmo();
+    renderRitmoTira();
+  }
 
   const esMetronomo = modo === "metronomo";
   // Ritmo (palmas) es independiente del piano -- no toca teclas, no usa
@@ -723,9 +798,9 @@ function generarResultadoInterno() {
     const patron = SOLFEO_PATRONES[el("solfeoPatron").value];
     const techo = solfeoTonicaMidi + Math.max(...patron.semitonos);
     const piso = solfeoTonicaMidi + Math.min(...patron.semitonos);
-    if (techo > DO6_MIDI || piso < DO1_MIDI) {
+    if (techo > DO7_MIDI || piso < DO1_MIDI) {
       throw new Error(
-        `Con "${el("solfeoTonica").value}" como Do, ese patrón se sale del rango del piano (Do1 a Do6). Elige una tónica más grave.`
+        `Con "${el("solfeoTonica").value}" como Do, ese patrón se sale del rango del piano (Do1 a Do7). Elige una tónica más grave.`
       );
     }
     const eventos = [];
@@ -734,6 +809,47 @@ function generarResultadoInterno() {
       eventos.push({ midi: -1, duracion: pausa });
     }
     return { eventos, info: `Solfeo (${el("solfeoTonica").value} = Do) · ${patron.nombre}` };
+  }
+
+  if (modoActual === "giros") {
+    const tonica = el("girosTonica").value;
+    const patronClave = el("girosPatron").value;
+    // Reutiliza el mismo motor que "Escala vocal" con una nota inicial fija
+    // (nunca escalera) -- ya valida que el giro (incluidas sus notas por
+    // debajo de la tónica, 7'/5') quepa en el piano.
+    const resultado = eventosModoEscala({
+      voz: "tenor",
+      patron: patronClave,
+      notaInicial: tonica,
+      pasoSemitonos: 1,
+      soloSubida: false,
+      duracionNota,
+      pausa,
+    });
+    return { ...resultado, info: `Giro (${tonica} = 1) · ${PATRONES[patronClave].nombre}` };
+  }
+
+  if (esGlissando()) {
+    const rDesde = interpretarNota(el("sirenaDesde").value);
+    const rHasta = interpretarNota(el("sirenaHasta").value);
+    if (!rDesde.valido) throw new Error(rDesde.mensaje || 'Escribe la nota de "Glissando desde" (ej: Do3).');
+    if (!rHasta.valido) throw new Error(rHasta.mensaje || 'Escribe la nota de "Glissando hasta" (ej: Sol3).');
+    if (rDesde.midi < DO1_MIDI || rDesde.midi > DO7_MIDI || rHasta.midi < DO1_MIDI || rHasta.midi > DO7_MIDI) {
+      throw new Error("Esas notas se salen del rango del piano (Do1 a Do7).");
+    }
+    if (rDesde.midi === rHasta.midi) {
+      throw new Error('"Glissando desde" y "hasta" son la misma nota -- elige dos distintas.');
+    }
+    const paso = rHasta.midi > rDesde.midi ? 1 : -1;
+    const eventos = [];
+    for (let midi = rDesde.midi; midi !== rHasta.midi + paso; midi += paso) {
+      eventos.push({ midi, duracion: duracionNota });
+      eventos.push({ midi: -1, duracion: pausa });
+    }
+    return {
+      eventos,
+      info: `Sirena cromática (glissando aproximado) — ${midiANombre(rDesde.midi)} → ${midiANombre(rHasta.midi)}`,
+    };
   }
 
   const voz = el("voz").value;
@@ -767,6 +883,7 @@ function nombreArchivoSugerido() {
   if (modoActual === "aleatorio") return `piano-aleatorio-${ts}.mp3`;
   if (modoActual === "personalizada") return `escala-personalizada-${ts}.mp3`;
   if (modoActual === "solfeo") return `solfeo-${el("solfeoTonica").value}-${el("solfeoPatron").value}-${ts}.mp3`;
+  if (modoActual === "giros") return `giro-${el("girosTonica").value}-${el("girosPatron").value}-${ts}.mp3`;
   return `escala-${el("voz").value}-${el("patron").value}-${ts}.mp3`;
 }
 
@@ -807,6 +924,13 @@ function calificarCents(cents) {
   if (abs <= 30) return { emoji: "🙂", texto: cents > 0 ? "Un poco alto" : "Un poco bajo", puntos: 80 };
   if (abs <= 60) return { emoji: "😐", texto: cents > 0 ? "Alto" : "Bajo", puntos: 50 };
   return { emoji: "❌", texto: cents > 0 ? "Muy alto" : "Muy bajo", puntos: 20 };
+}
+
+/** "Cantaste 1307 cents bajo" no le dice nada a nadie que no sea músico --
+ * esto convierte esa desviación en, aproximadamente, qué nota cantó de
+ * verdad (redondeando al semitono más cercano), que es mucho más legible. */
+function notaAproximadaDesdeCents(midiObjetivo, cents) {
+  return midiANombre(Math.round(midiObjetivo + cents / 100));
 }
 
 function agregarBadgeResultado(texto) {
@@ -895,9 +1019,9 @@ async function cantarYCalificar() {
       agregarBadgeResultado(`${etiquetaNota(evento.midi)}: 🔇 no te oí bien`);
     } else {
       const cal = calificarCents(analisis.centsPromedio);
-      const signo = analisis.centsPromedio > 0 ? "+" : "";
+      const notaCantada = notaAproximadaDesdeCents(evento.midi, analisis.centsPromedio);
       agregarBadgeResultado(
-        `${etiquetaNota(evento.midi)}: ${cal.emoji} ${cal.texto} (${signo}${Math.round(analisis.centsPromedio)}¢)`
+        `${etiquetaNota(evento.midi)}: ${cal.emoji} ${cal.texto} (cantaste ≈ ${notaCantada})`
       );
       puntuaciones.push(cal.puntos);
     }
@@ -1002,9 +1126,9 @@ async function escucharEImitar() {
         agregarBadgeResultado(`${etiquetaNota(evento.midi)}: 🔇 no te oí bien`);
       } else {
         const cal = calificarCents(analisis.centsPromedio);
-        const signo = analisis.centsPromedio > 0 ? "+" : "";
+        const notaCantada = notaAproximadaDesdeCents(evento.midi, analisis.centsPromedio);
         agregarBadgeResultado(
-          `${etiquetaNota(evento.midi)}: ${cal.emoji} ${cal.texto} (${signo}${Math.round(analisis.centsPromedio)}¢)`
+          `${etiquetaNota(evento.midi)}: ${cal.emoji} ${cal.texto} (cantaste ≈ ${notaCantada})`
         );
         puntuaciones.push(cal.puntos);
       }
@@ -1033,17 +1157,24 @@ function inicializarMetronomo() {
   const puntoMini = el("metronomoPuntoMini");
   const btnIniciar = el("btnMetronomoIniciar");
   const btnDetener = el("btnMetronomoDetener");
+  const bpmNumero = el("bpmNumero");
   const metroFlotBpm = el("metroFlotBpm");
-  const metroFlotBpmValor = el("metroFlotBpmValor");
+  const metroFlotBpmNumero = el("metroFlotBpmNumero");
   const metroFlotAcento = el("metroFlotAcento");
   const metroFlotVolumen = el("metroFlotVolumen");
   const metroFlotToggle = el("metroFlotToggle");
 
+  // Cuatro campos (slider + número, en el panel detallado y en la barra
+  // compacta) que deben quedar siempre sincronizados entre sí -- el slider es
+  // rápido para tantear, el número sirve para fijar un tempo exacto sin
+  // pelear con la precisión del arrastre.
   bpmSlider.addEventListener("input", () => fijarBpm(parseInt(bpmSlider.value, 10)));
-  metroFlotBpm.addEventListener("input", () => {
-    metroFlotBpmValor.textContent = metroFlotBpm.value;
-    fijarBpm(parseInt(metroFlotBpm.value, 10));
-  });
+  metroFlotBpm.addEventListener("input", () => fijarBpm(parseInt(metroFlotBpm.value, 10)));
+  // "change" (al salir del campo o Enter), no "input" (cada tecleo) -- si no,
+  // escribir "100" pasa primero por "1" y fijarBpm() lo recorta a 50 (el
+  // mínimo) a mitad de tecleo, peleando contra lo que la persona está escribiendo.
+  bpmNumero.addEventListener("change", () => fijarBpm(parseInt(bpmNumero.value, 10)));
+  metroFlotBpmNumero.addEventListener("change", () => fijarBpm(parseInt(metroFlotBpmNumero.value, 10)));
 
   // La métrica se puede cambiar tanto desde el panel detallado como desde la
   // barra compacta -- se mantienen los dos selects sincronizados entre sí,
@@ -1052,6 +1183,11 @@ function inicializarMetronomo() {
     acentoSelect.value = valor;
     metroFlotAcento.value = valor;
     if (metronomoEnMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarAcento(parseInt(valor, 10));
+    if (modoActual === "ritmo") {
+      actualizarInfoMetronomoRitmo();
+      if (ritmoReproduciendo) detenerRitmoUI();
+      renderRitmoTira(); // las rayas de compás dependen del acento -- se recalculan, sin tocar el contenido ya generado
+    }
   }
   acentoSelect.addEventListener("change", () => fijarAcento(acentoSelect.value));
   metroFlotAcento.addEventListener("change", () => fijarAcento(metroFlotAcento.value));
@@ -1088,7 +1224,8 @@ function inicializar() {
   if (window.Progreso) Progreso.marcarHerramientaUsada("piano");
   poblarSelects();
   actualizarDescripcionPatron();
-  actualizarVisibilidadNotaInicial();
+  actualizarDescripcionGiro();
+  actualizarVisibilidadCamposEscala();
   inicializarPiano(manejarClicPianoIndividual);
   actualizarNotaSeleccionadaUI();
   inicializarMetronomo();
@@ -1104,11 +1241,27 @@ function inicializar() {
 
   el("patron").addEventListener("change", () => {
     actualizarDescripcionPatron();
+    actualizarVisibilidadCamposEscala();
+    if (esGlissando()) {
+      // A velocidad normal, los pasos cromáticos del glissando suenan a
+      // notas sueltas, no a un deslizamiento -- probado con el profesor de
+      // Áleran: ~200 BPM + semicorchea (duración vinculada al tempo) sí se
+      // acerca a un glissando de verdad. Se aplica solo al ENTRAR en este
+      // patrón, no cada vez que cambia algo -- después se puede ajustar a mano.
+      el("sincronizarTempo").checked = true;
+      el("figuraRitmica").value = "0.25";
+      fijarBpm(200);
+      actualizarVisibilidadDuracion();
+    }
     invalidarSecuencia();
   });
   el("escalera").addEventListener("change", () => {
-    actualizarVisibilidadNotaInicial();
+    actualizarVisibilidadCamposEscala();
     invalidarSecuencia();
+  });
+  ["sirenaDesde", "sirenaHasta"].forEach((id) => {
+    el(id).addEventListener("input", invalidarSecuencia);
+    el(id).addEventListener("change", invalidarSecuencia);
   });
 
   const conectarSalida = (idInput, idSalida, sufijo = "") =>
@@ -1129,10 +1282,34 @@ function inicializar() {
     invalidarSecuencia();
   });
 
-  ["semilla", "voz", "notaInicial", "pasoSemitonos", "soloSubida", "notasPersonalizadas"].forEach((id) => {
+  [
+    "semilla", "voz", "notaInicial", "pasoSemitonos", "soloSubida", "notasPersonalizadas",
+    "solfeoTonica", "solfeoPatron", "girosTonica", "girosPatron",
+  ].forEach((id) => {
     el(id).addEventListener("input", invalidarSecuencia);
     el(id).addEventListener("change", invalidarSecuencia);
   });
+
+  function actualizarLabelSolfeo() {
+    const doMovible = el("solfeoDoMovible").checked;
+    el("solfeoTonicaLabel").textContent = doMovible
+      ? 'Nota que hace de "Do" (tónica movible)'
+      : "Nota desde donde empieza la escala";
+    el("solfeoDescripcion").textContent = doMovible
+      ? "Se canta con las sílabas de Do movible (Do, Re, Mi...) relativas a la tónica elegida arriba, en vez de con los nombres absolutos de las notas. Solo escalas mayores por ahora."
+      : 'Se canta con las sílabas del Solfeo silábico de grados (Un, Do, Tri, Cua, Cin, Se, Ti — cada una nombra el grado, no la nota absoluta), relativas a la nota elegida arriba. Marca la casilla de arriba para usar Do-Re-Mi-Fa-Sol (Do movible) en su lugar. Solo escalas mayores por ahora.';
+  }
+  el("solfeoDoMovible").addEventListener("change", () => {
+    actualizarLabelSolfeo();
+    invalidarSecuencia();
+  });
+  actualizarLabelSolfeo();
+
+  function actualizarDescripcionGiro() {
+    const patron = PATRONES[el("girosPatron").value];
+    el("descripcionGiro").textContent = patron.descripcion;
+  }
+  el("girosPatron").addEventListener("change", actualizarDescripcionGiro);
 
   el("btnEscuchar").addEventListener("click", () => {
     let resultado;

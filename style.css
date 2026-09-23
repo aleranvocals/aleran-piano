@@ -597,6 +597,12 @@ body {
   gap: 0.6rem;
 }
 
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
 .campo.checkbox span {
   color: var(--bone-dim);
 }
@@ -706,7 +712,7 @@ textarea {
   color: var(--muted);
 }
 
-.metronomo-flotante .campo-inline {
+.campo-inline {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -720,6 +726,24 @@ textarea {
 .metronomo-flotante output {
   font-variant-numeric: tabular-nums;
   min-width: 2ch;
+}
+
+/* Campo numérico de BPM escribible a mano -- el slider es rápido pero
+   impreciso, esto deja fijar un tempo exacto sin ir tanteando el arrastre. */
+.bpm-numero {
+  width: 4.2em;
+  font-variant-numeric: tabular-nums;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.bpm-numero:focus {
+  outline: none;
+  border-color: var(--crimson-bright);
 }
 
 .metronomo-flotante .boton {

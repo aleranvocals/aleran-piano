@@ -118,8 +118,8 @@ function nuevaPreguntaIntervalo() {
   intervaloDireccionActual = el("intervalosDireccion").value;
 
   // El margen de abajo deja sitio de sobra para el intervalo más grande del
-  // nivel (hasta una octava) sin salirse del piano cargado (Do1-Do6).
-  const margenMax = DO6_MIDI - 12;
+  // nivel (hasta una octava) sin salirse del piano cargado (Do1-Do7).
+  const margenMax = DO7_MIDI - 12;
   const margenMin = DO1_MIDI;
   intervaloRaiz = margenMin + Math.floor(Math.random() * (margenMax - margenMin + 1));
   const opcion = pool[Math.floor(Math.random() * pool.length)];
@@ -229,10 +229,12 @@ function nuevaPreguntaAcorde() {
   const opcion = pool[Math.floor(Math.random() * pool.length)];
   acordeCorrecto = opcion.semitonos;
 
-  // El acorde más ancho (7ª, hasta 11 semitonos sobre la fundamental) debe
-  // caber entero por debajo de Do6.
-  const margenMax = DO6_MIDI - 11;
-  const margenMin = DO1_MIDI;
+  // Fundamental entre Do2 y Do5 -- más grave que Do2 suena indescifrable
+  // para distinguir tipo de acorde por oído (pedido explícito). El acorde
+  // más ancho (7ª, hasta 11 semitonos sobre la fundamental) igual cabe de
+  // sobra por debajo del techo del piano con este rango.
+  const margenMin = nombreAMidi("Do2");
+  const margenMax = nombreAMidi("Do5");
   acordeRaiz = margenMin + Math.floor(Math.random() * (margenMax - margenMin + 1));
 
   const cont = el("acordesOpciones");
@@ -279,7 +281,7 @@ let notaquizObjetivo = null;
 let notaquizEsperando = false;
 
 function rangoNotaquiz() {
-  if (el("notasquizRango").value === "completo") return [DO1_MIDI, DO6_MIDI];
+  if (el("notasquizRango").value === "completo") return [DO1_MIDI, DO7_MIDI];
   return [nombreAMidi("Do3"), nombreAMidi("Do5")];
 }
 
@@ -313,7 +315,10 @@ function manejarClicNotaquiz(midi) {
   } else {
     Progreso.guardar({ ...Progreso.cargar(), notasquizRachaActual: 0 });
     el("notasquizFeedback").textContent = `❌ Era ${midiANombre(notaquizObjetivo)}, tocaste ${midiANombre(midi)}`;
-    window.PianoEngine.reproducirSecuencia([{ midi: notaquizObjetivo, duracion: 0.6 }], volumenActual(), {});
+    // Suena la nota que de verdad tocó (para que reconozca qué era eso que
+    // eligió por error), no la correcta -- para volver a oír la correcta está
+    // el botón "🔁 Repetir".
+    window.PianoEngine.reproducirSecuencia([{ midi, duracion: 0.6 }], volumenActual(), {});
   }
   el("notasquizAciertos").textContent = Progreso.obtener("notasquizAciertos", 0);
   el("notasquizTotal").textContent = total;

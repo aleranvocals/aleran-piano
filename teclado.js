@@ -47,7 +47,7 @@ function construirTeclasPiano() {
   };
 
   const blancas = [];
-  for (let midi = DO1_MIDI; midi <= DO6_MIDI; midi++) {
+  for (let midi = DO1_MIDI; midi <= DO7_MIDI; midi++) {
     if (!ES_NEGRA.has(((midi % 12) + 12) % 12)) blancas.push(midi);
   }
   blancas.forEach((midi, i) => {
@@ -60,7 +60,7 @@ function construirTeclasPiano() {
     contenedor.appendChild(tecla);
   });
 
-  for (let midi = DO1_MIDI; midi <= DO6_MIDI; midi++) {
+  for (let midi = DO1_MIDI; midi <= DO7_MIDI; midi++) {
     const semitono = ((midi % 12) + 12) % 12;
     if (!ES_NEGRA.has(semitono)) continue;
     const indiceBlancaAnterior = blancas.filter((m) => m < midi).length - 1;
@@ -116,7 +116,7 @@ function inicializarPiano(manejarClic) {
     clic(parseInt(tecla.dataset.midi, 10));
   });
 
-  // El teclado va de Do1 a Do6, pero arrancar mostrando el extremo mas grave
+  // El teclado va de Do1 a Do7, pero arrancar mostrando el extremo mas grave
   // (Do1) no le sirve a casi nadie -- se abre ya centrado en Do3-Do5, el
   // rango donde canta la mayoria, en vez de obligar a desplazarse a mano
   // cada vez que se abre la pagina. Tiene que ir ANTES de

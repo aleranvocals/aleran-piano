@@ -56,7 +56,7 @@ function mapaLeerNota(idCampo, etiqueta, opcional) {
   const midi = interpretada.midi;
   // nombreAMidi() no valida el rango por sí sola -- acepta "Do0" o "Sol99"
   // igual de bien que "Do3". Este mapa NO está atado al piano interactivo
-  // (Do1-Do6, limitado a las muestras cargadas): aquí el registro de silbido
+  // (Do1-Do7, limitado a las muestras cargadas): aquí el registro de silbido
   // legítimamente sube más arriba (el propio valor de ejemplo es Sol6). El
   // límite de abajo es solo para pillar errores de verdad (typos, un cero de
   // más), no para recortar el rango vocal real.

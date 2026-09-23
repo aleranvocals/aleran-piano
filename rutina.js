@@ -163,22 +163,30 @@ function renderizarRutina() {
 function inicializarMetronomoFlotante() {
   const toggle = el("metroFlotToggle");
   const bpm = el("metroFlotBpm");
-  const bpmValor = el("metroFlotBpmValor");
+  const bpmNumero = el("metroFlotBpmNumero");
   const acento = el("metroFlotAcento");
   const volumen = el("metroFlotVolumen");
   const punto = el("metronomoPuntoMini");
   let enMarcha = false;
 
-  bpm.addEventListener("input", () => {
-    bpmValor.textContent = bpm.value;
-    if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(parseInt(bpm.value, 10));
+  function aplicarBpm(valor) {
+    valor = Math.max(50, Math.min(350, parseInt(valor, 10) || 100));
+    bpm.value = valor;
+    bpmNumero.value = valor;
+    if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(valor);
     // Un ejercicio ya agendó TODAS sus notas de una vez al tempo de cuando
     // arrancó (ver reproducirSecuencia en audio.js) -- cambiar el BPM a
     // mitad de camino no puede "re-agendar" eso en caliente. Mejor cortarlo
     // que dejarlo sonar desincronizado del metrónomo nuevo sin que se note
     // por qué: se para, y basta con pulsar ▶ de nuevo para oírlo ya al tempo correcto.
     if (ejercicioEnReproduccion) detenerEjercicioRutina();
-  });
+  }
+
+  bpm.addEventListener("input", () => aplicarBpm(bpm.value));
+  // "change" (al salir del campo o Enter), no "input" (cada tecleo) -- si no,
+  // escribir "100" pasa primero por "1" y aplicarBpm() lo recorta a 50 (el
+  // mínimo) a mitad de tecleo, peleando contra lo que la persona está escribiendo.
+  bpmNumero.addEventListener("change", () => aplicarBpm(bpmNumero.value));
 
   acento.addEventListener("change", () => {
     if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarAcento(parseInt(acento.value, 10));

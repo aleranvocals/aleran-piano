@@ -15,13 +15,13 @@
  * descargando de internet la primera vez que se reproduce una nota.
  */
 const { SplendidGrandPiano, SampleLoader } = smplrLib;
-// DO1_MIDI / DO6_MIDI ya están declaradas por escalas.js (se carga antes).
+// DO1_MIDI / DO7_MIDI ya están declaradas por escalas.js (se carga antes).
 
 // Sin esto, SplendidGrandPiano carga las 5 capas de velocidad completas del
 // piano entero (~200+ archivos de audio decodificados en memoria a la vez),
 // que es lo que saturó la RAM y colgó el equipo. Limitamos a las notas que
-// de verdad usamos (Do1-Do6) y a una sola capa de velocidad.
-const NOTAS_A_CARGAR = Array.from({ length: DO6_MIDI - DO1_MIDI + 1 }, (_, i) => DO1_MIDI + i);
+// de verdad usamos (Do1-Do7) y a una sola capa de velocidad.
+const NOTAS_A_CARGAR = Array.from({ length: DO7_MIDI - DO1_MIDI + 1 }, (_, i) => DO1_MIDI + i);
 const OPCIONES_PIANO = { notesToLoad: { notes: NOTAS_A_CARGAR, velocityRange: [85, 100] } };
 
 let contextoAudio = null;
@@ -52,7 +52,7 @@ function duracionTotal(eventos) {
 }
 
 function clampMidi(midi) {
-  return Math.max(DO1_MIDI, Math.min(DO6_MIDI, midi));
+  return Math.max(DO1_MIDI, Math.min(DO7_MIDI, midi));
 }
 
 function esperar(ms) {

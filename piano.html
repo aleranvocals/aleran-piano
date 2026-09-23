@@ -5,19 +5,19 @@
 <script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Piano — Áleran Vocals</title>
-<meta name="description" content="Piano real (Do1–Do6): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
+<meta name="description" content="Piano real (Do1–Do7): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://aleran-piano.vercel.app/piano.html" />
 <meta property="og:title" content="Piano — Áleran Vocals" />
-<meta property="og:description" content="Piano real (Do1–Do6): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
+<meta property="og:description" content="Piano real (Do1–Do7): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
 <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Piano — Áleran Vocals" />
-<meta name="twitter:description" content="Piano real (Do1–Do6): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
+<meta name="twitter:description" content="Piano real (Do1–Do7): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=14" />
+<link rel="stylesheet" href="style.css?v=15" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -67,7 +67,7 @@
     <span class="metronomo-punto mini" id="metronomoPuntoMini" aria-hidden="true"></span>
     <label class="campo-inline">
       <input type="range" id="metroFlotBpm" min="50" max="350" step="1" value="100" aria-label="Tempo del metrónomo" />
-      <output id="metroFlotBpmValor">100</output> BPM
+      <input type="number" id="metroFlotBpmNumero" class="bpm-numero" min="50" max="350" step="1" value="100" aria-label="Escribe el tempo del metrónomo en BPM" /> BPM
     </label>
     <label class="campo-inline">
       <select id="metroFlotAcento" aria-label="Métrica del metrónomo">
@@ -90,6 +90,7 @@
     <button class="tab" data-modo="escala" role="tab" aria-selected="false">Escala vocal</button>
     <button class="tab" data-modo="personalizada" role="tab" aria-selected="false">Personalizada</button>
     <button class="tab" data-modo="solfeo" role="tab" aria-selected="false">Solfeo</button>
+    <button class="tab" data-modo="giros" role="tab" aria-selected="false">Giros melódicos</button>
     <button class="tab" data-modo="metronomo" role="tab" aria-selected="false">Metrónomo</button>
     <button class="tab" data-modo="ritmo" role="tab" aria-selected="false">Ritmo</button>
   </div>
@@ -113,7 +114,7 @@
   </section>
 
   <section id="panel-escala" class="panel" hidden>
-    <label class="campo">
+    <label class="campo" id="campoVoz">
       <span>Tipo de voz</span>
       <select id="voz"></select>
     </label>
@@ -123,7 +124,7 @@
     </label>
     <p id="descripcionPatron" class="descripcion"></p>
 
-    <label class="campo checkbox">
+    <label class="campo checkbox" id="campoEscaleraCheckbox">
       <input type="checkbox" id="escalera" checked />
       <span>Recorrer todo el rango de la voz (escalera por semitonos)</span>
     </label>
@@ -132,15 +133,37 @@
       <input type="text" id="notaInicial" placeholder="Do3" />
     </label>
 
-    <details class="avanzado">
-      <summary>Opciones avanzadas</summary>
+    <div id="campoGlissando" hidden class="grid-2">
       <label class="campo">
-        <span>Paso entre repeticiones (semitonos)</span>
+        <span>Glissando desde</span>
+        <input type="text" id="sirenaDesde" placeholder="Do3" />
+      </label>
+      <label class="campo">
+        <span>Glissando hasta</span>
+        <input type="text" id="sirenaHasta" placeholder="Sol3" />
+      </label>
+    </div>
+    <p id="avisoGlissandoTempo" class="descripcion" hidden>
+      Se fijó el tempo a 200 BPM con duración de semicorchea (en "Vincular la duración al tempo", más abajo) --
+      a esa velocidad los pasos cromáticos suenan como un glissando continuo en vez de notas sueltas. Puedes
+      cambiarlo si quieres.
+    </p>
+
+    <details class="avanzado" id="detallesAvanzado">
+      <summary>Opciones avanzadas</summary>
+      <p class="descripcion">
+        Con "Recorrer todo el rango" activado, el patrón se repite empezando cada vez un poco más
+        arriba (una escalerita), hasta cubrir toda la voz elegida. Estas dos opciones controlan esa
+        escalera:
+      </p>
+      <label class="campo">
+        <span>De cuántos semitonos en semitonos sube cada repetición</span>
         <input type="number" id="pasoSemitonos" min="1" max="12" value="1" />
       </label>
+      <p class="descripcion">1 = sube medio tono cada vez (la escalera más apretada). 2 = un tono entero. Etc.</p>
       <label class="campo checkbox">
         <input type="checkbox" id="soloSubida" />
-        <span>Solo subida (no repetir bajando)</span>
+        <span>Solo subida (al llegar arriba no repite la escalera bajando de nuevo)</span>
       </label>
     </details>
   </section>
@@ -200,21 +223,41 @@
   </section>
 
   <section id="panel-solfeo" class="panel" hidden>
+    <label class="campo checkbox">
+      <input type="checkbox" id="solfeoDoMovible" />
+      <span>Usar Do movible (Do-Re-Mi...) en vez de Solfeo silábico de grados (Un-Do-Tri-Cua...)</span>
+    </label>
     <label class="campo">
-      <span>Nota que hace de "Do" (tónica movible)</span>
+      <span id="solfeoTonicaLabel">Nota desde donde empieza la escala</span>
       <select id="solfeoTonica"></select>
     </label>
     <label class="campo">
       <span>Patrón de solfeo</span>
       <select id="solfeoPatron"></select>
     </label>
-    <p class="descripcion">Se canta con las sílabas de solfeo (Do, Re, Mi...) relativas a la tónica elegida arriba, en vez de con los nombres absolutos de las notas. Solo escalas mayores por ahora.</p>
+    <p class="descripcion" id="solfeoDescripcion">Se canta con las sílabas del Solfeo silábico de grados (Un, Do, Tri, Cua, Cin, Se, Ti — cada una nombra el grado, no la nota absoluta), relativas a la nota elegida arriba. Marca la casilla de arriba para usar Do-Re-Mi-Fa-Sol (Do movible) en su lugar. Solo escalas mayores por ahora.</p>
+  </section>
+
+  <section id="panel-giros" class="panel" hidden>
+    <label class="campo">
+      <span>Nota tónica (el "1" del giro)</span>
+      <select id="girosTonica"></select>
+    </label>
+    <label class="campo">
+      <span>Giro melódico</span>
+      <select id="girosPatron"></select>
+    </label>
+    <p id="descripcionGiro" class="descripcion"></p>
+    <p class="descripcion">Células melódicas cortas de 3 notas alrededor de la tónica — buenas para trabajar oído y afinación de saltos pequeños. El "7'"/"5'" es ese grado pero en la octava de abajo, no arriba.</p>
   </section>
 
   <section id="panel-metronomo" class="panel" hidden>
     <label class="campo">
-      <span>Tempo: <output id="bpmValor">100</output> BPM</span>
-      <input type="range" id="bpmSlider" min="50" max="350" step="1" value="100" />
+      <span>Tempo (BPM)</span>
+      <div class="campo-inline">
+        <input type="range" id="bpmSlider" min="50" max="350" step="1" value="100" />
+        <input type="number" id="bpmNumero" class="bpm-numero" min="50" max="350" step="1" value="100" aria-label="Escribe el tempo exacto en BPM" />
+      </div>
     </label>
     <label class="campo">
       <span>Acentuar cada</span>
@@ -235,10 +278,12 @@
 
   <section id="panel-ritmo" class="panel" hidden>
     <p class="descripcion">
-      Ritmo con palmas — independiente del piano y del metrónomo, con su
-      propio tempo. Elige el nivel (1 = solo negras/blancas/redondas sin
+      Ritmo con palmas. Elige el nivel (1 = solo negras/blancas/redondas sin
       silencios, 10 = todo mezclado con semicorcheas y silencios) y dale a
-      "Escuchar": aplaude junto con cada palmada.
+      "Escuchar": aplaude junto con cada palmada. Usa el mismo tempo y la
+      misma métrica de la barra del metrónomo de arriba (ahora mismo
+      <output id="ritmoBpmTexto">100</output> BPM, <output id="ritmoAcentoTexto">sin acento fijo, 4 pulsos por compás</output>) --
+      cámbialos ahí, no aquí, para no tener dos metrónomos sueltos.
     </p>
 
     <label class="campo">
@@ -250,10 +295,6 @@
     <label class="campo">
       <span>Compases</span>
       <input type="number" id="ritmoCompases" min="1" max="8" value="4" />
-    </label>
-    <label class="campo">
-      <span>Tempo: <output id="ritmoBpmValor">90</output> BPM</span>
-      <input type="range" id="ritmoBpm" min="40" max="220" step="1" value="90" />
     </label>
 
     <div id="ritmoTira" class="ritmo-tira"></div>
@@ -323,12 +364,12 @@
 
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
-<script src="escalas.js?v=6"></script>
+<script src="escalas.js?v=7"></script>
 <script src="audio.js?v=4"></script>
-<script src="ritmo.js?v=1"></script>
+<script src="ritmo.js?v=2"></script>
 <script src="progreso.js?v=1"></script>
-<script src="teclado.js?v=6"></script>
-<script src="piano.js?v=5"></script>
+<script src="teclado.js?v=7"></script>
+<script src="piano.js?v=6"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

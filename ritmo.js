@@ -31,11 +31,31 @@ function configNivelRitmo(nivel) {
   return NIVELES_RITMO[i];
 }
 
+// El acento del metrónomo (0/2/3/4/6) SÍ dice cuántos pulsos tiene cada
+// compás -- "Sin acento" (0) no fija ninguna métrica real, así que ahí se
+// sigue agrupando de a 4 solo para la tira visual, no porque sea 4/4 de verdad.
+function pulsosPorCompasMetronomo() {
+  const valor = parseInt(el("metroFlotAcento").value, 10);
+  return valor > 0 ? valor : 4;
+}
+
+/** Refleja en el texto del panel el tempo/métrica reales que se van a usar
+ * (los del metrónomo compartido) -- se llama al abrir la pestaña Ritmo, no
+ * hace falta mantenerlo sincronizado a cada cambio porque solo se lee ahí. */
+function actualizarInfoMetronomoRitmo() {
+  const bpmTexto = el("ritmoBpmTexto");
+  const acentoTexto = el("ritmoAcentoTexto");
+  if (!bpmTexto || !acentoTexto) return;
+  bpmTexto.textContent = el("metroFlotBpm").value;
+  const valorAcento = parseInt(el("metroFlotAcento").value, 10);
+  acentoTexto.textContent = valorAcento > 0 ? `${valorAcento} pulsos por compás` : "sin acento fijo, 4 pulsos por compás";
+}
+
 // unidades: [{ figura: idDeFigura, silencio: bool }]. No fuerza alineación
 // estricta a compás -- aquí basta con sentir el pulso y la subdivisión.
-function generarRitmoNivel(nivel, compases) {
+function generarRitmoNivel(nivel, compases, pulsosPorCompas) {
   const cfg = configNivelRitmo(nivel);
-  const totalPulsos = Math.max(1, compases) * 4;
+  const totalPulsos = Math.max(1, compases) * pulsosPorCompas;
   const unidades = [];
   let restante = totalPulsos;
   while (restante > 1e-6) {
@@ -59,15 +79,17 @@ let ritmoReproduciendo = false;
 function renderRitmoTira() {
   const contenedor = el("ritmoTira");
   contenedor.innerHTML = "";
+  const pulsosPorCompas = pulsosPorCompasMetronomo();
   let acumulado = 0;
   ritmoUnidades.forEach((u, i) => {
     const fig = figuraPorId(u.figura);
     const celda = document.createElement("div");
     celda.className = "ritmo-celda" + (u.silencio ? " silencio" : "");
-    // Divisor visual cada 4 pulsos -- solo cuando de verdad cae justo en el
-    // límite del compás (una redonda a mitad de compás puede desalinearlo,
-    // y no pasa nada: no es una raya de compás rigurosa, solo orientación).
-    if (i > 0 && Math.abs(acumulado % 4) < 1e-6) celda.classList.add("compas-inicio");
+    // Divisor visual cada compás (según el acento del metrónomo) -- solo
+    // cuando de verdad cae justo en el límite (una redonda a mitad de compás
+    // puede desalinearlo, y no pasa nada: no es una raya de compás rigurosa,
+    // solo orientación).
+    if (i > 0 && Math.abs(acumulado % pulsosPorCompas) < 1e-6) celda.classList.add("compas-inicio");
     celda.textContent = u.silencio ? fig.simboloSilencio : fig.simbolo;
     celda.dataset.indice = String(i);
     contenedor.appendChild(celda);
@@ -103,8 +125,9 @@ function nuevoRitmo() {
   if (ritmoReproduciendo) detenerRitmoUI();
   const nivel = parseInt(el("ritmoNivel").value, 10) || 1;
   const compases = Math.max(1, Math.min(8, parseInt(el("ritmoCompases").value, 10) || 4));
-  ritmoUnidades = generarRitmoNivel(nivel, compases);
+  ritmoUnidades = generarRitmoNivel(nivel, compases, pulsosPorCompasMetronomo());
   renderRitmoTira();
+  actualizarInfoMetronomoRitmo();
 }
 
 function actualizarDescripcionNivelRitmo() {
@@ -115,7 +138,7 @@ function actualizarDescripcionNivelRitmo() {
 
 async function reproducirRitmoActual() {
   if (!window.PianoEngine || ritmoUnidades.length === 0 || ritmoReproduciendo) return;
-  const bpm = parseInt(el("ritmoBpm").value, 10) || 90;
+  const bpm = parseInt(el("metroFlotBpm").value, 10) || 100;
   const eventos = unidadesRitmoAEventos(ritmoUnidades, bpm);
   ritmoReproduciendo = true;
   el("btnRitmoEscuchar").disabled = true;
@@ -135,9 +158,6 @@ function inicializarRitmo() {
     nuevoRitmo();
   });
   el("ritmoCompases").addEventListener("change", nuevoRitmo);
-  el("ritmoBpm").addEventListener("input", () => {
-    el("ritmoBpmValor").textContent = el("ritmoBpm").value;
-  });
   el("btnRitmoNuevo").addEventListener("click", nuevoRitmo);
   el("btnRitmoEscuchar").addEventListener("click", reproducirRitmoActual);
   el("btnRitmoDetener").addEventListener("click", detenerRitmoUI);

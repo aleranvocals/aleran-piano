@@ -2,7 +2,7 @@
  * escalas.js — base de datos de tipos de voz y escalas/patrones vocales,
  * más las utilidades de notas y MIDI. Sin dependencias externas.
  *
- * Convención: Do4 = nota MIDI 60 (Do central). Do1 = 24, Do6 = 84.
+ * Convención: Do4 = nota MIDI 60 (Do central). Do1 = 24, Do7 = 96.
  */
 
 // Atajo compartido por todas las páginas (se carga primero en todas).
@@ -39,7 +39,7 @@ const ALIAS_INGLES = {
 };
 
 const DO1_MIDI = 24;
-const DO6_MIDI = 84;
+const DO7_MIDI = 96;
 
 // Acepta cualquier combinacion de mayusculas/minusculas ("la4", "LA4", "lA4",
 // "La4" son la misma nota) normalizando a como estan guardados los nombres
@@ -284,7 +284,12 @@ const CATEGORIAS = {
   arpegios: "Arpegios",
   intervalos: "Intervalos y saltos",
   voz_mixta: "Voz mixta / passaggio",
+  giros: "Giros melódicos",
 };
+
+// Los giros usan 7' y 5' -- el 7º y el 5º grado, pero en la octava DEBAJO de
+// la tónica (no arriba), como resolución por abajo hacia el 1. En semitonos
+// relativos a la tónica (que es 0): 7' = -1, 5' = -5.
 
 const PATRONES = {
   cinco_notas: {
@@ -317,21 +322,21 @@ const PATRONES = {
       "Patrón clásico de agilidad: recorre la escala mayor saltando de 3ª en 3ª en vez de por grados conjuntos.",
   },
   mayor: {
-    nombre: "Escala mayor completa (1-8-1)",
+    nombre: "Escala mayor completa (1-2-3-4-5-6-7-8-7-6-5-4-3-2-1)",
     categoria: "diatonicas",
     semitonos: [0, 2, 4, 5, 7, 9, 11, 12, 11, 9, 7, 5, 4, 2, 0],
     tecnicas: ["calentamiento", "amplitud_de_rango"],
     descripcion: "Escala mayor (jónico) ascendente-descendente; amplía el rango con tonalidad clara.",
   },
   menor_natural: {
-    nombre: "Escala menor natural (1-8-1)",
+    nombre: "Escala menor natural (1-2-b3-4-5-b6-b7-8-b7-b6-5-4-b3-2-1)",
     categoria: "diatonicas",
     semitonos: [0, 2, 3, 5, 7, 8, 10, 12, 10, 8, 7, 5, 3, 2, 0],
     tecnicas: ["afinacion", "color_tonal"],
     descripcion: "Menor natural (eólico): trabaja afinación de 3as y 6as menores; buen contraste con la mayor.",
   },
   menor_armonica: {
-    nombre: "Escala menor armónica (1-8-1)",
+    nombre: "Escala menor armónica (1-2-b3-4-5-b6-7-8-7-b6-5-4-b3-2-1)",
     categoria: "diatonicas",
     semitonos: [0, 2, 3, 5, 7, 8, 11, 12, 11, 8, 7, 5, 3, 2, 0],
     tecnicas: ["afinacion", "agilidad"],
@@ -346,35 +351,35 @@ const PATRONES = {
       "Sube con 6ª y 7ª mayores (más brillante) y baja como menor natural: exige adaptar la afinación en tiempo real.",
   },
   dorico: {
-    nombre: "Modo dórico (2º grado)",
+    nombre: "Modo dórico",
     categoria: "modos",
     semitonos: [0, 2, 3, 5, 7, 9, 10, 12, 10, 9, 7, 5, 3, 2, 0],
     tecnicas: ["color_tonal", "afinacion"],
     descripcion: "Menor con 6ª mayor: color jazzero/folk, muy usado en pop y soul.",
   },
   frigio: {
-    nombre: "Modo frigio (3º grado)",
+    nombre: "Modo frigio",
     categoria: "modos",
     semitonos: [0, 1, 3, 5, 7, 8, 10, 12, 10, 8, 7, 5, 3, 1, 0],
     tecnicas: ["color_tonal", "afinacion"],
     descripcion: "La 2ª menor (grado 1-2) es un semitono muy expuesto: excelente para afinación fina.",
   },
   lidio: {
-    nombre: "Modo lidio (4º grado)",
+    nombre: "Modo lidio",
     categoria: "modos",
     semitonos: [0, 2, 4, 6, 7, 9, 11, 12, 11, 9, 7, 6, 4, 2, 0],
     tecnicas: ["color_tonal", "afinacion"],
     descripcion: "Mayor con 4ª aumentada: color 'flotante', habitual en bandas sonoras y balada moderna.",
   },
   mixolidio: {
-    nombre: "Modo mixolidio (5º grado)",
+    nombre: "Modo mixolidio",
     categoria: "modos",
     semitonos: [0, 2, 4, 5, 7, 9, 10, 12, 10, 9, 7, 5, 4, 2, 0],
     tecnicas: ["color_tonal", "afinacion"],
     descripcion: "Mayor con 7ª menor: el sonido característico del rock, blues y funk.",
   },
   locrio: {
-    nombre: "Modo locrio (7º grado)",
+    nombre: "Modo locrio",
     categoria: "modos",
     semitonos: [0, 1, 3, 5, 6, 8, 10, 12, 10, 8, 6, 5, 3, 1, 0],
     tecnicas: ["afinacion", "agilidad"],
@@ -466,6 +471,104 @@ const PATRONES = {
     descripcion:
       "Aproxima el glissando continuo de una octava con pasos cromáticos muy cortos; usa una duración de nota baja para que suene fluido.",
   },
+  giro_4_5_1: {
+    nombre: "Giro 4-5-1",
+    categoria: "giros",
+    semitonos: [5, 7, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Célula melódica corta: sube al 4º, al 5º y resuelve en la tónica.",
+  },
+  giro_4_5_8: {
+    nombre: "Giro 4-5-8",
+    categoria: "giros",
+    semitonos: [5, 7, 12],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Misma célula que 4-5-1, pero resolviendo arriba, en la octava.",
+  },
+  giro_6_5_1: {
+    nombre: "Giro 6-5-1",
+    categoria: "giros",
+    semitonos: [9, 7, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Desciende del 6º al 5º antes de resolver en la tónica.",
+  },
+  giro_6_5_8: {
+    nombre: "Giro 6-5-8",
+    categoria: "giros",
+    semitonos: [9, 7, 12],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Igual que 6-5-1, resolviendo en la octava en vez de en la tónica grave.",
+  },
+  giro_6_7_8: {
+    nombre: "Giro 6-7-8",
+    categoria: "giros",
+    semitonos: [9, 11, 12],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Sensible por grados conjuntos (6º-7º) hasta resolver en la octava.",
+  },
+  giro_3_2_1: {
+    nombre: "Giro 3-2-1",
+    categoria: "giros",
+    semitonos: [4, 2, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Descenso por grados conjuntos desde el 3º hasta la tónica.",
+  },
+  giro_3_7b_1: {
+    nombre: "Giro 3-7'-1",
+    categoria: "giros",
+    semitonos: [4, -1, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Del 3º cae a la sensible de abajo (7' — una octava más grave que el 7º) y resuelve en la tónica.",
+  },
+  giro_3_5b_1: {
+    nombre: "Giro 3-5'-1",
+    categoria: "giros",
+    semitonos: [4, -5, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Salto grande del 3º al 5º grave (5', una octava por debajo) antes de resolver en la tónica.",
+  },
+  giro_2_7b_1: {
+    nombre: "Giro 2-7'-1",
+    categoria: "giros",
+    semitonos: [2, -1, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Del 2º grado cae a la sensible grave (7') y resuelve en la tónica.",
+  },
+  giro_2_5b_1: {
+    nombre: "Giro 2-5'-1",
+    categoria: "giros",
+    semitonos: [2, -5, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Del 2º grado salta al 5º grave (5') antes de resolver en la tónica.",
+  },
+  giro_7b_4_3: {
+    nombre: "Giro 7'-4-3",
+    categoria: "giros",
+    semitonos: [-1, 5, 4],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Arranca por debajo de la tónica (7') y salta arriba, al 4º y al 3º.",
+  },
+  giro_4_7b_1: {
+    nombre: "Giro 4-7'-1",
+    categoria: "giros",
+    semitonos: [5, -1, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Del 4º cae a la sensible grave (7') y resuelve en la tónica.",
+  },
+  giro_5b_4_3: {
+    nombre: "Giro 5'-4-3",
+    categoria: "giros",
+    semitonos: [-5, 5, 4],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Arranca en el 5º grave (5') y salta arriba, al 4º y al 3º.",
+  },
+  giro_4_5b_1: {
+    nombre: "Giro 4-5'-1",
+    categoria: "giros",
+    semitonos: [5, -5, 0],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Del 4º salta abajo al 5º grave (5') y resuelve subiendo a la tónica.",
+  },
 };
 
 const TECNICAS_DISPONIBLES = [...new Set(Object.values(PATRONES).flatMap((p) => p.tecnicas))].sort();
@@ -488,13 +591,19 @@ function crearRng(semilla) {
 function construirSecuenciaAleatoria(numNotas, semilla) {
   const rng = crearRng(semilla);
   const secuencia = [];
-  for (let i = 0; i < numNotas; i++) secuencia.push(rng.randint(DO1_MIDI, DO6_MIDI));
+  for (let i = 0; i < numNotas; i++) secuencia.push(rng.randint(DO1_MIDI, DO7_MIDI));
   return secuencia;
 }
 
-function construirRaicesEscalera(rangoBajo, rangoAlto, techoPatron, paso, idaYVuelta) {
+// pisoPatron es <= 0 siempre (0 = la tónica es la nota más grave del patrón,
+// negativo = el patrón tiene notas por debajo de la tónica -- ver los Giros
+// melódicos, que usan 7'/5' un poco más graves que la raíz). Sin restarlo al
+// arrancar la escalera, la primera raíz podía generar una nota por debajo de
+// DO1_MIDI sin que nada lo detectara (clampMidi() de audio.js la habría
+// recortado en silencio, sonando un intervalo distinto al pedido).
+function construirRaicesEscalera(rangoBajo, rangoAlto, techoPatron, paso, idaYVuelta, pisoPatron = 0) {
   const raices = [];
-  let raiz = rangoBajo;
+  let raiz = Math.max(rangoBajo, rangoBajo - pisoPatron);
   while (raiz + techoPatron <= rangoAlto) {
     raices.push(raiz);
     raiz += paso;
@@ -512,7 +621,7 @@ function eventosModoAleatorio({ numNotas, duracionNota, pausa, semilla }) {
     eventos.push({ midi, duracion: duracionNota });
     eventos.push({ midi: -1, duracion: pausa });
   }
-  const info = `${secuencia.length} notas entre Do1 y Do6 — ` + secuencia.map(midiANombre).join(" · ");
+  const info = `${secuencia.length} notas entre Do1 y Do7 — ` + secuencia.map(midiANombre).join(" · ");
   return { eventos, info };
 }
 
@@ -520,6 +629,7 @@ function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida
   const infoPatron = PATRONES[patron];
   const semitonos = infoPatron.semitonos;
   const techoPatron = Math.max(...semitonos);
+  const pisoPatron = Math.min(0, ...semitonos); // <= 0 -- ver Giros melódicos (7'/5')
   const infoVoz = VOCES[voz];
   const rangoBajo = nombreAMidi(infoVoz.rango[0]);
   const rangoAlto = nombreAMidi(infoVoz.rango[1]);
@@ -532,15 +642,15 @@ function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida
     } catch {
       throw new Error(`No entiendo la nota inicial "${notaInicial}" (ejemplos válidos: Do3, Fa#4, Sib2)`);
     }
-    if (raiz < DO1_MIDI || raiz + techoPatron > DO6_MIDI) {
+    if (raiz + pisoPatron < DO1_MIDI || raiz + techoPatron > DO7_MIDI) {
       throw new Error(
         `Con "${notaInicial}" como nota inicial, el patrón "${infoPatron.nombre}" se saldría del ` +
-          `rango del piano (Do1 a Do6). Prueba con una nota inicial más grave.`
+          `rango del piano (Do1 a Do7). Prueba con otra nota inicial.`
       );
     }
     raices = [raiz];
   } else {
-    raices = construirRaicesEscalera(rangoBajo, rangoAlto, techoPatron, pasoSemitonos, !soloSubida);
+    raices = construirRaicesEscalera(rangoBajo, rangoAlto, techoPatron, pasoSemitonos, !soloSubida, pisoPatron);
   }
   if (raices.length === 0) {
     throw new Error(
@@ -594,9 +704,9 @@ function parsearNotasPersonalizadas(texto) {
     } catch {
       throw new Error(`No entiendo la nota "${token}" (ejemplos válidos: Do3, Fa#4, Sib2, A4, C#5)`);
     }
-    if (midi < DO1_MIDI || midi > DO6_MIDI) {
+    if (midi < DO1_MIDI || midi > DO7_MIDI) {
       throw new Error(
-        `"${token}" está fuera del rango del piano (Do1 a Do6). Usa una nota entre esas dos.`
+        `"${token}" está fuera del rango del piano (Do1 a Do7). Usa una nota entre esas dos.`
       );
     }
     return midi;

@@ -565,8 +565,13 @@ let aireAnimId = null;
 let aireTemporizadorId = null;
 let aireAnalizador = null;
 let aireBufferVolumen = null;
-const AIRE_UMBRAL_SONIDO = 0.012;
-const AIRE_SILENCIO_LIMITE_MS = 700;
+// 0.012 exigía soplar bastante fuerte todo el rato para no cortar el
+// contador -- un "sss"/"fff" normal, sostenido pero no forzado, se quedaba
+// por debajo. Bajado a una fracción de eso -- valor de partida sin calibrar
+// contra un micrófono real, así que si sigue quedando corto o ahora capta
+// ruido de fondo de más, hay que reajustarlo de nuevo.
+const AIRE_UMBRAL_SONIDO = 0.004;
+const AIRE_SILENCIO_LIMITE_MS = 900;
 const AIRE_DURACION_MAXIMA_MS = 60000;
 
 function bucleAire() {
