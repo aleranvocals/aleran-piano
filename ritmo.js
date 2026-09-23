@@ -116,6 +116,7 @@ function marcarCeldaActivaRitmo(indice) {
 function detenerRitmoUI() {
   if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
   limpiarCeldaActivaRitmo();
+  limpiarActivaSecuencia();
   ritmoReproduciendo = false;
   el("btnRitmoEscuchar").disabled = false;
   el("btnRitmoDetener").disabled = true;
@@ -127,6 +128,7 @@ function nuevoRitmo() {
   const compases = Math.max(1, Math.min(8, parseInt(el("ritmoCompases").value, 10) || 4));
   ritmoUnidades = generarRitmoNivel(nivel, compases, pulsosPorCompasMetronomo());
   renderRitmoTira();
+  renderSecuenciaRueda();
   actualizarInfoMetronomoRitmo();
 }
 
@@ -144,8 +146,15 @@ async function reproducirRitmoActual() {
   el("btnRitmoEscuchar").disabled = true;
   el("btnRitmoDetener").disabled = false;
   await window.PianoEngine.reproducirRitmo(eventos, 0.9, {
-    onEventoInicio: (i) => marcarCeldaActivaRitmo(i),
-    onTerminar: limpiarCeldaActivaRitmo,
+    onEventoInicio: (i) => {
+      marcarCeldaActivaRitmo(i);
+      const u = ritmoUnidades[i];
+      if (u) marcarActivaSecuencia(u.figura, u.silencio);
+    },
+    onTerminar: () => {
+      limpiarCeldaActivaRitmo();
+      limpiarActivaSecuencia();
+    },
   });
   ritmoReproduciendo = false;
   el("btnRitmoEscuchar").disabled = false;
@@ -210,25 +219,27 @@ let ruedaPuntos = [];
 let ruedaIndiceActivo = -1;
 let ruedaGirando = false;
 
-function renderRuedaSvg() {
-  const svg = el("ruedaSvg");
-  if (!svg) return;
-  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+/** Dibuja una rueda (rayo + símbolo + etiqueta por celda, más el hub y la
+ * bolita) dentro del <svg> indicado. Genérica a propósito: la usan tanto la
+ * rueda de patrones (celdas curadas y fijas) como la rueda de la secuencia
+ * (celdas derivadas de lo que salió en la tira) -- misma geometría, dos
+ * fuentes de datos distintas. Devuelve los puntos de cada rayo (en
+ * coordenadas del viewBox) para poder mover la bolita hacia ellos después. */
+function construirRuedaEnSvg(idSvg, celdas) {
+  const svg = el(idSvg);
+  if (!svg) return [];
   svg.innerHTML = "";
-  const nivel = parseInt(el("ritmoNivel").value, 10) || 1;
-  ruedaCeldasActuales = celdasRuedaDesbloqueadas(nivel);
-  ruedaPuntos = [];
-  ruedaIndiceActivo = -1;
-  ruedaGirando = false;
-  const n = ruedaCeldasActuales.length;
+  const puntos = [];
+  const n = celdas.length;
+  if (n === 0) return puntos;
 
-  ruedaCeldasActuales.forEach((celda, i) => {
+  celdas.forEach((celda, i) => {
     const angulo = -Math.PI / 2 + (i * 2 * Math.PI) / n;
     const puntaX = RUEDA_CENTRO.x + RUEDA_RADIO_SPOKE * Math.cos(angulo);
     const puntaY = RUEDA_CENTRO.y + RUEDA_RADIO_SPOKE * Math.sin(angulo);
     const labelX = RUEDA_CENTRO.x + RUEDA_RADIO_LABEL * Math.cos(angulo);
     const labelY = RUEDA_CENTRO.y + RUEDA_RADIO_LABEL * Math.sin(angulo);
-    ruedaPuntos.push({ x: puntaX, y: puntaY });
+    puntos.push({ x: puntaX, y: puntaY });
 
     svg.appendChild(crearElementoSvg("line", {
       x1: RUEDA_CENTRO.x, y1: RUEDA_CENTRO.y, x2: puntaX, y2: puntaY,
@@ -261,20 +272,91 @@ function renderRuedaSvg() {
   svg.appendChild(hubTexto);
 
   svg.appendChild(crearElementoSvg("circle", {
-    cx: RUEDA_CENTRO.x, cy: RUEDA_CENTRO.y, r: 9, class: "rueda-bola", id: "ruedaBola", opacity: 0,
+    cx: RUEDA_CENTRO.x, cy: RUEDA_CENTRO.y, r: 9, class: "rueda-bola", opacity: 0,
   }));
+
+  return puntos;
+}
+
+function renderRuedaSvg() {
+  if (!el("ruedaSvg")) return;
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  const nivel = parseInt(el("ritmoNivel").value, 10) || 1;
+  ruedaCeldasActuales = celdasRuedaDesbloqueadas(nivel);
+  ruedaIndiceActivo = -1;
+  ruedaGirando = false;
+  ruedaPuntos = construirRuedaEnSvg("ruedaSvg", ruedaCeldasActuales);
 
   if (el("btnRuedaRepetir")) el("btnRuedaRepetir").disabled = true;
   if (el("ruedaEstado")) el("ruedaEstado").textContent = 'Dale a "Girar" para empezar.';
+}
+
+// -- Rueda sincronizada con la secuencia (tira larga) -------------------
+// A diferencia de la rueda de patrones (celdas curadas, fijas), esta rueda
+// muestra únicamente las figuras que de verdad salieron en la tira actual
+// (sin repetir), y se resalta sola, en tiempo real, con cada nota que suena
+// -- no es un juego aparte, es la MISMA secuencia vista de otra forma.
+let secuenciaCeldas = [];
+let secuenciaPuntos = [];
+
+function idFiguraSilencio(figuraId, silencio) {
+  return (silencio ? "silencio-" : "") + figuraId;
+}
+
+function nombreFiguraSilencio(figuraId, silencio) {
+  const fig = figuraPorId(figuraId);
+  return silencio ? `Silencio (${fig.nombre.toLowerCase()})` : fig.nombre;
+}
+
+function celdasUnicasDeUnidades(unidades) {
+  const vistas = new Map();
+  unidades.forEach((u) => {
+    const id = idFiguraSilencio(u.figura, u.silencio);
+    if (!vistas.has(id)) {
+      const nombre = nombreFiguraSilencio(u.figura, u.silencio);
+      vistas.set(id, { id, nombreCorto: nombre, nombre, unidades: [{ figura: u.figura, silencio: u.silencio }] });
+    }
+  });
+  return [...vistas.values()];
+}
+
+function renderSecuenciaRueda() {
+  if (!el("secuenciaRuedaSvg")) return;
+  secuenciaCeldas = celdasUnicasDeUnidades(ritmoUnidades);
+  secuenciaPuntos = construirRuedaEnSvg("secuenciaRuedaSvg", secuenciaCeldas);
+}
+
+function marcarActivaSecuencia(figuraId, silencio) {
+  const svg = el("secuenciaRuedaSvg");
+  if (!svg) return;
+  svg.querySelectorAll(".activa").forEach((nodo) => nodo.classList.remove("activa"));
+  const indice = secuenciaCeldas.findIndex((c) => c.id === idFiguraSilencio(figuraId, silencio));
+  if (indice < 0) return;
+  svg.querySelectorAll(`[data-indice="${indice}"]`).forEach((nodo) => nodo.classList.add("activa"));
+  const bola = svg.querySelector(".rueda-bola");
+  const punto = secuenciaPuntos[indice];
+  if (bola && punto) {
+    bola.setAttribute("opacity", "1");
+    bola.setAttribute("cx", String(punto.x));
+    bola.setAttribute("cy", String(punto.y));
+  }
+}
+
+function limpiarActivaSecuencia() {
+  const svg = el("secuenciaRuedaSvg");
+  if (!svg) return;
+  svg.querySelectorAll(".activa").forEach((nodo) => nodo.classList.remove("activa"));
+  const bola = svg.querySelector(".rueda-bola");
+  if (bola) bola.setAttribute("opacity", "0");
 }
 
 function easeOutCubicRueda(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function animarBolaRuedaHacia(destino, duracionMs) {
+function animarBolaRuedaHacia(idSvg, destino, duracionMs) {
   return new Promise((resolve) => {
-    const bola = el("ruedaBola");
+    const bola = el(idSvg).querySelector(".rueda-bola");
     const origenX = RUEDA_CENTRO.x;
     const origenY = RUEDA_CENTRO.y;
     bola.setAttribute("opacity", "1");
@@ -315,7 +397,7 @@ async function girarRueda() {
   limpiarActivaRueda();
   el("ruedaEstado").textContent = "Girando…";
   const indice = Math.floor(Math.random() * ruedaCeldasActuales.length);
-  await animarBolaRuedaHacia(ruedaPuntos[indice], 550);
+  await animarBolaRuedaHacia("ruedaSvg", ruedaPuntos[indice], 550);
   ruedaIndiceActivo = indice;
   marcarActivaRueda(indice);
   await reproducirCeldaRueda(ruedaCeldasActuales[indice]);

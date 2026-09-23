@@ -491,7 +491,10 @@ function crearCeldaPersonalizada(unidad, indice, agrupado) {
   FIGURAS.forEach((f) => {
     const opt = document.createElement("option");
     opt.value = f.id;
-    opt.textContent = `${f.simbolo} ${f.nombre}`;
+    // Sin el símbolo musical (𝅘𝅥𝅯 y compañía): un <option> nativo no puede
+    // mezclar fuentes por trozo de texto, así que ese glifo se veía roto en
+    // varios celulares -- el nombre solo es más claro que un glifo a medias.
+    opt.textContent = f.nombre;
     figuraSelect.appendChild(opt);
   });
   figuraSelect.value = unidad.figura;

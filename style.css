@@ -709,6 +709,11 @@ textarea {
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: 6px;
+  /* Noto Music trae el glifo real de cada figura -- sin esto, la
+     semicorchea y los silencios dependían de que el sistema tuviera un
+     font con ese rango Unicode, y en varios Android salía deformada
+     (franjas de color, como una mala compresión). */
+  font-family: "Noto Music", sans-serif;
   font-size: 1.4rem;
   line-height: 1;
   color: var(--bone);
@@ -745,6 +750,12 @@ textarea {
   height: auto;
 }
 
+/* Rueda sincronizada con la secuencia: complementa a la tira, no compite
+   con ella -- más chica para dejar claro que es secundaria. */
+.rueda-svg-chica {
+  max-width: 260px;
+}
+
 .rueda-rayo {
   stroke: var(--line);
   stroke-width: 2;
@@ -758,6 +769,7 @@ textarea {
 
 .rueda-simbolo {
   fill: var(--bone);
+  font-family: "Noto Music", sans-serif;
   font-size: 26px;
   transition: fill 0.2s ease;
 }
@@ -786,6 +798,7 @@ textarea {
 
 .rueda-hub-texto {
   fill: var(--bone-dim);
+  font-family: "Noto Music", sans-serif;
   font-size: 22px;
 }
 
