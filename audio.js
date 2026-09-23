@@ -461,8 +461,14 @@ let metronomoTimerId = null;
 function reproducirClicMetronomo(ctx, tiempo, acento) {
   const osc = ctx.createOscillator();
   osc.type = "square";
-  osc.frequency.value = acento ? 1600 : 1000;
-  const pico = (acento ? 0.55 : 0.32) * metronomoVolumen;
+  // Antes compartía banda (1000-1600 Hz) con el ruido de la palmada de Ritmo
+  // (pasabanda centrado en 1200 Hz) -- cuando coincidían en el mismo pulso,
+  // que es lo normal, el clic quedaba tapado por la palmada (mucho más
+  // fuerte y de banda ancha) y sonaba como si el metrónomo se hubiera
+  // cortado. Subir el clic bien por encima de esa banda hace que corte por
+  // encima de la palmada en vez de competir con ella en la misma frecuencia.
+  osc.frequency.value = acento ? 3000 : 2200;
+  const pico = (acento ? 0.65 : 0.45) * metronomoVolumen;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.0001, tiempo);
   gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, pico), tiempo + 0.002);

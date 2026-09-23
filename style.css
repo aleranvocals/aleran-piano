@@ -709,15 +709,16 @@ textarea {
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: 6px;
-  /* Noto Music trae el glifo real de cada figura -- sin esto, la
-     semicorchea y los silencios dependían de que el sistema tuviera un
-     font con ese rango Unicode, y en varios Android salía deformada
-     (franjas de color, como una mala compresión). */
-  font-family: "Noto Music", sans-serif;
-  font-size: 1.4rem;
-  line-height: 1;
   color: var(--bone);
   transition: background 0.08s ease, border-color 0.08s ease;
+}
+
+/* Cada figura (y cada silencio) se dibuja a mano, todas en el mismo
+   recuadro -- ver el comentario junto a ICONOS_FIGURA_VIEWBOX en ritmo.js
+   sobre por qué no se usa ningún glifo de fuente aquí. */
+.ritmo-celda-icono {
+  width: 1.3rem;
+  height: 1.85rem;
 }
 
 .ritmo-celda.silencio {
@@ -767,15 +768,13 @@ textarea {
   stroke-width: 3;
 }
 
-.rueda-simbolo {
-  fill: var(--bone);
-  font-family: "Noto Music", sans-serif;
-  font-size: 26px;
-  transition: fill 0.2s ease;
+.rueda-nota-uso {
+  color: var(--bone);
+  transition: color 0.2s ease;
 }
 
-.rueda-simbolo.activa {
-  fill: var(--crimson-bright);
+.rueda-nota-uso.activa {
+  color: var(--crimson-bright);
 }
 
 .rueda-etiqueta {
@@ -796,10 +795,8 @@ textarea {
   stroke-width: 2;
 }
 
-.rueda-hub-texto {
-  fill: var(--bone-dim);
-  font-family: "Noto Music", sans-serif;
-  font-size: 22px;
+.rueda-hub-uso {
+  color: var(--bone-dim);
 }
 
 .rueda-bola {

@@ -90,7 +90,9 @@ function renderRitmoTira() {
     // puede desalinearlo, y no pasa nada: no es una raya de compás rigurosa,
     // solo orientación).
     if (i > 0 && Math.abs(acumulado % pulsosPorCompas) < 1e-6) celda.classList.add("compas-inicio");
-    celda.textContent = u.silencio ? fig.simboloSilencio : fig.simbolo;
+    const svgIcono = crearElementoSvg("svg", { viewBox: ICONOS_FIGURA_VIEWBOX, class: "ritmo-celda-icono" });
+    svgIcono.appendChild(crearUsoNota(u.figura, u.silencio, 0, 0, 24, 34));
+    celda.appendChild(svgIcono);
     celda.dataset.indice = String(i);
     contenedor.appendChild(celda);
     acumulado += fig.pulsos;
@@ -145,7 +147,7 @@ async function reproducirRitmoActual() {
   ritmoReproduciendo = true;
   el("btnRitmoEscuchar").disabled = true;
   el("btnRitmoDetener").disabled = false;
-  await window.PianoEngine.reproducirRitmo(eventos, 0.9, {
+  await window.PianoEngine.reproducirRitmo(eventos, 0.75, {
     onEventoInicio: (i) => {
       marcarCeldaActivaRitmo(i);
       const u = ritmoUnidades[i];
@@ -198,15 +200,99 @@ function celdasRuedaDesbloqueadas(nivel) {
   return CELDAS_RUEDA.filter((c) => c.nivelMin <= nivel);
 }
 
-function simboloCelda(celda) {
-  return celda.unidades.map((u) => (u.silencio ? figuraPorId(u.figura).simboloSilencio : figuraPorId(u.figura).simbolo)).join(" ");
-}
-
 const SVG_NS = "http://www.w3.org/2000/svg";
 function crearElementoSvg(tag, attrs) {
   const elemento = document.createElementNS(SVG_NS, tag);
   for (const clave in attrs) elemento.setAttribute(clave, attrs[clave]);
   return elemento;
+}
+
+// El glifo Unicode de las figuras (𝅘𝅥𝅯 y compañía, y sus silencios 𝄻𝄼𝄽𝄾𝄿)
+// depende de que el sistema tenga un font con ese rango Unicode -- sin eso
+// salía deformado (Android), y en Noto Music cada glifo trae una posición
+// vertical "de partitura" propia, así que varias figuras seguidas quedaban
+// en zigzag y las notas y los silencios terminaban con tamaños distintos
+// entre sí. Los 10 (nota + silencio × 5 figuras) se dibujan a mano, todos en
+// el MISMO recuadro (mismo viewBox, misma cabeza/bloque base), así que
+// cualquier combinación -- sola, en fila, nota junto a silencio -- sale
+// exactamente al mismo tamaño, sin depender de ninguna fuente.
+const ICONOS_FIGURA_VIEWBOX = "0 0 24 34";
+
+// Las 5 notas comparten EXACTAMENTE la misma cabeza (mismo centro, mismo
+// radio) -- solo cambia si está rellena o hueca, si tiene plica y cuántos
+// corchetes.
+const ICONOS_NOTA = {
+  redonda: '<ellipse cx="8" cy="27" rx="6.2" ry="4.6" transform="rotate(-20 8 27)" fill="none" stroke="currentColor" stroke-width="2.1"/>',
+  blanca:
+    '<ellipse cx="8" cy="27" rx="6.2" ry="4.6" transform="rotate(-20 8 27)" fill="none" stroke="currentColor" stroke-width="2"/>' +
+    '<rect x="12.6" y="5" width="2" height="21" fill="currentColor"/>',
+  negra:
+    '<ellipse cx="8" cy="27" rx="6.2" ry="4.6" transform="rotate(-20 8 27)" fill="currentColor"/>' +
+    '<rect x="12.6" y="5" width="2" height="21" fill="currentColor"/>',
+  corchea:
+    '<ellipse cx="8" cy="27" rx="6.2" ry="4.6" transform="rotate(-20 8 27)" fill="currentColor"/>' +
+    '<rect x="12.6" y="5" width="2" height="21" fill="currentColor"/>' +
+    '<path d="M14.6,5 C20,7.5 20.5,13 16,16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  semicorchea:
+    '<ellipse cx="8" cy="27" rx="6.2" ry="4.6" transform="rotate(-20 8 27)" fill="currentColor"/>' +
+    '<rect x="12.6" y="5" width="2" height="21" fill="currentColor"/>' +
+    '<path d="M14.6,5 C20,7.5 20.5,13 16,16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+    '<path d="M14.6,10.5 C20,13 20.5,18.5 16,22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+};
+
+// Los 5 silencios, en el mismo recuadro que las notas (0-24 de ancho, 0-34
+// de alto) y con la misma "masa" de tinta aproximada, para que ningún
+// silencio se vea más chico o más grande que una nota al lado.
+const ICONOS_SILENCIO = {
+  // Redonda: bloque colgando de una línea imaginaria justo debajo del centro.
+  redonda: '<rect x="7" y="15" width="9" height="4.5" fill="currentColor"/>',
+  // Blanca: mismo bloque, apoyado arriba de esa misma línea (en vez de colgar).
+  blanca: '<rect x="7" y="14.5" width="9" height="4.5" fill="currentColor"/>',
+  // Negra: garabato en zigzag, clásico de este silencio.
+  negra: '<path d="M11,6 L16.5,13 L10.5,18 L16,23 Q10,26 10.5,30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  // Corchea: trazo diagonal + un gancho relleno (misma familia visual que el
+  // corchete de la corchea/semicorchea, pero como un "moño" en vez de una curva).
+  corchea:
+    '<path d="M9,28 L17,7" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+    '<ellipse cx="17.3" cy="10.5" rx="3.1" ry="2.5" transform="rotate(35 17.3 10.5)" fill="currentColor"/>',
+  // Semicorchea: igual, con un segundo gancho más abajo.
+  semicorchea:
+    '<path d="M9,28 L18,6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+    '<ellipse cx="18.3" cy="9.5" rx="3" ry="2.4" transform="rotate(35 18.3 9.5)" fill="currentColor"/>' +
+    '<ellipse cx="15" cy="16" rx="3" ry="2.4" transform="rotate(35 15 16)" fill="currentColor"/>',
+};
+
+/** Crea un <symbol> reutilizable (una sola vez) por cada figura y cada
+ * silencio, dentro de un <svg><defs> oculto -- así cualquier
+ * <use href="#figura-negra">/<use href="#figura-silencio-negra"> en
+ * cualquier parte de la página (la tira, cualquiera de las dos ruedas)
+ * dibuja exactamente el mismo ícono, sin duplicar el path a mano en cada
+ * sitio. */
+function asegurarSimbolosNota() {
+  if (document.getElementById("defsIconosNota")) return;
+  const svg = crearElementoSvg("svg", { id: "defsIconosNota", "aria-hidden": "true", style: "position:absolute;width:0;height:0;overflow:hidden" });
+  const defs = crearElementoSvg("defs", {});
+  Object.keys(ICONOS_NOTA).forEach((figuraId) => {
+    const symbol = crearElementoSvg("symbol", { id: `figura-${figuraId}`, viewBox: ICONOS_FIGURA_VIEWBOX });
+    symbol.innerHTML = ICONOS_NOTA[figuraId];
+    defs.appendChild(symbol);
+  });
+  Object.keys(ICONOS_SILENCIO).forEach((figuraId) => {
+    const symbol = crearElementoSvg("symbol", { id: `figura-silencio-${figuraId}`, viewBox: ICONOS_FIGURA_VIEWBOX });
+    symbol.innerHTML = ICONOS_SILENCIO[figuraId];
+    defs.appendChild(symbol);
+  });
+  svg.appendChild(defs);
+  document.body.appendChild(svg);
+}
+
+/** Crea un <use> apuntando al ícono de esa figura (nota o, si silencio es
+ * true, su silencio), ya posicionado en x/y con ancho/alto width/height
+ * (coordenadas del <svg> contenedor). */
+function crearUsoNota(figuraId, silencio, x, y, width, height, extraAttrs) {
+  const uso = crearElementoSvg("use", Object.assign({ x, y, width, height }, extraAttrs || {}));
+  uso.setAttribute("href", silencio ? `#figura-silencio-${figuraId}` : `#figura-${figuraId}`);
+  return uso;
 }
 
 const RUEDA_CENTRO = { x: 220, y: 220 };
@@ -246,12 +332,22 @@ function construirRuedaEnSvg(idSvg, celdas) {
       class: "rueda-rayo", "data-indice": i,
     }));
 
-    const simbolo = crearElementoSvg("text", {
-      x: puntaX, y: puntaY, class: "rueda-simbolo", "data-indice": i,
-      "text-anchor": "middle", "dominant-baseline": "middle",
+    // Una celda puede tener varias unidades (los patrones combinados de la
+    // rueda de patrones: "2 corcheas", "4 semicorcheas"...) -- cada una se
+    // coloca a mano, en fila, centrada en la punta del rayo, en vez de
+    // depender de que la fuente alinee varios glifos seguidos. El tamaño del
+    // ícono es SIEMPRE el mismo (34 de alto), esté solo o en fila -- lo que
+    // cambia es el ancho de la fila entera, nunca el tamaño de cada ícono.
+    const unidades = celda.unidades;
+    const iconoAlto = 34;
+    const iconoAncho = iconoAlto * (24 / 34);
+    const espacio = 3;
+    const anchoTotal = unidades.length * iconoAncho + (unidades.length - 1) * espacio;
+    let x = puntaX - anchoTotal / 2;
+    unidades.forEach((u) => {
+      svg.appendChild(crearUsoNota(u.figura, u.silencio, x, puntaY - iconoAlto / 2, iconoAncho, iconoAlto, { class: "rueda-nota-uso", "data-indice": i }));
+      x += iconoAncho + espacio;
     });
-    simbolo.textContent = simboloCelda(celda);
-    svg.appendChild(simbolo);
 
     const etiqueta = crearElementoSvg("text", {
       x: labelX, y: labelY, class: "rueda-etiqueta", "data-indice": i,
@@ -264,12 +360,7 @@ function construirRuedaEnSvg(idSvg, celdas) {
   svg.appendChild(crearElementoSvg("circle", {
     cx: RUEDA_CENTRO.x, cy: RUEDA_CENTRO.y, r: RUEDA_RADIO_HUB, class: "rueda-hub",
   }));
-  const hubTexto = crearElementoSvg("text", {
-    x: RUEDA_CENTRO.x, y: RUEDA_CENTRO.y, class: "rueda-hub-texto",
-    "text-anchor": "middle", "dominant-baseline": "middle",
-  });
-  hubTexto.textContent = "♩";
-  svg.appendChild(hubTexto);
+  svg.appendChild(crearUsoNota("negra", false, RUEDA_CENTRO.x - 9, RUEDA_CENTRO.y - 13, 18, 25.5, { class: "rueda-hub-uso" }));
 
   svg.appendChild(crearElementoSvg("circle", {
     cx: RUEDA_CENTRO.x, cy: RUEDA_CENTRO.y, r: 9, class: "rueda-bola", opacity: 0,
@@ -386,7 +477,7 @@ async function reproducirCeldaRueda(celda) {
   const bpm = parseInt(el("metroFlotBpm").value, 10) || 100;
   const eventos = unidadesRitmoAEventos(celda.unidades, bpm);
   el("ruedaEstado").textContent = `Patrón: ${celda.nombre} — aplaude tú también.`;
-  await window.PianoEngine.reproducirRitmo(eventos, 0.9, {});
+  await window.PianoEngine.reproducirRitmo(eventos, 0.75, {});
 }
 
 async function girarRueda() {
@@ -491,6 +582,7 @@ function inicializarMetronomoFlotanteRitmo() {
 }
 
 function inicializarPaginaRitmo() {
+  asegurarSimbolosNota();
   if (window.Progreso) Progreso.marcarHerramientaUsada("ritmo");
   inicializarMetronomoFlotanteRitmo();
   inicializarRitmo();
