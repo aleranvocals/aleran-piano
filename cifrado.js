@@ -603,6 +603,7 @@ function crearEslabon(lineaObj, i) {
   btn.addEventListener("click", () => {
     lineaObj.enlaces[i] = !lineaObj.enlaces[i];
     renderLineaEnSitio(lineaObj);
+    programarCheckpoint();
   });
   return btn;
 }
@@ -625,6 +626,7 @@ function crearCelda(silaba, indiceCol) {
   texto.textContent = textoSilaba(silaba);
   texto.addEventListener("input", () => {
     silaba.textoManual = texto.textContent;
+    programarCheckpoint();
   });
   wrap.appendChild(texto);
 
@@ -677,6 +679,7 @@ function crearNotaGrupo(lineaObj, grupo) {
     if (span.textContent.trim() === "") span.innerHTML = "";
     silabaBase.nota = span.textContent;
     marcarNotaCeldaSiInvalida(span, silabaBase.nota);
+    programarCheckpoint();
   });
   const seleccionar = () => seleccionarCeldaNota(span);
   span.addEventListener("click", seleccionar);
@@ -699,6 +702,7 @@ function crearNotaGrupo(lineaObj, grupo) {
     silabaBase.nota = "";
     marcarNotaCeldaSiInvalida(span, "");
     seleccionarCeldaNota(span);
+    programarCheckpoint();
   });
 
   const frag = document.createDocumentFragment();
@@ -776,6 +780,7 @@ function abrirMenuMarcas(silaba, btnAncla, elChips) {
         if (check.checked) silaba.marcas.add(t.id);
         else silaba.marcas.delete(t.id);
         actualizarChips(silaba, elChips);
+        programarCheckpoint();
       });
 
       const swatch = document.createElement("span");
@@ -1190,6 +1195,7 @@ document.getElementById("btnCifradoGenerar").addEventListener("click", () => {
   cancion = parsearCancion(texto, elIdioma.value);
   renderCancion();
   elEstado.textContent = "";
+  registrarCheckpoint();
 });
 
 elZoom.addEventListener("input", () => {
@@ -1209,6 +1215,7 @@ document.getElementById("btnCifradoReiniciar").addEventListener("click", () => {
     /* no pasa nada si no se pudo limpiar */
   }
   renderCancion();
+  registrarCheckpoint();
 });
 
 document.getElementById("btnCifradoImprimir").addEventListener("click", () => {
@@ -1247,6 +1254,7 @@ document.getElementById("inputCifradoAbrir").addEventListener("change", async (e
   try {
     await abrirCancionDesdeArchivo(archivo);
     elEstado.textContent = "Canción cargada.";
+    registrarCheckpoint();
   } catch (err) {
     elEstado.textContent = `No se pudo abrir el archivo: ${err.message}`;
   } finally {
@@ -1305,6 +1313,30 @@ function manejarClicPianoCifrado(midi) {
 
 inicializarPiano(manejarClicPianoCifrado);
 
+// Deseleccionar la celda de nota: con Esc, o haciendo click en cualquier
+// parte que no sea la propia celda ni el piano -- así se puede volver a
+// tocar el piano solo para escuchar, sin que cada tecla se escriba en la
+// última celda que se había tocado.
+function deseleccionarCeldaNota() {
+  if (!celdaNotaSeleccionada) return;
+  celdaNotaSeleccionada.classList.remove("celda-nota-seleccionada");
+  celdaNotaSeleccionada.blur();
+  celdaNotaSeleccionada = null;
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") deseleccionarCeldaNota();
+});
+
+document.addEventListener("click", (e) => {
+  // Un click DENTRO de la celda ya se encarga de seleccionar (ver
+  // seleccionarCeldaNota); un click en el piano flotante es justo la acción
+  // de escribir en la celda seleccionada -- ninguno de los dos debe
+  // deseleccionar. Cualquier otro click de la página sí.
+  if (e.target.closest(".celda-nota") || e.target.closest(".piano-flotante")) return;
+  deseleccionarCeldaNota();
+});
+
 // El piano flotante se puede colapsar (deja solo la barra del botón) --
 // sobre todo pensado para móvil, donde el piano completo ocupa demasiada
 // pantalla mientras se trabaja en la letra. Recuerda el estado entre visitas.
@@ -1337,6 +1369,76 @@ btnPianoToggle.addEventListener("click", () => {
   }
 });
 
+/* =========================================================
+   Deshacer / rehacer (Ctrl+Z / Ctrl+Y)
+   ========================================================= */
+
+// El historial es una lista de fotos completas de la canción (reusa
+// datosCancionActual()/aplicarDatosCancion() -- las mismas que ya usan el
+// autoguardado y la descarga a archivo), no el cambio inverso de cada
+// acción por separado: deshacer/rehacer es simplemente moverse por esa
+// lista. Cambios seguidos dentro de una misma pausa corta (escribir varias
+// letras, tocar varias teclas del piano para un melisma) se agrupan en UN
+// solo punto -- si no, Ctrl+Z habría que pulsarlo una vez por letra.
+const historial = [];
+let historialIndice = -1;
+let historialTimeout = null;
+const HISTORIAL_MAX = 60;
+const HISTORIAL_DEBOUNCE_MS = 500;
+
+function registrarCheckpoint() {
+  clearTimeout(historialTimeout);
+  const snapshot = JSON.stringify(datosCancionActual());
+  if (historial[historialIndice] === snapshot) return; // sin cambios reales, no duplicar
+  historial.length = historialIndice + 1; // un cambio nuevo descarta cualquier "rehacer" pendiente
+  historial.push(snapshot);
+  if (historial.length > HISTORIAL_MAX) historial.shift();
+  historialIndice = historial.length - 1;
+}
+
+function programarCheckpoint() {
+  clearTimeout(historialTimeout);
+  historialTimeout = setTimeout(registrarCheckpoint, HISTORIAL_DEBOUNCE_MS);
+}
+
+function aplicarCheckpoint(indice) {
+  const snapshot = historial[indice];
+  if (!snapshot) return;
+  historialIndice = indice;
+  aplicarDatosCancion(JSON.parse(snapshot));
+  renderCancion();
+  deseleccionarCeldaNota(); // la celda seleccionada de antes ya no existe en el DOM nuevo
+}
+
+function deshacer() {
+  clearTimeout(historialTimeout); // no dejar que un cambio a medio escribir se cuele encima
+  if (historialIndice <= 0) return;
+  aplicarCheckpoint(historialIndice - 1);
+}
+
+function rehacer() {
+  clearTimeout(historialTimeout);
+  if (historialIndice >= historial.length - 1) return;
+  aplicarCheckpoint(historialIndice + 1);
+}
+
+document.addEventListener("keydown", (e) => {
+  // El textarea de la letra completa (antes de generar el cifrado) tiene su
+  // propio deshacer nativo del navegador -- se deja intacto. Este historial
+  // es el de la canción ya generada (sílabas, notas, técnicas, enlaces,
+  // ritmo), un tipo de edición que el navegador no sabe deshacer solo.
+  if (e.target === elEntrada) return;
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const tecla = e.key.toLowerCase();
+  if (tecla === "z" && !e.shiftKey) {
+    e.preventDefault();
+    deshacer();
+  } else if (tecla === "y" || (tecla === "z" && e.shiftKey)) {
+    e.preventDefault();
+    rehacer();
+  }
+});
+
 // Si venimos de "Llevar al editor de ritmo" (o simplemente se recargó la
 // página), recupera el cifrado completo y aplica cualquier ritmo que el
 // editor haya dejado esperando.
@@ -1344,3 +1446,7 @@ if (restaurarCancionAutoguardada()) {
   aplicarResultadosDeRitmoPendientes();
   renderCancion();
 }
+
+// Punto de partida del historial -- sin esto, el primer Ctrl+Z después de
+// cargar la página no tendría a qué volver.
+registrarCheckpoint();
