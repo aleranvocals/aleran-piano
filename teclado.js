@@ -127,6 +127,115 @@ function inicializarPiano(manejarClic) {
 
   configurarDesplazamientoPiano();
   configurarZoomPiano();
+  configurarMidi(clic);
+}
+
+/* ============================================================
+   Control MIDI (opcional) -- un controlador físico por USB (pensado para
+   el Arturia Keylab 61 de Áleran, pero sirve cualquiera) toca las mismas
+   teclas que el ratón. Web MIDI solo existe en Chrome/Edge de escritorio
+   (no en Safari ni en la mayoría de navegadores móviles), así que el botón
+   avisa con claridad en vez de fallar en silencio si no está disponible.
+   ============================================================ */
+
+const CLAVE_MIDI_DISPOSITIVO = "aleran-piano-midi-dispositivo";
+let midiManejarNota = null;
+let midiEntradaActual = null;
+
+function configurarMidi(manejarClic) {
+  midiManejarNota = manejarClic;
+  const filaZoom = el("pianoZoom") && el("pianoZoom").closest(".piano-zoom");
+  if (!filaZoom) return;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "boton pequeno midi-boton";
+  btn.title = "Conectar un controlador MIDI (teclado físico por USB)";
+  btn.textContent = "🎹 MIDI";
+  filaZoom.appendChild(btn);
+
+  if (!navigator.requestMIDIAccess) {
+    btn.addEventListener("click", () => {
+      alert(
+        "Este navegador no soporta control MIDI (Web MIDI). Funciona en Chrome o Edge de escritorio, conectando el controlador por USB."
+      );
+    });
+    return;
+  }
+
+  btn.addEventListener("click", () => conectarMidi(btn));
+  intentarReconectarMidiGuardado(btn);
+}
+
+async function conectarMidi(btn) {
+  let acceso;
+  try {
+    acceso = await navigator.requestMIDIAccess();
+  } catch {
+    alert("No se pudo acceder a MIDI (permiso denegado por el navegador).");
+    return;
+  }
+  const entradas = Array.from(acceso.inputs.values());
+  if (entradas.length === 0) {
+    alert("No se detectó ningún controlador MIDI conectado por USB.");
+    return;
+  }
+  let elegida = entradas[0];
+  if (entradas.length > 1) {
+    const lista = entradas.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
+    const respuesta = prompt(`Hay varios dispositivos MIDI conectados:\n${lista}\n\nEscribe el número:`, "1");
+    const indice = parseInt(respuesta, 10) - 1;
+    if (entradas[indice]) elegida = entradas[indice];
+  }
+  conectarEntradaMidi(elegida, btn);
+}
+
+function conectarEntradaMidi(entrada, btn) {
+  if (midiEntradaActual) midiEntradaActual.onmidimessage = null;
+  midiEntradaActual = entrada;
+  entrada.onmidimessage = manejarMensajeMidi;
+  try {
+    localStorage.setItem(CLAVE_MIDI_DISPOSITIVO, entrada.name);
+  } catch {
+    /* no pasa nada si no se pudo guardar -- solo tendrá que elegirlo de nuevo */
+  }
+  if (btn) {
+    btn.classList.add("midi-conectado");
+    btn.title = `MIDI conectado: ${entrada.name}`;
+  }
+}
+
+// Si ya se eligió un dispositivo antes, lo reconecta solo (sin volver a
+// preguntar) apenas el navegador conceda el permiso -- Chrome lo recuerda
+// entre visitas del mismo sitio, así que esto suele quedar instantáneo.
+function intentarReconectarMidiGuardado(btn) {
+  let nombreGuardado;
+  try {
+    nombreGuardado = localStorage.getItem(CLAVE_MIDI_DISPOSITIVO);
+  } catch {
+    nombreGuardado = null;
+  }
+  if (!nombreGuardado) return;
+  navigator
+    .requestMIDIAccess()
+    .then((acceso) => {
+      const entrada = Array.from(acceso.inputs.values()).find((e) => e.name === nombreGuardado);
+      if (entrada) conectarEntradaMidi(entrada, btn);
+    })
+    .catch(() => {
+      /* sin permiso concedido todavía: se pedirá al pulsar el botón */
+    });
+}
+
+// Un mensaje MIDI trae 3 bytes: [estado, nota, velocidad]. El nibble alto del
+// estado es el tipo (0x90 = Note On, 0x80 = Note Off); por convención MIDI,
+// un Note On con velocidad 0 EQUIVALE a un Note Off (muchos controladores lo
+// mandan así). Solo un Note On real toca/escribe -- soltar la tecla física no
+// hace nada especial, igual que soltar el botón del ratón tampoco lo hace.
+function manejarMensajeMidi(evento) {
+  const [estado, notaMidi, velocidad] = evento.data;
+  const esNoteOn = (estado & 0xf0) === 0x90 && velocidad > 0;
+  if (esNoteOn && midiManejarNota) midiManejarNota(notaMidi);
 }
 
 function configurarZoomPiano() {

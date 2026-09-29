@@ -84,6 +84,30 @@ function interpretarNota(texto) {
   }
 }
 
+/** Igual que interpretarNota, pero para una casilla que puede llevar VARIAS
+ * notas seguidas (melisma: 2-3 notas en una misma sílaba, normal en canto),
+ * separadas por "-" -- el mismo separador que ya se usa a mano en Cifrado.
+ * "Sib4 - Lab4" -> dos notas. Una casilla de una sola nota sigue funcionando
+ * igual (un solo elemento en `notas`), así que esto puede sustituir a
+ * interpretarNota() en cualquier sitio que quiera aceptar melismas sin
+ * romper el caso de una nota sola. */
+function interpretarNotas(texto) {
+  const limpio = (texto || "").trim();
+  if (!limpio) return { notas: [], todoValido: true, vacio: true };
+  const trozos = limpio
+    .split("-")
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+  const notas = trozos.map((t) => {
+    try {
+      return { texto: t, midi: nombreAMidi(t), valido: true };
+    } catch {
+      return { texto: t, midi: null, valido: false };
+    }
+  });
+  return { notas, todoValido: notas.every((n) => n.valido), vacio: false };
+}
+
 /** Marca visualmente un campo de texto/contenteditable como inválido (borde
  * rojo real, no el borde de foco normal) y, si se pasa `elMensaje`, escribe
  * ahí la explicación. Pensado para reusarse en cualquier input de nota del

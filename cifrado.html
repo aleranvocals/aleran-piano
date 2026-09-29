@@ -150,10 +150,29 @@
   </footer>
 </div>
 
+<div class="piano-flotante" id="pianoFlotante">
+  <button type="button" class="piano-flotante-toggle" id="btnPianoFlotanteToggle" aria-expanded="true" aria-controls="pianoFlotanteCuerpo" title="Mostrar/ocultar el piano">
+    🎹 Piano <span id="pianoFlotanteFlecha" aria-hidden="true">▾</span>
+  </button>
+  <div class="piano-flotante-cuerpo" id="pianoFlotanteCuerpo">
+    <p class="piano-flotante-ayuda">Toca una nota de la letra para seleccionarla, luego toca una tecla para escribirla ahí. Toca varias teclas seguidas para armar un melisma.</p>
+    <div class="piano-contenedor" id="pianoContenedor">
+      <div class="piano" id="piano"></div>
+    </div>
+    <input type="range" id="pianoDesplazamiento" class="piano-slider" min="0" max="1000" value="0" aria-label="Desplazar el teclado" />
+    <div class="piano-zoom">
+      <span aria-hidden="true">🔍−</span>
+      <input type="range" id="pianoZoom" min="18" max="60" step="2" value="34" aria-label="Tamaño de las teclas" />
+      <span aria-hidden="true">🔍+</span>
+    </div>
+  </div>
+</div>
+
 <script src="smplr.iife.js"></script>
 <script src="escalas.js?v=8"></script>
 <script src="audio.js?v=5"></script>
-<script src="cifrado.js?v=12"></script>
+<script src="teclado.js?v=1"></script>
+<script src="cifrado.js?v=13"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

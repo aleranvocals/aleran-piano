@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "aleran-piano-static",
+      "runtimeExecutable": "C:\\Users\\metal\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+      "runtimeArgs": ["-m", "http.server", "5173"],
+      "port": 5173
+    }
+  ]
+}

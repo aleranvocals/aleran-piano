@@ -661,7 +661,8 @@ function crearNotaGrupo(lineaObj, grupo) {
   const silabaBase = lineaObj.silabas[grupo.inicio];
   // Span editable (no <input>) para que la casilla crezca sola con el
   // contenido, igual que la sílaba — así "Sol#4" no se corta solo porque
-  // la sílaba de arriba sea corta ("le").
+  // la sílaba de arriba sea corta ("le"). Acepta un melisma completo como
+  // "Sib4 - Lab4" (ver interpretarNotas en escalas.js), no solo una nota.
   const span = document.createElement("span");
   span.className = "celda-nota" + (grupo.fin > grupo.inicio ? " celda-nota-fusionada" : "");
   span.contentEditable = "true";
@@ -677,16 +678,58 @@ function crearNotaGrupo(lineaObj, grupo) {
     silabaBase.nota = span.textContent;
     marcarNotaCeldaSiInvalida(span, silabaBase.nota);
   });
-  return span;
+  const seleccionar = () => seleccionarCeldaNota(span);
+  span.addEventListener("click", seleccionar);
+  span.addEventListener("focus", seleccionar);
+
+  // Botón para vaciar la celda de un tirón -- sobre todo pensado para cuando
+  // se arma un melisma tocando el piano: si te equivocas, no hay que borrar
+  // nota por nota a mano.
+  const btnLimpiar = document.createElement("button");
+  btnLimpiar.type = "button";
+  btnLimpiar.className = "celda-nota-limpiar";
+  btnLimpiar.title = "Vaciar esta nota";
+  btnLimpiar.setAttribute("aria-label", "Vaciar esta nota");
+  btnLimpiar.textContent = "✕";
+  btnLimpiar.style.gridColumn = `${2 * grupo.inicio + 1} / ${2 * grupo.fin + 2}`;
+  btnLimpiar.style.gridRow = "2";
+  btnLimpiar.addEventListener("click", (e) => {
+    e.stopPropagation();
+    span.innerHTML = "";
+    silabaBase.nota = "";
+    marcarNotaCeldaSiInvalida(span, "");
+    seleccionarCeldaNota(span);
+  });
+
+  const frag = document.createDocumentFragment();
+  frag.append(span, btnLimpiar);
+  return frag;
 }
 
-// Nota mal escrita en una sílaba: se marca con un borde ámbar sobre la
-// propia celda (mismo helper que usan Mapa vocal/Piano) en vez de fallar en
-// silencio -- antes una nota como "la2" simplemente sonaba a silencio al
-// reproducir, sin ningún aviso de por qué.
+// Cuál casilla de nota recibe la siguiente tecla que se toque en el piano
+// flotante (click de ratón o MIDI) -- ver manejarClicPianoCifrado más abajo.
+let celdaNotaSeleccionada = null;
+
+function seleccionarCeldaNota(span) {
+  if (celdaNotaSeleccionada && celdaNotaSeleccionada !== span) {
+    celdaNotaSeleccionada.classList.remove("celda-nota-seleccionada");
+  }
+  celdaNotaSeleccionada = span;
+  span.classList.add("celda-nota-seleccionada");
+}
+
+// Nota (o melisma) mal escrito en una sílaba: se marca con un borde ámbar
+// sobre la propia celda (mismo helper que usan Mapa vocal/Piano) en vez de
+// fallar en silencio -- antes una nota como "la2" simplemente sonaba a
+// silencio al reproducir, sin ningún aviso de por qué. Con melismas, basta
+// con que UNA de las notas de la casilla esté mal escrita.
 function marcarNotaCeldaSiInvalida(span, notaTexto) {
-  const r = interpretarNota(notaTexto);
-  marcarCampoNotaInvalido(span, !r.valido && !r.vacio, r.mensaje);
+  const r = interpretarNotas(notaTexto);
+  const notaInvalida = r.notas.find((n) => !n.valido);
+  const mensaje = notaInvalida
+    ? `"${notaInvalida.texto}" no es una nota válida (ej: Do4, La4, Fa#3, Sib2, A4, C#5)`
+    : "";
+  marcarCampoNotaInvalido(span, !r.vacio && !r.todoValido, mensaje);
 }
 
 /* =========================================================
@@ -934,17 +977,19 @@ function aplicarResultadosDeRitmoPendientes() {
 }
 
 function llevarLineaAlEditorDeRitmo(lineaObj) {
-  const unidades = lineaObj.silabas.map((s) => {
-    let midi = null;
-    const notaTexto = (s.nota || "").trim();
-    if (notaTexto) {
-      try {
-        midi = nombreAMidi(notaTexto);
-      } catch {
-        midi = null; // nota mal escrita o vacía -> arranca como silencio, se corrige allá
-      }
+  // Una sílaba con melisma (2-3 notas) se reparte en varias unidades -- la
+  // primera se lleva el texto de la sílaba, las siguientes van con texto
+  // vacío (continuación de la misma sílaba), editable después si hace falta.
+  const unidades = [];
+  lineaObj.silabas.forEach((s) => {
+    const { notas } = interpretarNotas(s.nota || "");
+    if (notas.length === 0) {
+      unidades.push({ texto: textoSilaba(s), midi: null }); // vacía o mal escrita -> silencio, se corrige allá
+      return;
     }
-    return { texto: textoSilaba(s), midi };
+    notas.forEach((n, i) => {
+      unidades.push({ texto: i === 0 ? textoSilaba(s) : "", midi: n.valido ? n.midi : null });
+    });
   });
   guardarCancionAutoguardado();
   try {
@@ -961,19 +1006,41 @@ function llevarLineaAlEditorDeRitmo(lineaObj) {
 // ritmo neutro pero real, para poder escuchar la melodía de inmediato sin
 // obligar a nadie a armar un ritmo primero. Nota vacía o mal escrita ->
 // silencio (nunca rompe la reproducción, igual que el resto del sitio).
+// Devuelve { unidades, celdaPorUnidad } -- celdaPorUnidad[i] dice a qué
+// .celda-nota real (por índice, mismo orden que gruposDeNotas/querySelectorAll)
+// pertenece unidades[i]. Con un melisma, una sola celda reparte VARIAS
+// unidades seguidas, así que ya no vale asumir que unidades[i] y celdas[i]
+// son la misma casilla (ver reproducirLinea/eventosCancionCompleta).
 function unidadesLineaPorDefecto(lineaObj) {
-  return gruposDeNotas(lineaObj).map((grupo) => {
+  const unidades = [];
+  const celdaPorUnidad = [];
+  gruposDeNotas(lineaObj).forEach((grupo, indiceCelda) => {
     const notaTexto = (lineaObj.silabas[grupo.inicio].nota || "").trim();
-    let midi = null;
-    if (notaTexto) {
-      try {
-        midi = nombreAMidi(notaTexto);
-      } catch {
-        midi = null;
-      }
+    const { notas } = interpretarNotas(notaTexto);
+    if (notas.length === 0) {
+      unidades.push({ midi: null, figura: "negra" });
+      celdaPorUnidad.push(indiceCelda);
+      return;
     }
-    return { midi, figura: "negra" };
+    notas.forEach((n) => {
+      unidades.push({ midi: n.valido ? n.midi : null, figura: "negra" });
+      celdaPorUnidad.push(indiceCelda);
+    });
   });
+  return { unidades, celdaPorUnidad };
+}
+
+// Si la línea ya tiene ritmo real asignado (vino del Editor de Ritmo), sus
+// unidades ya no corresponden 1:1 con las celdas -- el propio editor pudo
+// añadir, quitar o reordenar pulsos -- así que el resaltado ahí es mejor
+// esfuerzo (índice a índice) y no se toca; unidadesLineaPorDefecto() sí
+// necesita el mapeo real por venir directo de las celdas actuales.
+function datosReproduccionLinea(lineaObj) {
+  if (lineaObj.ritmo) {
+    const unidades = lineaObj.ritmo.unidades;
+    return { unidades, celdaPorUnidad: unidades.map((_, i) => i) };
+  }
+  return unidadesLineaPorDefecto(lineaObj);
 }
 
 async function reproducirLinea(lineaObj) {
@@ -982,7 +1049,7 @@ async function reproducirLinea(lineaObj) {
     return;
   }
   const bpm = parseInt(elBpm.value, 10) || (lineaObj.ritmo && lineaObj.ritmo.bpm) || 100;
-  const unidades = lineaObj.ritmo ? lineaObj.ritmo.unidades : unidadesLineaPorDefecto(lineaObj);
+  const { unidades, celdaPorUnidad } = datosReproduccionLinea(lineaObj);
   const eventos = unidadesAEventos(unidades, bpm);
   if (eventos.length === 0) return;
 
@@ -991,14 +1058,17 @@ async function reproducirLinea(lineaObj) {
   // desalineando el índice de evento del índice de celda -- mapaUnidadAEvento
   // (escalas.js) dice, para cada celda, a qué evento le tocó de verdad, así
   // que el resaltado sigue siendo exacto en vez de tener que desactivarlo
-  // entero para cualquier línea que ya tuviera ritmo asignado.
+  // entero para cualquier línea que ya tuviera ritmo asignado. celdaPorUnidad
+  // (arriba) resuelve el otro desalineamiento: un melisma reparte varias
+  // unidades en UNA sola celda.
   const celdas = lineaObj._el ? Array.from(lineaObj._el.querySelectorAll(".celda-nota")) : [];
   const mapaEventos = mapaUnidadAEvento(unidades);
   const celdasPorEvento = [];
   unidades.forEach((u, i) => {
-    if (!celdas[i]) return;
+    const celda = celdas[celdaPorUnidad[i]];
+    if (!celda) return;
     const evIdx = mapaEventos[i];
-    (celdasPorEvento[evIdx] || (celdasPorEvento[evIdx] = [])).push(celdas[i]);
+    (celdasPorEvento[evIdx] || (celdasPorEvento[evIdx] = [])).push(celda);
   });
   const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
   if (window.MetronomoEngine) window.MetronomoEngine.iniciar(bpm, metrica);
@@ -1040,7 +1110,7 @@ function eventosCancionCompleta(bpm, metrica) {
     }
     if (bloque.tipo !== "linea") return; // "espacio": sin notas, se salta
 
-    const unidades = bloque.ritmo ? bloque.ritmo.unidades : unidadesLineaPorDefecto(bloque);
+    const { unidades, celdaPorUnidad } = datosReproduccionLinea(bloque);
     const eventosLineaActual = unidadesAEventos(unidades, bpm);
     if (eventosLineaActual.length === 0) return;
 
@@ -1048,10 +1118,11 @@ function eventosCancionCompleta(bpm, metrica) {
     const mapaEventos = mapaUnidadAEvento(unidades);
     const offsetEventos = eventos.length;
     unidades.forEach((u, i) => {
-      if (!celdas[i]) return;
+      const celda = celdas[celdaPorUnidad[i]];
+      if (!celda) return;
       const evIdxGlobal = offsetEventos + mapaEventos[i];
       if (!resaltarPorIndice.has(evIdxGlobal)) resaltarPorIndice.set(evIdxGlobal, []);
-      resaltarPorIndice.get(evIdxGlobal).push(celdas[i]);
+      resaltarPorIndice.get(evIdxGlobal).push(celda);
     });
     eventos.push(...eventosLineaActual);
     eventos.push({ midi: -1, duracion: PAUSA_ENTRE_FRASES });
@@ -1212,6 +1283,59 @@ function generarTextoPlano() {
 }
 
 renderLeyenda();
+
+/* =========================================================
+   Piano flotante -- escribe en la celda de nota seleccionada
+   ========================================================= */
+
+// Se llama tanto por click de ratón en una tecla como por una nota entrante
+// de un controlador MIDI (configurarMidi en teclado.js reusa este mismo
+// callback) -- así que "tocar el piano" siempre hace las dos cosas: sonar
+// Y, si hay una celda de nota seleccionada, escribir ahí. Anexa en vez de
+// sobrescribir (separador " - ", el mismo que ya usa Áleran a mano) para que
+// tocar varias teclas seguidas arme un melisma solo.
+function manejarClicPianoCifrado(midi) {
+  previsualizarNotaPiano(midi);
+  if (!celdaNotaSeleccionada || !document.body.contains(celdaNotaSeleccionada)) return;
+  const nombre = midiANombre(midi);
+  const actual = celdaNotaSeleccionada.textContent.trim();
+  celdaNotaSeleccionada.textContent = actual ? `${actual} - ${nombre}` : nombre;
+  celdaNotaSeleccionada.dispatchEvent(new Event("input"));
+}
+
+inicializarPiano(manejarClicPianoCifrado);
+
+// El piano flotante se puede colapsar (deja solo la barra del botón) --
+// sobre todo pensado para móvil, donde el piano completo ocupa demasiada
+// pantalla mientras se trabaja en la letra. Recuerda el estado entre visitas.
+const CLAVE_PIANO_COLAPSADO = "aleran-piano-cifrado-piano-colapsado";
+const btnPianoToggle = document.getElementById("btnPianoFlotanteToggle");
+const pianoFlotanteCuerpo = document.getElementById("pianoFlotanteCuerpo");
+const pianoFlotanteFlecha = document.getElementById("pianoFlotanteFlecha");
+
+function aplicarEstadoPianoFlotante(colapsado) {
+  pianoFlotanteCuerpo.hidden = colapsado;
+  btnPianoToggle.setAttribute("aria-expanded", String(!colapsado));
+  pianoFlotanteFlecha.textContent = colapsado ? "▸" : "▾";
+}
+
+let pianoColapsadoInicial = false;
+try {
+  pianoColapsadoInicial = localStorage.getItem(CLAVE_PIANO_COLAPSADO) === "1";
+} catch {
+  /* no pasa nada si no se pudo leer -- arranca desplegado */
+}
+aplicarEstadoPianoFlotante(pianoColapsadoInicial);
+
+btnPianoToggle.addEventListener("click", () => {
+  const colapsado = !pianoFlotanteCuerpo.hidden;
+  aplicarEstadoPianoFlotante(colapsado);
+  try {
+    localStorage.setItem(CLAVE_PIANO_COLAPSADO, colapsado ? "1" : "0");
+  } catch {
+    /* no pasa nada si no se pudo guardar */
+  }
+});
 
 // Si venimos de "Llevar al editor de ritmo" (o simplemente se recargó la
 // página), recupera el cifrado completo y aplica cualquier ritmo que el
