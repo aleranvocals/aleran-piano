@@ -1637,10 +1637,6 @@ input[type="checkbox"] {
   padding-bottom: 0.4rem;
 }
 
-.piano-flotante.piano-flotante-compacto .piano {
-  height: 84px;
-}
-
 .piano-flotante .piano-contenedor {
   margin-bottom: 0.5rem;
 }
@@ -1649,9 +1645,18 @@ input[type="checkbox"] {
   margin-top: -0.25rem;
 }
 
+/* En móvil el tamaño por defecto de las teclas ya es el bueno: la barra de
+   zoom solo estorba (ocupa alto de pantalla) -- se quita siempre, con o sin
+   teclado abierto. En escritorio sigue. */
+@media (max-width: 600px) {
+  .piano-flotante .piano-zoom {
+    display: none;
+  }
+}
+
 @media (max-width: 480px) {
   .cifrado-app {
-    padding-bottom: 260px;
+    padding-bottom: 300px;
   }
 }
 
