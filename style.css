@@ -1620,6 +1620,10 @@ input[type="checkbox"] {
   line-height: 1.4;
 }
 
+.piano-flotante-ayuda .ayuda-corta {
+  display: none;
+}
+
 /* Con el teclado del móvil abierto el piano sube encima de él (ver
    ajustarPianoAlTeclado en cifrado.js) y se compacta: sin texto de ayuda ni
    zoom, teclas más bajas. Se deja el deslizador de desplazamiento para poder
@@ -1661,6 +1665,14 @@ input[type="checkbox"] {
     margin-bottom: 0.35rem;
     font-size: 0.7rem;
     line-height: 1.3;
+  }
+
+  .piano-flotante-ayuda .ayuda-larga {
+    display: none;
+  }
+
+  .piano-flotante-ayuda .ayuda-corta {
+    display: inline;
   }
 }
 
