@@ -1645,18 +1645,22 @@ input[type="checkbox"] {
   margin-top: -0.25rem;
 }
 
-/* En móvil el tamaño por defecto de las teclas ya es el bueno: la barra de
-   zoom solo estorba (ocupa alto de pantalla) -- se quita siempre, con o sin
-   teclado abierto. En escritorio sigue. */
+/* En móvil el piano flotante es siempre del tamaño pequeño (84px de alto) y
+   sin barra de zoom, con o sin teclado abierto: el grande ocupa demasiada
+   pantalla. En escritorio sigue con su altura y su zoom normales. */
 @media (max-width: 600px) {
   .piano-flotante .piano-zoom {
     display: none;
+  }
+
+  .piano-flotante .piano {
+    height: 84px;
   }
 }
 
 @media (max-width: 480px) {
   .cifrado-app {
-    padding-bottom: 300px;
+    padding-bottom: 260px;
   }
 }
 
