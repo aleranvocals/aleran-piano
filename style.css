@@ -1620,6 +1620,27 @@ input[type="checkbox"] {
   line-height: 1.4;
 }
 
+/* Con el teclado del móvil abierto el piano sube encima de él (ver
+   ajustarPianoAlTeclado en cifrado.js) y se compacta: sin texto de ayuda ni
+   zoom, teclas más bajas. Se deja el deslizador de desplazamiento para poder
+   llegar a cualquier octava. */
+.piano-flotante.piano-flotante-compacto .piano-flotante-ayuda,
+.piano-flotante.piano-flotante-compacto .piano-zoom {
+  display: none;
+}
+
+.piano-flotante.piano-flotante-compacto .piano-flotante-toggle {
+  padding: 0.25rem;
+}
+
+.piano-flotante.piano-flotante-compacto .piano-flotante-cuerpo {
+  padding-bottom: 0.4rem;
+}
+
+.piano-flotante.piano-flotante-compacto .piano {
+  height: 84px;
+}
+
 .piano-flotante .piano-contenedor {
   margin-bottom: 0.5rem;
 }

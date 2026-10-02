@@ -720,6 +720,11 @@ function seleccionarCeldaNota(span) {
   }
   celdaNotaSeleccionada = span;
   span.classList.add("celda-nota-seleccionada");
+  // Con el teclado del móvil abierto el piano sube encima de él: al cambiar
+  // de casilla, asegurar que la nueva no quede tapada por el piano.
+  if (document.getElementById("pianoFlotante").classList.contains("piano-flotante-compacto")) {
+    setTimeout(asegurarCeldaSeleccionadaVisible, 60);
+  }
 }
 
 // Nota (o melisma) mal escrito en una sílaba: se marca con un borde ámbar
@@ -1368,6 +1373,38 @@ btnPianoToggle.addEventListener("click", () => {
     /* no pasa nada si no se pudo guardar */
   }
 });
+
+// En móvil, al tocar una casilla sale el teclado del sistema y, como el piano
+// es position:fixed al fondo, queda DEBAJO del teclado (Chrome Android no
+// reduce el viewport del layout, solo el visual). Con visualViewport se mide
+// cuánto del fondo tapa el teclado y se sube el piano justo encima de él, en
+// versión compacta (sin ayuda ni zoom) para que quede sitio para la letra.
+// Funciona igual si el navegador SÍ reduce el viewport: ahí "tapado" da 0.
+const pianoFlotanteEl = document.getElementById("pianoFlotante");
+
+function asegurarCeldaSeleccionadaVisible() {
+  const vv = window.visualViewport;
+  if (!vv || !celdaNotaSeleccionada) return;
+  const rect = celdaNotaSeleccionada.getBoundingClientRect();
+  const techoPiano = vv.offsetTop + vv.height - pianoFlotanteEl.offsetHeight;
+  const exceso = rect.bottom - (techoPiano - 12);
+  if (exceso > 0) window.scrollBy(0, exceso);
+}
+
+function ajustarPianoAlTeclado() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const tapado = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  const tecladoAbierto = tapado > 120;
+  pianoFlotanteEl.style.bottom = tecladoAbierto ? `${tapado}px` : "";
+  pianoFlotanteEl.classList.toggle("piano-flotante-compacto", tecladoAbierto);
+  if (tecladoAbierto) asegurarCeldaSeleccionadaVisible();
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", ajustarPianoAlTeclado);
+  window.visualViewport.addEventListener("scroll", ajustarPianoAlTeclado);
+}
 
 /* =========================================================
    Deshacer / rehacer (Ctrl+Z / Ctrl+Y)
