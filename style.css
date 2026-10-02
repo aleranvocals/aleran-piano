@@ -109,6 +109,10 @@ body {
   justify-content: center;
   padding-bottom: 4px;
   user-select: none;
+  /* Sin esto el navegador interpreta un toque sobre la tecla como inicio de
+     scroll/zoom y cancela el puntero: no se podrían pulsar varias teclas a la
+     vez con dos dedos. El teclado se desplaza con el deslizador de abajo. */
+  touch-action: none;
   /* Red de seguridad: si algún nombre (p. ej. "Sol#1"/"Sol♭1", los más
      largos) no llega a caber del todo con el tamaño de letra calculado,
      que se recorte en vez de invadir visualmente la tecla de al lado. */

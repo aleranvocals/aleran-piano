@@ -29,9 +29,15 @@ let pianoEnVivo = null;
 let cargadorCompartido = null;
 let tokenReproduccion = 0;
 
+// Mientras se precarga (antes de que el usuario toque nada) el navegador no
+// deja arrancar el audio: el contexto nace "suspended" y llamar resume() ahí
+// solo da un aviso en consola. Las muestras sí se pueden descargar y
+// decodificar igual; el resume() de verdad ocurre en la primera nota tocada.
+let precargando = false;
+
 function obtenerContexto() {
   if (!contextoAudio) contextoAudio = new (window.AudioContext || window.webkitAudioContext)();
-  if (contextoAudio.state === "suspended") contextoAudio.resume();
+  if (!precargando && contextoAudio.state === "suspended") contextoAudio.resume();
   return contextoAudio;
 }
 
@@ -45,6 +51,74 @@ function obtenerPianoEnVivo() {
     pianoEnVivo = SplendidGrandPiano(obtenerContexto(), { ...OPCIONES_PIANO, loader: obtenerCargador() });
   }
   return pianoEnVivo;
+}
+
+// Descarga y decodifica las muestras del piano sin esperar a la primera nota,
+// para que el primer toque suene al instante en vez de hacer esperar. Es
+// seguro llamarla varias veces. Las páginas con piano visible la llaman al
+// abrirse (ver inicializarPiano en teclado.js).
+function precargarPiano() {
+  if (pianoEnVivo) return;
+  precargando = true;
+  try {
+    obtenerPianoEnVivo();
+  } finally {
+    precargando = false;
+  }
+}
+
+/* ============================================================
+   Notas "libres" -- para tocar el piano en vivo (teclas de la pantalla o un
+   controlador MIDI). A diferencia de reproducirSecuencia(), NO cortan lo que
+   ya suena ni lo que está agendado: cada tecla es independiente, así que se
+   pueden pulsar varias a la vez (acordes, dos pulgares en el móvil). La nota
+   suena mientras la tecla siga pulsada y se suelta con soltarNotaLibre().
+   ============================================================ */
+const notasLibres = new Map(); // midi -> estado de la nota que suena (o está por sonar)
+const MIN_NOTA_LIBRE_MS = 450; // un toque rápido no queda tan corto que no se oiga el tono
+const MAX_NOTA_LIBRE_MS = 10000; // red de seguridad si nunca llega el "soltar"
+
+function cortarNotaLibre(midi, estado) {
+  clearTimeout(estado.temporizador);
+  if (estado.stop) {
+    estado.stop();
+    if (notasLibres.get(midi) === estado) notasLibres.delete(midi);
+  }
+  if (estado.alCortar) estado.alCortar();
+}
+
+async function iniciarNotaLibre(midi, volumen, alCortar) {
+  obtenerContexto(); // dentro del gesto del usuario, para que el navegador deje arrancar el audio
+  const previa = notasLibres.get(midi);
+  if (previa) cortarNotaLibre(midi, previa);
+
+  const estado = { liberada: false, stop: null, inicio: performance.now(), temporizador: null, alCortar };
+  notasLibres.set(midi, estado);
+  estado.temporizador = setTimeout(() => soltarNotaLibre(midi), MAX_NOTA_LIBRE_MS);
+
+  const piano = obtenerPianoEnVivo();
+  await piano.ready;
+  if (notasLibres.get(midi) !== estado) return; // otra pulsación de la misma tecla la reemplazó
+
+  piano.output.volume = Math.round(Math.max(0, Math.min(1, volumen)) * 127);
+  if (estado.liberada) {
+    // Se soltó antes de que terminaran de cargar las muestras: que suene un instante igualmente.
+    piano.start({ note: clampMidi(midi), duration: MIN_NOTA_LIBRE_MS / 1000 });
+    notasLibres.delete(midi);
+    clearTimeout(estado.temporizador);
+    if (alCortar) setTimeout(alCortar, MIN_NOTA_LIBRE_MS);
+    return;
+  }
+  const stop = piano.start({ note: clampMidi(midi) });
+  estado.stop = typeof stop === "function" ? stop : () => {};
+}
+
+function soltarNotaLibre(midi) {
+  const estado = notasLibres.get(midi);
+  if (!estado || estado.liberada) return;
+  estado.liberada = true;
+  const falta = Math.max(0, MIN_NOTA_LIBRE_MS - (performance.now() - estado.inicio));
+  setTimeout(() => cortarNotaLibre(midi, estado), falta);
 }
 
 function duracionTotal(eventos) {
@@ -689,7 +763,16 @@ function detenerEscuchaContinua() {
   escuchaContinuaToken++; // invalida cualquier bucle en curso, sin poder "revivirlo" luego
 }
 
-window.PianoEngine = { reproducirSecuencia, reproducirRitmo, detenerReproduccion, exportarMp3, silenciarPianoAhora };
+window.PianoEngine = {
+  reproducirSecuencia,
+  reproducirRitmo,
+  detenerReproduccion,
+  exportarMp3,
+  silenciarPianoAhora,
+  precargarPiano,
+  iniciarNotaLibre,
+  soltarNotaLibre,
+};
 window.MetronomoEngine = {
   iniciar: iniciarMetronomo,
   detener: detenerMetronomo,

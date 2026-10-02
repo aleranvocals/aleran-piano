@@ -78,29 +78,28 @@ function construirTeclasPiano() {
 
 /** Al tocar una tecla sin más contexto (páginas que no necesitan decidir
  * nada especial), simplemente se previsualiza la nota. */
-let ultimaNotaPrevisualizada = null;
+// Teclas que ahora mismo están pulsadas por un dedo/ratón/MIDI (se llenan en
+// el listener de abajo y en manejarMensajeMidi, y se vacían al soltar).
+const teclasSostenidas = new Set();
 
+// Cada tecla es una nota libre e independiente (ver iniciarNotaLibre en
+// audio.js): tocar una no corta las demás, así se pueden pulsar varias a la
+// vez. Si la tecla sigue pulsada la nota se sostiene; si no hay un "soltar"
+// detrás (p. ej. un clic hecho con el teclado), se suelta enseguida.
 function previsualizarNotaPiano(midi) {
   if (!window.PianoEngine) return;
-  // reproducirSecuencia() usa un token compartido para poder cortar en seco
-  // una reproducción vieja cuando arranca una nueva (correcto para
-  // secuencias largas) -- pero eso significa que si tocas una tecla mientras
-  // suena OTRA cosa (otra previsualización, o una secuencia larga como un
-  // ejercicio de Rutina), el onNotaFin de lo que sonaba antes NUNCA llega a
-  // dispararse (el token ya cambió), y esa tecla se queda "encendida" para
-  // siempre aunque ya no suene nada. limpiarTeclasActivas() (en vez de solo
-  // apagar la última previsualizada) cubre cualquier caso, no solo el propio.
-  limpiarTeclasActivas();
-  ultimaNotaPrevisualizada = midi;
-
   const volumen = parseFloat(el("volumen") ? el("volumen").value : "0.85") || 0.85;
-  window.PianoEngine.reproducirSecuencia([{ midi, duracion: 0.6 }], volumen, {
-    onNotaInicio: (m) => marcarTeclaActiva(m, true),
-    onNotaFin: (m) => {
-      marcarTeclaActiva(m, false);
-      if (ultimaNotaPrevisualizada === m) ultimaNotaPrevisualizada = null;
-    },
-  });
+  const sostenida = teclasSostenidas.has(midi);
+  // Primero se inicia y luego se marca: si esta misma tecla ya sonaba, el
+  // "cortar" de la anterior apaga la marca, y así la nueva queda encendida.
+  window.PianoEngine.iniciarNotaLibre(midi, volumen, () => marcarTeclaActiva(midi, false));
+  marcarTeclaActiva(midi, true);
+  if (!sostenida) window.PianoEngine.soltarNotaLibre(midi);
+}
+
+function soltarNotaPiano(midi) {
+  teclasSostenidas.delete(midi);
+  if (window.PianoEngine) window.PianoEngine.soltarNotaLibre(midi);
 }
 
 /** `manejarClic(midi)` es opcional: si no se indica, tocar una tecla solo
@@ -108,9 +107,42 @@ function previsualizarNotaPiano(midi) {
  * (elegir nota, responder un quiz...) pasa su propio callback. */
 function inicializarPiano(manejarClic) {
   construirTeclasPiano();
+  // Precarga las muestras cuando el navegador esté ocioso (no compite con el
+  // dibujado de la página) para que la primera tecla suene sin esperar.
+  const precargar = () => {
+    if (window.PianoEngine && window.PianoEngine.precargarPiano) window.PianoEngine.precargarPiano();
+  };
+  if ("requestIdleCallback" in window) window.requestIdleCallback(precargar, { timeout: 2500 });
+  else setTimeout(precargar, 1200);
   const clic = manejarClic || previsualizarNotaPiano;
 
+  // pointerdown (no click): cada dedo es un puntero distinto, así que con dos
+  // pulgares (o dos dedos) suenan las dos teclas a la vez -- "click" no se
+  // dispara para toques simultáneos. Además responde en cuanto se toca, sin
+  // esperar a soltar. El "soltar" se escucha en window para que funcione
+  // aunque el dedo/ratón termine fuera de la tecla.
+  const teclasPorPuntero = new Map(); // pointerId -> midi
+  el("piano").addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const tecla = e.target.closest(".tecla");
+    if (!tecla) return;
+    const midi = parseInt(tecla.dataset.midi, 10);
+    teclasPorPuntero.set(e.pointerId, midi);
+    teclasSostenidas.add(midi);
+    clic(midi);
+  });
+  const soltarPuntero = (e) => {
+    const midi = teclasPorPuntero.get(e.pointerId);
+    if (midi === undefined) return;
+    teclasPorPuntero.delete(e.pointerId);
+    soltarNotaPiano(midi);
+  };
+  window.addEventListener("pointerup", soltarPuntero);
+  window.addEventListener("pointercancel", soltarPuntero);
+  // Un clic que NO viene de un puntero (detail === 0: activar con el teclado,
+  // o un .click() programático) no pasa por pointerdown -- se atiende aquí.
   el("piano").addEventListener("click", (e) => {
+    if (e.detail !== 0) return;
     const tecla = e.target.closest(".tecla");
     if (!tecla) return;
     clic(parseInt(tecla.dataset.midi, 10));
@@ -230,12 +262,17 @@ function intentarReconectarMidiGuardado(btn) {
 // Un mensaje MIDI trae 3 bytes: [estado, nota, velocidad]. El nibble alto del
 // estado es el tipo (0x90 = Note On, 0x80 = Note Off); por convención MIDI,
 // un Note On con velocidad 0 EQUIVALE a un Note Off (muchos controladores lo
-// mandan así). Solo un Note On real toca/escribe -- soltar la tecla física no
-// hace nada especial, igual que soltar el botón del ratón tampoco lo hace.
+// mandan así). Un Note On toca/escribe; el Note Off suelta la nota (igual que
+// soltar el dedo en pantalla), así que un acorde mantenido suena entero.
 function manejarMensajeMidi(evento) {
   const [estado, notaMidi, velocidad] = evento.data;
-  const esNoteOn = (estado & 0xf0) === 0x90 && velocidad > 0;
-  if (esNoteOn && midiManejarNota) midiManejarNota(notaMidi);
+  const tipo = estado & 0xf0;
+  if (tipo === 0x90 && velocidad > 0) {
+    teclasSostenidas.add(notaMidi);
+    if (midiManejarNota) midiManejarNota(notaMidi);
+  } else if (tipo === 0x80 || (tipo === 0x90 && velocidad === 0)) {
+    soltarNotaPiano(notaMidi);
+  }
 }
 
 function configurarZoomPiano() {
