@@ -35,8 +35,34 @@ let tokenReproduccion = 0;
 // decodificar igual; el resume() de verdad ocurre en la primera nota tocada.
 let precargando = false;
 
+// Latencia de salida de audio. Medido en el PC de Áleran: el valor por defecto
+// del navegador ("interactive") suma ~50 ms entre que se toca una tecla y se
+// oye (10 de buffer + 40 de salida); con latencyHint 0 baja a ~19 ms. El
+// precio es un buffer más pequeño: en un ordenador va sobrado, pero en móviles
+// y tablets puede crujir si el sistema va justo, así que ahí se deja el valor
+// por defecto. Para volver al valor seguro en un equipo concreto:
+// localStorage.setItem("aleran-piano-audio-seguro", "1") y recargar.
+function crearContextoAudio() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const esTactil = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  let modoSeguro = false;
+  try {
+    modoSeguro = localStorage.getItem("aleran-piano-audio-seguro") === "1";
+  } catch {
+    /* sin acceso a localStorage: valor por defecto */
+  }
+  if (!esTactil && !modoSeguro) {
+    try {
+      return new Ctx({ latencyHint: 0 });
+    } catch {
+      /* navegador que no acepta opciones: se crea normal abajo */
+    }
+  }
+  return new Ctx();
+}
+
 function obtenerContexto() {
-  if (!contextoAudio) contextoAudio = new (window.AudioContext || window.webkitAudioContext)();
+  if (!contextoAudio) contextoAudio = crearContextoAudio();
   if (!precargando && contextoAudio.state === "suspended") contextoAudio.resume();
   return contextoAudio;
 }
