@@ -199,12 +199,37 @@ function configurarMidi(manejarClic) {
   intentarReconectarMidiGuardado(btn);
 }
 
+const AYUDA_MIDI_BLOQUEADO =
+  "El navegador tiene bloqueado el acceso a MIDI para este sitio.\n\n" +
+  "Para permitirlo: pulsa el icono a la izquierda de la dirección (candado o ajustes) → Configuración del sitio → " +
+  "Dispositivos MIDI → Permitir, y recarga la página.\n\n" +
+  "Si no aparece ahí, abre chrome://settings/content/midiDevices (o edge://settings/content/midiDevices) y quita este sitio de \"No permitido\".";
+
+async function estadoPermisoMidi() {
+  try {
+    return (await navigator.permissions.query({ name: "midi" })).state; // "granted" | "prompt" | "denied"
+  } catch {
+    return "desconocido";
+  }
+}
+
 async function conectarMidi(btn) {
+  // Si el navegador ya lo tiene bloqueado ni siquiera sale el aviso de permiso:
+  // se explica cómo desbloquearlo en vez de intentarlo y fallar.
+  if ((await estadoPermisoMidi()) === "denied") {
+    alert(AYUDA_MIDI_BLOQUEADO);
+    return;
+  }
   let acceso;
   try {
     acceso = await navigator.requestMIDIAccess();
-  } catch {
-    alert("No se pudo acceder a MIDI (permiso denegado por el navegador).");
+  } catch (err) {
+    const nombre = err && err.name ? err.name : "";
+    if (nombre === "SecurityError" || nombre === "NotAllowedError") {
+      alert(AYUDA_MIDI_BLOQUEADO);
+    } else {
+      alert(`No se pudo acceder a MIDI (${nombre || "error desconocido"}${err && err.message ? `: ${err.message}` : ""}).`);
+    }
     return;
   }
   const entradas = Array.from(acceso.inputs.values());
@@ -248,15 +273,22 @@ function intentarReconectarMidiGuardado(btn) {
     nombreGuardado = null;
   }
   if (!nombreGuardado) return;
-  navigator
-    .requestMIDIAccess()
-    .then((acceso) => {
-      const entrada = Array.from(acceso.inputs.values()).find((e) => e.name === nombreGuardado);
-      if (entrada) conectarEntradaMidi(entrada, btn);
-    })
-    .catch(() => {
-      /* sin permiso concedido todavía: se pedirá al pulsar el botón */
-    });
+  // Solo se reconecta solo si el permiso YA está concedido. Pedirlo al cargar
+  // la página, sin que nadie haya tocado nada, hace que el navegador muestre
+  // un aviso que casi todos ignoran -- y tras varias veces ignorado Chrome lo
+  // bloquea solo para el sitio (de ahí el "permiso denegado" al pulsar el botón).
+  estadoPermisoMidi().then((estado) => {
+    if (estado !== "granted") return;
+    navigator
+      .requestMIDIAccess()
+      .then((acceso) => {
+        const entrada = Array.from(acceso.inputs.values()).find((e) => e.name === nombreGuardado);
+        if (entrada) conectarEntradaMidi(entrada, btn);
+      })
+      .catch(() => {
+        /* se pedirá al pulsar el botón */
+      });
+  });
 }
 
 // Un mensaje MIDI trae 3 bytes: [estado, nota, velocidad]. El nibble alto del
