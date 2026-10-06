@@ -673,11 +673,44 @@ function crearEslabon(lineaObj, i) {
   btn.style.gridColumn = String(2 * i + 2);
   btn.style.gridRow = "1";
   btn.addEventListener("click", () => {
+    // Unir/separar sílabas redibuja el verso (las casillas de nota se crean de
+    // nuevo): se recuerda cuál estaba seleccionada y se vuelve a seleccionar la
+    // que corresponde, para poder seguir con Tab sin tener que hacer clic otra vez.
+    const sel = silabaSeleccionadaEn(lineaObj);
     lineaObj.enlaces[i] = !lineaObj.enlaces[i];
     renderLineaEnSitio(lineaObj);
+    restaurarSeleccionEn(lineaObj, sel);
     programarCheckpoint();
   });
   return btn;
+}
+
+// Índice de la sílaba base de la casilla de nota seleccionada SI está en esta
+// línea (si no, null: otra línea no se redibuja y su selección no se toca).
+function silabaSeleccionadaEn(lineaObj) {
+  if (!celdaNotaSeleccionada || !lineaObj._el || !lineaObj._el.contains(celdaNotaSeleccionada)) return null;
+  const pos = Array.from(lineaObj._el.querySelectorAll(".celda-nota")).indexOf(celdaNotaSeleccionada);
+  const grupo = gruposDeNotas(lineaObj)[pos];
+  return grupo ? grupo.inicio : null;
+}
+
+function restaurarSeleccionEn(lineaObj, indiceSilaba) {
+  if (indiceSilaba === null) return;
+  const pos = gruposDeNotas(lineaObj).findIndex((g) => g.inicio <= indiceSilaba && indiceSilaba <= g.fin);
+  const span = lineaObj._el.querySelectorAll(".celda-nota")[pos];
+  if (!span) return;
+  seleccionarCeldaNota(span);
+  // En escritorio también se devuelve el foco (en móvil enfocar abriría el
+  // teclado del sistema); si no, Tab igualmente sigue desde la casilla seleccionada.
+  if (!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches)) {
+    span.focus();
+    const rango = document.createRange();
+    rango.selectNodeContents(span);
+    rango.collapse(false);
+    const seleccion = window.getSelection();
+    seleccion.removeAllRanges();
+    seleccion.addRange(rango);
+  }
 }
 
 function crearCelda(silaba, indiceCol) {
@@ -1448,7 +1481,9 @@ document.addEventListener("click", (e) => {
   // seleccionarCeldaNota); un click en el piano flotante es justo la acción
   // de escribir en la celda seleccionada -- ninguno de los dos debe
   // deseleccionar. Cualquier otro click de la página sí.
-  if (e.target.closest(".celda-nota") || e.target.closest(".piano-flotante")) return;
+  // El botón de unir/separar sílabas tampoco deselecciona (ver crearEslabon:
+  // conserva la casilla seleccionada aunque el verso se redibuje).
+  if (e.target.closest(".celda-nota") || e.target.closest(".piano-flotante") || e.target.closest(".cifrado-eslabon")) return;
   deseleccionarCeldaNota();
 });
 
