@@ -537,6 +537,59 @@ function renderCancion() {
   document.getElementById("cifradoAccionesCancion").hidden = cancion.length === 0;
 }
 
+/* Copiar/pegar las notas de un verso a otro (portapapeles INTERNO, no el del
+   sistema): "Copiar notas" guarda las notas de un verso; en todos los demás
+   aparece "Pegar notas". Se emparejan por casilla, en orden (la 1.ª con la
+   1.ª, etc.) -- si el verso destino tiene más o menos casillas, se pegan las
+   que quepan y se avisa. La copia se mantiene para pegar en varios versos. */
+let notasCopiadas = null; // { lineaId, notas: string[], texto }
+
+function notasDeLinea(lineaObj) {
+  return gruposDeNotas(lineaObj).map((g) => lineaObj.silabas[g.inicio].nota || "");
+}
+
+function resumenLinea(lineaObj) {
+  const t = (lineaObj.textoOriginal || "").trim();
+  return t.length > 28 ? `${t.slice(0, 28)}…` : t;
+}
+
+function copiarNotasLinea(lineaObj) {
+  const notas = notasDeLinea(lineaObj);
+  if (!notas.some((n) => n.trim())) {
+    elEstado.textContent = "Ese verso todavía no tiene notas que copiar.";
+    return;
+  }
+  notasCopiadas = { lineaId: lineaObj.id, notas, texto: resumenLinea(lineaObj) };
+  actualizarBotonesPegar();
+  elEstado.textContent = `Notas copiadas de «${notasCopiadas.texto}» (${notas.length} casillas). Pulsa "Pegar notas" en otro verso.`;
+}
+
+function pegarNotasLinea(lineaObj) {
+  if (!notasCopiadas) return;
+  const grupos = gruposDeNotas(lineaObj);
+  const cuantas = Math.min(grupos.length, notasCopiadas.notas.length);
+  for (let i = 0; i < cuantas; i++) {
+    lineaObj.silabas[grupos[i].inicio].nota = notasCopiadas.notas[i];
+  }
+  renderLineaEnSitio(lineaObj);
+  programarCheckpoint();
+  const diferencia = grupos.length - notasCopiadas.notas.length;
+  const conNota = notasCopiadas.notas.slice(0, cuantas).filter((n) => n.trim()).length;
+  let aviso = `Pegadas ${conNota} nota${conNota === 1 ? "" : "s"} en ${cuantas} casillas.`;
+  if (diferencia > 0) aviso += ` Este verso tiene ${diferencia} casilla${diferencia === 1 ? "" : "s"} más que el original: quedaron sin tocar.`;
+  if (diferencia < 0) aviso += ` El original tenía ${-diferencia} casilla${diferencia === -1 ? "" : "s"} más: no cupieron.`;
+  elEstado.textContent = `${aviso} (Ctrl+Z deshace.)`;
+}
+
+function actualizarBotonesPegar() {
+  cancion.forEach((bloque) => {
+    if (bloque.tipo !== "linea" || !bloque._btnPegar) return;
+    const visible = Boolean(notasCopiadas) && notasCopiadas.lineaId !== bloque.id;
+    bloque._btnPegar.hidden = !visible;
+    if (visible) bloque._btnPegar.title = `Pegar las notas copiadas de «${notasCopiadas.texto}»`;
+  });
+}
+
 function crearAccionesLinea(lineaObj, esPrimera) {
   const fila = document.createElement("div");
   fila.className = "cifrado-linea-acciones";
@@ -558,6 +611,25 @@ function crearAccionesLinea(lineaObj, esPrimera) {
   btnReproducir.textContent = "▶ Reproducir";
   btnReproducir.addEventListener("click", () => reproducirLinea(lineaObj));
   fila.appendChild(btnReproducir);
+
+  const btnCopiar = document.createElement("button");
+  btnCopiar.type = "button";
+  btnCopiar.className = esPrimera ? "boton" : "boton boton-icono";
+  btnCopiar.title = "Copiar las notas de este verso para pegarlas en otro";
+  btnCopiar.setAttribute("aria-label", "Copiar las notas de este verso");
+  btnCopiar.textContent = esPrimera ? "📋 Copiar notas" : "📋";
+  btnCopiar.addEventListener("click", () => copiarNotasLinea(lineaObj));
+  fila.appendChild(btnCopiar);
+
+  const btnPegar = document.createElement("button");
+  btnPegar.type = "button";
+  btnPegar.className = "boton";
+  btnPegar.textContent = "📥 Pegar notas";
+  btnPegar.hidden = !notasCopiadas || notasCopiadas.lineaId === lineaObj.id;
+  if (!btnPegar.hidden) btnPegar.title = `Pegar las notas copiadas de «${notasCopiadas.texto}»`;
+  btnPegar.addEventListener("click", () => pegarNotasLinea(lineaObj));
+  fila.appendChild(btnPegar);
+  lineaObj._btnPegar = btnPegar;
 
   lineaObj._elAcciones = fila;
   return fila;
@@ -693,6 +765,9 @@ function crearNotaGrupo(lineaObj, grupo) {
   btnLimpiar.className = "celda-nota-limpiar";
   btnLimpiar.title = "Vaciar esta nota";
   btnLimpiar.setAttribute("aria-label", "Vaciar esta nota");
+  // Fuera del orden de Tab: al pasar de una casilla de nota a la siguiente con
+  // el teclado no debe pararse en la X (sigue funcionando con el ratón).
+  btnLimpiar.tabIndex = -1;
   btnLimpiar.textContent = "✕";
   btnLimpiar.style.gridColumn = `${2 * grupo.inicio + 1} / ${2 * grupo.fin + 2}`;
   btnLimpiar.style.gridRow = "2";
@@ -1198,6 +1273,7 @@ document.getElementById("btnCifradoGenerar").addEventListener("click", () => {
     return;
   }
   cancion = parsearCancion(texto, elIdioma.value);
+  notasCopiadas = null; // las notas copiadas eran de la canción anterior
   renderCancion();
   elEstado.textContent = "";
   registrarCheckpoint();
@@ -1212,6 +1288,7 @@ elZoom.addEventListener("input", () => {
 document.getElementById("btnCifradoReiniciar").addEventListener("click", () => {
   if (cancion.length && !confirm("¿Borrar todo el cifrado y empezar de nuevo?")) return;
   cancion = [];
+  notasCopiadas = null;
   elEntrada.value = "";
   elEstado.textContent = "";
   try {
@@ -1258,6 +1335,8 @@ document.getElementById("inputCifradoAbrir").addEventListener("change", async (e
   if (!archivo) return;
   try {
     await abrirCancionDesdeArchivo(archivo);
+    notasCopiadas = null;
+    actualizarBotonesPegar();
     elEstado.textContent = "Canción cargada.";
     registrarCheckpoint();
   } catch (err) {
@@ -1331,6 +1410,37 @@ function deseleccionarCeldaNota() {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") deseleccionarCeldaNota();
+});
+
+// Tab / Shift+Tab pasan de una casilla de NOTA a la siguiente (o anterior), en
+// orden, saltándose la sílaba, los botones y la X de vaciar -- pensado para ir
+// llenando la melodía tocando teclas (ratón o MIDI) y avanzando con Tab. Si
+// ninguna casilla tiene el foco pero hay una seleccionada (p. ej. tras tocar el
+// piano con el ratón), Tab también avanza desde esa. En la primera/última
+// casilla no hace nada especial y el navegador sigue su camino normal.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Tab" || e.ctrlKey || e.altKey || e.metaKey) return;
+  const enNota = e.target.closest ? e.target.closest(".celda-nota") : null;
+  const seleccionadaViva = celdaNotaSeleccionada && document.body.contains(celdaNotaSeleccionada);
+  const desdeFuera = !enNota && seleccionadaViva && (e.target === document.body || Boolean(e.target.closest(".piano-flotante")));
+  if (!enNota && !desdeFuera) return;
+
+  const celdas = Array.from(document.querySelectorAll(".celda-nota"));
+  const indice = celdas.indexOf(enNota || celdaNotaSeleccionada);
+  const destino = celdas[indice + (e.shiftKey ? -1 : 1)];
+  if (indice === -1 || !destino) return;
+
+  e.preventDefault();
+  destino.focus();
+  seleccionarCeldaNota(destino); // explícito: no depender de que el navegador dispare "focus"
+  const rango = document.createRange();
+  rango.selectNodeContents(destino);
+  rango.collapse(false); // cursor al final, listo para seguir escribiendo
+  const seleccion = window.getSelection();
+  seleccion.removeAllRanges();
+  seleccion.addRange(rango);
+  destino.scrollIntoView({ block: "nearest", inline: "nearest" });
+  asegurarCeldaSeleccionadaVisible(); // que no quede detrás del piano flotante
 });
 
 document.addEventListener("click", (e) => {
