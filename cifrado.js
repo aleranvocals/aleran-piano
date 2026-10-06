@@ -771,7 +771,10 @@ function crearNotaGrupo(lineaObj, grupo) {
   // la sílaba de arriba sea corta ("le"). Acepta un melisma completo como
   // "Sib4 - Lab4" (ver interpretarNotas en escalas.js), no solo una nota.
   const span = document.createElement("span");
-  span.className = "celda-nota" + (grupo.fin > grupo.inicio ? " celda-nota-fusionada" : "");
+  // "dudosa": la marca el programa de transcripción automática en las notas que conviene
+  // revisar primero; se quita sola en cuanto se edita la casilla (ver el listener de input).
+  span.className =
+    "celda-nota" + (grupo.fin > grupo.inicio ? " celda-nota-fusionada" : "") + (silabaBase.dudosa ? " celda-nota-dudosa" : "");
   span.contentEditable = "true";
   span.spellcheck = false;
   span.textContent = silabaBase.nota;
@@ -783,6 +786,10 @@ function crearNotaGrupo(lineaObj, grupo) {
     // para que ":empty" (el punto de placeholder) siga funcionando.
     if (span.textContent.trim() === "") span.innerHTML = "";
     silabaBase.nota = span.textContent;
+    if (silabaBase.dudosa) {
+      silabaBase.dudosa = false;
+      span.classList.remove("celda-nota-dudosa");
+    }
     marcarNotaCeldaSiInvalida(span, silabaBase.nota);
     programarCheckpoint();
   });
@@ -985,6 +992,7 @@ function serializarBloque(bloque) {
       inicioPalabra: s.inicioPalabra,
       marcas: Array.from(s.marcas),
       nota: s.nota,
+      dudosa: Boolean(s.dudosa),
     })),
   };
 }

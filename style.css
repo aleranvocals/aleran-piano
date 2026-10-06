@@ -1944,6 +1944,18 @@ input[type="checkbox"] {
   box-shadow: 0 0 0 2px var(--crimson-bright);
 }
 
+/* Nota que la transcripción automática marcó como dudosa: borde discontinuo
+   violeta (nunca amarillo, ese ya lo usa el aviso de nota mal escrita). Se
+   quita sola al editar la casilla; no se imprime. */
+.celda-nota-dudosa {
+  border: 1.5px dashed #a98bdc;
+}
+
+.celda-nota-dudosa.celda-nota-seleccionada {
+  border-color: var(--crimson-bright);
+  border-style: solid;
+}
+
 /* Botón "✕" para vaciar una celda de nota de un tirón -- sobre todo para
    cuando un melisma armado con el piano queda mal y hay que empezar de
    cero sin borrar nota por nota. Mismo idioma visual que .cifrado-eslabon
