@@ -220,6 +220,28 @@ let sostenidaUltimoSonidoMs = null;
 let sostenidaTemporizadorId = null;
 const SOSTENIDA_SILENCIO_LIMITE_MS = 700;
 
+// Nota objetivo elegida tocando una tecla del piano mientras está abierto
+// "Nota sostenida" (y no hay una toma en curso). Con objetivo, la aguja y la
+// gráfica miden contra ESA nota; sin objetivo, contra la primera nota cantada.
+let sostenidaObjetivoMidi = null;
+let sostenidaOctavaCantada = 0;
+
+function manejarClicPianoEntrenamiento(midi) {
+  previsualizarNotaPiano(midi);
+  if (el("panel-sostenida").hidden || entrenEnCurso) return;
+  const eraLaMisma = sostenidaObjetivoMidi === midi;
+  document.querySelectorAll("#piano .tecla.seleccionada").forEach((t) => t.classList.remove("seleccionada"));
+  sostenidaObjetivoMidi = eraLaMisma ? null : midi;
+  if (!eraLaMisma) {
+    const tecla = el("piano").querySelector(`[data-midi="${midi}"]`);
+    if (tecla) tecla.classList.add("seleccionada");
+  }
+  el("estadoEntrenamiento").textContent =
+    sostenidaObjetivoMidi === null
+      ? "Sin nota objetivo: se mide la primera nota que cantes."
+      : `🎯 Nota objetivo: ${midiANombre(midi)}. Pulsa Empezar y canta esa nota.`;
+}
+
 function dibujarGraficoPitch(canvas, muestras) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width;
@@ -266,7 +288,8 @@ async function iniciarSostenida() {
   }
   sostenidaMuestrasCents = [];
   sostenidaInicioMs = null;
-  sostenidaFrecuenciaRef = null;
+  sostenidaFrecuenciaRef = sostenidaObjetivoMidi !== null ? midiAFrecuencia(sostenidaObjetivoMidi) : null;
+  sostenidaOctavaCantada = 0;
   sostenidaUltimoSonidoMs = null;
   el("sostenidaResultado").textContent = "";
   el("sostenidaTiempo").textContent = "0.0s";
@@ -297,11 +320,16 @@ async function iniciarSostenida() {
     }
     const ahora = performance.now();
     sostenidaUltimoSonidoMs = ahora;
-    if (sostenidaFrecuenciaRef === null) {
-      sostenidaFrecuenciaRef = lectura.frecuencia;
+    if (sostenidaInicioMs === null) {
       sostenidaInicioMs = ahora;
+      if (sostenidaFrecuenciaRef === null) sostenidaFrecuenciaRef = lectura.frecuencia;
     }
-    const cents = 1200 * Math.log2(lectura.frecuencia / sostenidaFrecuenciaRef);
+    let cents = 1200 * Math.log2(lectura.frecuencia / sostenidaFrecuenciaRef);
+    if (sostenidaObjetivoMidi !== null) {
+      // Si canta la nota una octava arriba/abajo (voces distintas), se compara con la octava más cercana.
+      sostenidaOctavaCantada = Math.round(cents / 1200);
+      cents -= 1200 * sostenidaOctavaCantada;
+    }
     sostenidaMuestrasCents.push(cents);
     actualizarAfinometro(cents);
     el("sostenidaTiempo").textContent = `${((ahora - sostenidaInicioMs) / 1000).toFixed(1)}s`;
@@ -367,6 +395,12 @@ function finalizarSostenida(mostrarResultado) {
 
   const analisis = analizarVibrato(sostenidaMuestrasCents, duracion);
   let texto = `Sostuviste la nota ${duracion.toFixed(1)} segundos.`;
+  if (sostenidaObjetivoMidi !== null) {
+    texto += ` Objetivo: ${midiANombre(sostenidaObjetivoMidi)}.`;
+    if (sostenidaOctavaCantada !== 0) {
+      texto += ` Cantaste ${Math.abs(sostenidaOctavaCantada) === 1 ? "una octava" : Math.abs(sostenidaOctavaCantada) + " octavas"} ${sostenidaOctavaCantada > 0 ? "más arriba" : "más abajo"}.`;
+    }
+  }
   if (analisis && analisis.tasaHz >= 3 && analisis.tasaHz <= 9 && analisis.profundidad >= 8) {
     texto += ` Vibrato detectado: ~${analisis.tasaHz.toFixed(1)} Hz, profundidad ~${Math.round(analisis.profundidad)} cents.`;
   } else if (analisis) {
@@ -834,7 +868,7 @@ function detenerTodoEntrenamiento() {
 
 function inicializarEntrenamiento() {
   if (window.Progreso) Progreso.marcarHerramientaUsada("entrenamiento");
-  inicializarPiano(); // teclado.js: sin callback propio, tocar una tecla solo la previsualiza
+  inicializarPiano(manejarClicPianoEntrenamiento); // teclado.js: previsualiza y, en "Nota sostenida", elige la nota objetivo
   document.querySelectorAll(".subtab").forEach((btn) => {
     btn.addEventListener("click", () => cambiarSubmodoEntrenamiento(btn.dataset.entren));
   });
