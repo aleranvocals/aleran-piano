@@ -723,6 +723,152 @@ function finalizarAire(mostrarResultado) {
 
 let espectroAnimId = null;
 let espectroDatos = null;
+let espectroFloat = null;
+let detectorTwang = null;
+let calibracionTwangFin = 0;
+
+// --- Medidor de twang (la lógica pura está en twang.js) ---
+const TWANG_CLAVE_PERFIL = "aleran-twang-perfil";
+const TWANG_CLAVE_SENS = "aleran-twang-sensibilidad";
+const twangClaveBase = (perfil) => `aleran-twang-base-${perfil}`;
+
+function twangLeer(clave) {
+  try {
+    return localStorage.getItem(clave);
+  } catch (e) {
+    return null;
+  }
+}
+
+function twangGuardar(clave, valor) {
+  try {
+    if (valor === null) localStorage.removeItem(clave);
+    else localStorage.setItem(clave, String(valor));
+  } catch (e) {
+    /* sin almacenamiento: funciona igual, solo no recuerda */
+  }
+}
+
+function twangPerfilActual() {
+  const guardado = twangLeer(TWANG_CLAVE_PERFIL);
+  return guardado && window.Twang.PERFILES[guardado] ? guardado : "otro";
+}
+
+function twangSensibilidadActual() {
+  const n = Number(twangLeer(TWANG_CLAVE_SENS));
+  return Number.isFinite(n) ? Math.max(-3, Math.min(3, n)) : 0;
+}
+
+function twangBaseGuardada(perfil) {
+  const n = twangLeer(twangClaveBase(perfil));
+  return n !== null && n !== "" && Number.isFinite(Number(n)) ? Number(n) : null;
+}
+
+function crearDetectorTwang() {
+  const perfil = twangPerfilActual();
+  return new window.Twang.DetectorTwang({
+    perfil,
+    base: twangBaseGuardada(perfil),
+    sensibilidadDb: twangSensibilidadActual(),
+  });
+}
+
+function textoSensibilidad(v) {
+  if (v === 0) return "normal";
+  return v > 0 ? `+${v} (más sensible)` : `${v} (menos sensible)`;
+}
+
+function actualizarTextosTwang() {
+  const perfil = twangPerfilActual();
+  el("twangAyuda").textContent = window.Twang.PERFILES[perfil].ayuda;
+  const base = twangBaseGuardada(perfil);
+  el("twangCalibEstado").textContent = base === null
+    ? "Sin calibrar: usa un valor medio."
+    : "Calibrado ✓ para este micrófono.";
+  const sens = twangSensibilidadActual();
+  el("twangSensValor").textContent = textoSensibilidad(sens);
+  const umbral = Math.max(1.5, window.Twang.UMBRAL_DELTA_DB - sens);
+  el("twangUmbral").style.left = `${window.Twang.porcentajeMedidor(umbral, umbral)}%`;
+}
+
+function pintarTwang(r) {
+  const visor = el("twangVisor");
+  let estado = "espera";
+  let texto = "Canta una vocal sostenida";
+  if (r) {
+    if (r.sinAgudos) {
+      estado = "sin-agudos";
+      texto = "Tu micrófono casi no capta agudos: la medida no es fiable";
+    } else if (r.estado === "twang") {
+      estado = "twang";
+      texto = "Posible twang detectado";
+    } else if (r.estado === "voz") {
+      estado = "voz";
+      texto = "Sin twang todavía";
+    }
+  }
+  visor.dataset.estado = estado;
+  el("twangTexto").textContent = texto;
+  el("twangBarra").style.width = `${r ? r.porcentaje : 0}%`;
+  el("twangDelta").textContent = r && r.deltaDb !== null
+    ? `${r.deltaDb >= 0 ? "+" : ""}${r.deltaDb.toFixed(1)} dB sobre tu voz normal${detectorTwang && detectorTwang.calibrado ? "" : " (sin calibrar)"}`
+    : "—";
+}
+
+function iniciarCalibracionTwang() {
+  if (!detectorTwang || !entrenEnCurso) {
+    el("twangCalibEstado").textContent = "Pulsa «Empezar» primero y vuelve a calibrar.";
+    return;
+  }
+  detectorTwang.iniciarCalibracion();
+  calibracionTwangFin = performance.now() + 4000;
+  el("btnTwangCalibrar").disabled = true;
+  el("twangCalibEstado").textContent = "🎤 Canta una vocal normal y sostenida, sin twang…";
+}
+
+function revisarCalibracionTwang(ahora) {
+  if (!calibracionTwangFin) return;
+  const restante = Math.ceil((calibracionTwangFin - ahora) / 1000);
+  if (ahora < calibracionTwangFin) {
+    el("twangCalibEstado").textContent = `🎤 Canta una vocal normal y sostenida, sin twang… ${restante}`;
+    return;
+  }
+  calibracionTwangFin = 0;
+  el("btnTwangCalibrar").disabled = false;
+  const base = detectorTwang.terminarCalibracion(25);
+  if (base === null) {
+    el("twangCalibEstado").textContent = "No te oí lo bastante: canta más fuerte y sostenido, y repite.";
+  } else {
+    twangGuardar(twangClaveBase(detectorTwang.perfil), base);
+    actualizarTextosTwang();
+  }
+}
+
+function inicializarTwang() {
+  if (!window.Twang || !el("twangDispositivo")) return;
+  const sel = el("twangDispositivo");
+  Object.entries(window.Twang.PERFILES).forEach(([clave, p]) => {
+    const op = document.createElement("option");
+    op.value = clave;
+    op.textContent = p.etiqueta;
+    sel.appendChild(op);
+  });
+  sel.value = twangPerfilActual();
+  el("twangSensibilidad").value = String(twangSensibilidadActual());
+  sel.addEventListener("change", () => {
+    twangGuardar(TWANG_CLAVE_PERFIL, sel.value);
+    if (detectorTwang) detectorTwang = crearDetectorTwang();
+    actualizarTextosTwang();
+  });
+  el("twangSensibilidad").addEventListener("input", (e) => {
+    twangGuardar(TWANG_CLAVE_SENS, e.target.value);
+    if (detectorTwang) detectorTwang.sensibilidadDb = Number(e.target.value);
+    actualizarTextosTwang();
+  });
+  el("btnTwangCalibrar").addEventListener("click", iniciarCalibracionTwang);
+  actualizarTextosTwang();
+  pintarTwang(null);
+}
 
 function colorParaIntensidad(valor) {
   const t = valor / 255;
@@ -810,6 +956,13 @@ function bucleEspectro(analizador, canvas) {
   const sampleRate = obtenerContexto().sampleRate;
   dibujarColumnaEspectro(canvas, espectroDatos, sampleRate);
   actualizarMedidorBrillo(indiceBrillo(espectroDatos, sampleRate));
+  if (detectorTwang && espectroFloat) {
+    analizador.getFloatFrequencyData(espectroFloat);
+    const hayVoz = window.MicrofonoEngine.leerPitch ? !!window.MicrofonoEngine.leerPitch() : true;
+    const ahora = performance.now();
+    pintarTwang(detectorTwang.actualizar(espectroFloat, sampleRate, hayVoz, ahora));
+    revisarCalibracionTwang(ahora);
+  }
   espectroAnimId = requestAnimationFrame(() => bucleEspectro(analizador, canvas));
 }
 
@@ -837,6 +990,8 @@ async function iniciarEspectro() {
 
   const analizador = window.MicrofonoEngine.obtenerAnalizador();
   espectroDatos = new Uint8Array(analizador.frequencyBinCount);
+  espectroFloat = new Float32Array(analizador.frequencyBinCount);
+  detectorTwang = window.Twang ? crearDetectorTwang() : null;
   bucleEspectro(analizador, canvas);
 }
 
@@ -854,6 +1009,13 @@ function finalizarEspectro() {
   el("btnEspectroIniciar").disabled = false;
   el("btnEspectroDetener").disabled = true;
   actualizarMedidorBrillo(null);
+  detectorTwang = null;
+  calibracionTwangFin = 0;
+  if (el("btnTwangCalibrar")) {
+    el("btnTwangCalibrar").disabled = false;
+    actualizarTextosTwang();
+    pintarTwang(null);
+  }
 }
 
 function detenerTodoEntrenamiento() {
@@ -867,6 +1029,7 @@ function detenerTodoEntrenamiento() {
 }
 
 function inicializarEntrenamiento() {
+  inicializarTwang();
   if (window.Progreso) Progreso.marcarHerramientaUsada("entrenamiento");
   inicializarPiano(manejarClicPianoEntrenamiento); // teclado.js: previsualiza y, en "Nota sostenida", elige la nota objetivo
   document.querySelectorAll(".subtab").forEach((btn) => {

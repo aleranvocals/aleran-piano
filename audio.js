@@ -817,6 +817,8 @@ window.MicrofonoEngine = {
   // Da acceso al AnalyserNode crudo (para el espectrograma en vivo); no hace
   // falta crear un segundo analizador, el mismo sirve para pitch y espectro.
   obtenerAnalizador: () => analizadorMicrofono,
+  // Una lectura de pitch (o null si no hay una nota clara): el medidor de twang solo mide cuando hay voz cantada.
+  leerPitch: leerPitchInstantaneo,
 };
 
 // El micrófono se queda abierto entre ejercicios de la misma página a propósito

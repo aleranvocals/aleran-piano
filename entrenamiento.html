@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=33" />
+<link rel="stylesheet" href="style.css?v=34" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -188,6 +188,47 @@
       </p>
     </div>
 
+    <div class="twang-medidor" id="twangMedidor">
+      <h3 class="twang-titulo">🎯 Medidor de twang</h3>
+      <p class="descripcion">
+        El twang concentra energía entre unos 2.5 y 4 kHz (el «ping» del sonido). Aquí se compara esa zona con el
+        cuerpo de tu voz y se mira cuánto sube respecto a tu voz normal. Cada micrófono realza o recorta esas
+        frecuencias a su manera: elige el tuyo y, para afinar, calibra con una vocal normal.
+      </p>
+      <div class="twang-ajustes">
+        <label class="campo">
+          <span>¿Con qué micrófono cantas?</span>
+          <select id="twangDispositivo"></select>
+        </label>
+        <p class="twang-ayuda" id="twangAyuda"></p>
+        <div class="twang-calibrar">
+          <button id="btnTwangCalibrar" class="boton" type="button">🎚️ Calibrar con mi voz normal (4 s)</button>
+          <span class="twang-calib-estado" id="twangCalibEstado">Sin calibrar: usa un valor medio.</span>
+        </div>
+        <label class="campo">
+          <span>Sensibilidad: <output id="twangSensValor">normal</output></span>
+          <input type="range" id="twangSensibilidad" min="-3" max="3" step="0.5" value="0" aria-label="Sensibilidad del medidor de twang" />
+        </label>
+      </div>
+      <div class="twang-visor" id="twangVisor" data-estado="espera">
+        <div class="twang-pista" aria-hidden="true">
+          <div class="twang-barra" id="twangBarra"></div>
+          <div class="twang-umbral" id="twangUmbral"></div>
+        </div>
+        <div class="twang-lectura"><span id="twangDelta">—</span></div>
+        <div class="twang-insignia" id="twangInsignia" role="status" aria-live="polite">
+          <span class="twang-check" aria-hidden="true">✓</span>
+          <span id="twangTexto">Pulsa «Empezar» y canta una vocal sostenida</span>
+        </div>
+      </div>
+      <p class="descripcion twang-nota">
+        Calibra con la misma vocal que vayas a trabajar (la «i» y la «a» tienen brillo distinto). Los perfiles de micrófono
+        son aproximados, no medidos en tu equipo; la ciencia tampoco fija una banda exacta para el twang. Úsalo como
+        ayuda para encontrarlo y comparar tomas, no como diagnóstico. Desactiva «mejora de voz» o «aislamiento de voz»
+        del sistema si los tienes.
+      </p>
+    </div>
+
     <div class="acciones">
       <button id="btnEspectroIniciar" class="boton principal">🎤 Empezar</button>
       <button id="btnEspectroDetener" class="boton" disabled>⏹ Detener</button>
@@ -227,10 +268,11 @@
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=8"></script>
-<script src="audio.js?v=7"></script>
+<script src="audio.js?v=8"></script>
 <script src="progreso.js?v=1"></script>
 <script src="teclado.js?v=9"></script>
-<script src="entrenamiento.js?v=4"></script>
+<script src="twang.js?v=1"></script>
+<script src="entrenamiento.js?v=5"></script>
 <script src="grabadora.js?v=2"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
