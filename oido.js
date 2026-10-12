@@ -280,9 +280,18 @@ function responderAcorde(idElegido, boton) {
 let notaquizObjetivo = null;
 let notaquizEsperando = false;
 
+// «Mi rango» usa el que elegiste en la barra de arriba (Do3–Do5 mientras no hayas elegido ninguno).
+function rangoPropio() {
+  if (window.RangoVocal) {
+    const r = window.RangoVocal.obtener();
+    if (r.elegido && r.clave !== "completo") return [r.midiMin, r.midiMax];
+  }
+  return [nombreAMidi("Do3"), nombreAMidi("Do5")];
+}
+
 function rangoNotaquiz() {
   if (el("notasquizRango").value === "completo") return [DO1_MIDI, DO7_MIDI];
-  return [nombreAMidi("Do3"), nombreAMidi("Do5")];
+  return rangoPropio();
 }
 
 function nuevaPreguntaNota() {
@@ -401,8 +410,7 @@ function siguienteRondaSimon() {
     }
     simonSecuencia.push(simonSecuenciaProgramada[simonNivel]);
   } else {
-    const bajo = nombreAMidi("Do3");
-    const alto = nombreAMidi("Do5");
+    const [bajo, alto] = rangoPropio();
     simonSecuencia.push(bajo + Math.floor(Math.random() * (alto - bajo + 1)));
   }
   simonNivel++;

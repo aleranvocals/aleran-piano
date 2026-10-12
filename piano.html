@@ -18,6 +18,7 @@
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
+<link rel="stylesheet" href="rediseno.css?v=2" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -27,7 +28,7 @@
 <div class="app">
   <header class="cabecera">
     <h1>🎹 Solfeo</h1>
-    <p class="subtitulo">Una nota suelta, notas al azar, escalas vocales reales o tus propias notas — más un metrónomo de 50 a 350 BPM.</p>
+    <p class="subtitulo">Escalas, notas y giros para entonar.</p>
   </header>
 
   <nav class="nav-principal">
@@ -89,51 +90,48 @@
     </label>
   </div>
 
-  <div class="tabs" role="tablist">
-    <button class="tab activo" data-modo="individual" role="tab" aria-selected="true">Nota individual</button>
-    <button class="tab" data-modo="aleatorio" role="tab" aria-selected="false">Notas aleatorias</button>
-    <button class="tab" data-modo="escala" role="tab" aria-selected="false">Escala vocal</button>
-    <button class="tab" data-modo="personalizada" role="tab" aria-selected="false">Personalizada</button>
-    <button class="tab" data-modo="solfeo" role="tab" aria-selected="false">Solfeo</button>
-    <button class="tab" data-modo="giros" role="tab" aria-selected="false">Giros melódicos</button>
-    <button class="tab" data-modo="metronomo" role="tab" aria-selected="false">Metrónomo</button>
+  <div class="tabs tabs-fichas" role="tablist">
+    <button class="tab activo" data-modo="individual" role="tab" aria-selected="true"><span class="ficha-icono" aria-hidden="true">🎵</span><span>Nota</span></button>
+    <button class="tab" data-modo="aleatorio" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🎲</span><span>Al azar</span></button>
+    <button class="tab" data-modo="escala" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🪜</span><span>Escalas</span></button>
+    <button class="tab" data-modo="personalizada" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">✍️</span><span>Mi melodía</span></button>
+    <button class="tab" data-modo="solfeo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🔤</span><span>Do-Re-Mi</span></button>
+    <button class="tab" data-modo="giros" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🌀</span><span>Giros</span></button>
+    <button class="tab" data-modo="metronomo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">⏱</span><span>Metrónomo</span></button>
   </div>
 
   <section id="panel-individual" class="panel">
-    <p class="descripcion">
-      Toca una tecla del piano de arriba para elegir la nota. Nota seleccionada:
-      <strong id="notaSeleccionadaTexto">Do3</strong>.
-    </p>
+    <p class="descripcion">Toca una tecla del piano. Nota: <strong id="notaSeleccionadaTexto">Do3</strong></p>
   </section>
 
   <section id="panel-aleatorio" class="panel" hidden>
     <label class="campo">
-      <span>Número de notas: <output id="numNotasValor">4</output></span>
+      <span>Cantidad de notas: <output id="numNotasValor">4</output></span>
       <input type="range" id="numNotas" min="1" max="10" step="1" value="4" />
     </label>
     <label class="campo">
-      <span>Semilla (opcional — misma semilla = misma secuencia)</span>
-      <input type="number" id="semilla" placeholder="vacío = aleatorio cada vez" />
+      <span>Semilla <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Opcional. Con la misma semilla sale siempre la misma secuencia; vacío = distinta cada vez.">?</button></span>
+      <input type="number" id="semilla" placeholder="vacío = al azar" />
     </label>
   </section>
 
   <section id="panel-escala" class="panel" hidden>
     <label class="campo" id="campoVoz">
-      <span>Tipo de voz</span>
+      <span>Tu voz</span>
       <select id="voz"></select>
     </label>
     <label class="campo">
-      <span>Patrón / escala</span>
+      <span>Escala</span>
       <select id="patron"></select>
     </label>
     <p id="descripcionPatron" class="descripcion"></p>
 
     <label class="campo checkbox" id="campoEscaleraCheckbox">
       <input type="checkbox" id="escalera" checked />
-      <span>Recorrer todo el rango de la voz (escalera por semitonos)</span>
+      <span>Recorrer todo mi rango, de semitono en semitono</span>
     </label>
     <label class="campo" id="campoNotaInicial" hidden>
-      <span>Nota inicial (ej: Do3)</span>
+      <span>Nota inicial</span>
       <input type="text" id="notaInicial" placeholder="Do3" />
     </label>
 
@@ -147,27 +145,17 @@
         <input type="text" id="sirenaHasta" placeholder="Sol3" />
       </label>
     </div>
-    <p id="avisoGlissandoTempo" class="descripcion" hidden>
-      Se fijó el tempo a 200 BPM con duración de semicorchea (en "Vincular la duración al tempo", más abajo) --
-      a esa velocidad los pasos cromáticos suenan como un glissando continuo en vez de notas sueltas. Puedes
-      cambiarlo si quieres.
-    </p>
+    <p id="avisoGlissandoTempo" class="descripcion" hidden>Tempo fijado a 200 BPM en semicorcheas para que suene continuo. Puedes cambiarlo.</p>
 
     <details class="avanzado" id="detallesAvanzado">
       <summary>Opciones avanzadas</summary>
-      <p class="descripcion">
-        Con "Recorrer todo el rango" activado, el patrón se repite empezando cada vez un poco más
-        arriba (una escalerita), hasta cubrir toda la voz elegida. Estas dos opciones controlan esa
-        escalera:
-      </p>
       <label class="campo">
-        <span>De cuántos semitonos en semitonos sube cada repetición</span>
+        <span>Sube cada vez (semitonos) <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="1 = medio tono (la escalera más apretada), 2 = un tono entero, etc. Con «Recorrer todo mi rango» el patrón se repite empezando cada vez más arriba.">?</button></span>
         <input type="number" id="pasoSemitonos" min="1" max="12" value="1" />
       </label>
-      <p class="descripcion">1 = sube medio tono cada vez (la escalera más apretada). 2 = un tono entero. Etc.</p>
       <label class="campo checkbox">
         <input type="checkbox" id="soloSubida" />
-        <span>Solo subida (al llegar arriba no repite la escalera bajando de nuevo)</span>
+        <span>Solo subida (sin bajar al llegar arriba)</span>
       </label>
     </details>
   </section>
@@ -178,19 +166,12 @@
       <button type="button" class="subtab" id="btnModoMusico" role="tab" aria-selected="false">Modo Músico</button>
     </div>
     <p class="descripcion">
-      <span id="descModoSimple">Modo Simple del editor de ritmo: cada nota tiene su propia figura
-      (redonda, blanca, negra, corchea o semicorchea) y puede marcarse como
-      silencio.</span>
-      <span id="descModoMusico" hidden>Modo Músico: además de figura y silencio, cada nota admite
-      puntillo (•, alarga la figura la mitad), ligadura (🔗, se funde con la
-      siguiente en un solo sonido) y tresillo (3, en grupos de 3 notas
-      consecutivas) — se agrupan en compases según la métrica elegida abajo
-      (solo un aviso si algún compás no cuadra, nunca bloquea).</span>
-      El tempo es el BPM de la pestaña Metrónomo — ahora mismo
-      <output id="personalizadaBpmTexto">100</output> BPM.
+      <span id="descModoSimple">Cada nota con su figura (redonda a semicorchea) y silencios.</span>
+      <span id="descModoMusico" hidden>Añade puntillo, ligadura y tresillo, agrupados en compases.</span>
+      Tempo: <output id="personalizadaBpmTexto">100</output> BPM. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Modo Músico: puntillo (•) alarga la figura la mitad; ligadura (🔗) funde la nota con la siguiente en un solo sonido; tresillo (3) agrupa tres notas seguidas. Si un compás no cuadra solo avisa, nunca bloquea. El tempo es el del metrónomo.">?</button>
     </p>
     <label class="campo" id="campoMetricaMusico" hidden>
-      <span>Métrica</span>
+      <span>Compás</span>
       <select id="personalizadaMetrica">
         <option value="2/4">2/4</option>
         <option value="3/4">3/4</option>
@@ -201,10 +182,10 @@
     </label>
     <div id="personalizadaLista" class="cifrado-linea"></div>
     <p id="personalizadaCompasesAviso" class="descripcion" hidden></p>
-    <p id="personalizadaVacio" class="descripcion">Todavía no hay notas — escríbelas abajo, o mándalas desde Cifrado con "Llevar al editor de ritmo".</p>
+    <p id="personalizadaVacio" class="descripcion">Aún no hay notas: escríbelas abajo o mándalas desde Cifrado.</p>
 
     <label class="campo">
-      <span>Añadir notas rápido (se agregan al final, todas como negra)</span>
+      <span>Añadir notas (como negras)</span>
       <textarea id="notasPersonalizadas" rows="2" placeholder="Do3 Re#3 Mi3 Fa#3 Sol3"></textarea>
     </label>
     <div class="acciones">
@@ -229,30 +210,30 @@
   <section id="panel-solfeo" class="panel" hidden>
     <label class="campo checkbox">
       <input type="checkbox" id="solfeoDoMovible" />
-      <span>Usar Do movible (Do-Re-Mi...) en vez de Solfeo silábico de grados (Un-Do-Tri-Cua...)</span>
+      <span>Do movible (Do-Re-Mi) en vez de grados (Un-Do-Tri)</span>
     </label>
     <label class="campo">
-      <span id="solfeoTonicaLabel">Nota desde donde empieza la escala</span>
+      <span id="solfeoTonicaLabel">Nota de partida</span>
       <select id="solfeoTonica"></select>
     </label>
     <label class="campo">
-      <span>Patrón de solfeo</span>
+      <span>Patrón</span>
       <select id="solfeoPatron"></select>
     </label>
-    <p class="descripcion" id="solfeoDescripcion">Se canta con las sílabas del Solfeo silábico de grados (Un, Do, Tri, Cua, Cin, Se, Ti — cada una nombra el grado, no la nota absoluta), relativas a la nota elegida arriba. Marca la casilla de arriba para usar Do-Re-Mi-Fa-Sol (Do movible) en su lugar. Solo escalas mayores por ahora.</p>
+    <p class="descripcion" id="solfeoDescripcion">Canta con sílabas de grado (Un, Do, Tri, Cua, Cin, Se, Ti) desde la nota elegida. Solo escalas mayores.</p>
   </section>
 
   <section id="panel-giros" class="panel" hidden>
     <label class="campo">
-      <span>Nota tónica (el "1" del giro)</span>
+      <span>Nota de partida (el «1»)</span>
       <select id="girosTonica"></select>
     </label>
     <label class="campo">
-      <span>Giro melódico</span>
+      <span>Giro</span>
       <select id="girosPatron"></select>
     </label>
     <p id="descripcionGiro" class="descripcion"></p>
-    <p class="descripcion">Células melódicas cortas de 3 notas alrededor de la tónica — buenas para trabajar oído y afinación de saltos pequeños. El "7'"/"5'" es ese grado pero en la octava de abajo, no arriba.</p>
+    <p class="descripcion">Células cortas de 3 notas alrededor de la nota de partida. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Buenas para trabajar oído y afinación de saltos pequeños. El 7&#x27; y el 5&#x27; son ese grado en la octava de abajo, no arriba.">?</button></p>
   </section>
 
   <section id="panel-metronomo" class="panel" hidden>
@@ -264,7 +245,7 @@
       </div>
     </label>
     <label class="campo">
-      <span>Acentuar cada</span>
+      <span>Acento</span>
       <select id="metronomoAcento">
         <option value="0" selected>Sin acento</option>
         <option value="2">2 pulsos (2/4)</option>
@@ -283,10 +264,10 @@
   <section class="panel comunes" id="panelComunes">
     <label class="campo checkbox">
       <input type="checkbox" id="sincronizarTempo" checked />
-      <span>Vincular la duración al tempo del metrónomo (en vez del slider de segundos)</span>
+      <span>Duración según el tempo del metrónomo</span>
     </label>
     <label class="campo" id="campoFiguraRitmica">
-      <span>A este tempo (<output id="tempoSincronizadoBpm">100</output> BPM), cada nota dura: <output id="duracionCalculadaTexto">0.60s</output></span>
+      <span>Figura · a <output id="tempoSincronizadoBpm">100</output> BPM dura <output id="duracionCalculadaTexto">0.60s</output></span>
       <select id="figuraRitmica">
         <option value="4">Redonda</option>
         <option value="2">Blanca</option>
@@ -332,7 +313,7 @@
 
   <footer class="pie">
     <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
-    <p>Los rangos de voz son una tesitura cómoda de práctica, no el límite extremo de cada cuerda vocal. El piano son muestras reales de un Steinway de cola (librería "SplendidGrandPiano"), reproducidas a la velocidad exacta para cada nota. El detector de afinación usa el micrófono del dispositivo (requiere permiso y conexión HTTPS).</p>
+    <p>Los rangos son una tesitura cómoda de práctica, no tu límite. Piano de cola real (SplendidGrandPiano).</p>
     <p><a href="privacidad.html">Política de privacidad</a></p>
   </footer>
 </div>
@@ -340,10 +321,11 @@
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=8"></script>
+<script src="app-shell.js?v=2"></script>
 <script src="audio.js?v=8"></script>
 <script src="progreso.js?v=1"></script>
-<script src="teclado.js?v=9"></script>
-<script src="piano.js?v=8"></script>
+<script src="teclado.js?v=10"></script>
+<script src="piano.js?v=9"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

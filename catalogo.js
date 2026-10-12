@@ -30,7 +30,9 @@ function renderizarCatalogo() {
       const tecnicas = patron.tecnicas.map((t) => t.replace(/_/g, " ")).join(", ");
       const info = document.createElement("div");
       info.className = "catalogo-info";
-      info.innerHTML = `<span class="catalogo-nombre">${patron.nombre}</span><span class="catalogo-detalle">${patron.descripcion} (técnicas: ${tecnicas})</span>`;
+      info.innerHTML = `<span class="catalogo-nombre">${patron.nombre}</span>` +
+        `<span class="catalogo-detalle">${patron.descripcion}</span>` +
+        `<span class="catalogo-tecnicas">${tecnicas.split(", ").map((t) => `<span class="mini-chip">${t}</span>`).join("")}</span>`;
 
       const boton = document.createElement("button");
       boton.className = "boton";
@@ -52,7 +54,7 @@ async function reproducirPatronCatalogo(clave, patron, boton) {
   let resultado;
   try {
     resultado = eventosModoEscala({
-      voz: "tenor",
+      voz: (window.RangoVocal && window.RangoVocal.claveVoz()) || "tenor",
       patron: clave,
       notaInicial: CATALOGO_TONICA,
       pasoSemitonos: 1,

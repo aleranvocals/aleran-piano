@@ -172,7 +172,19 @@ function poblarSelects() {
     opt.textContent = `${voz.nombre} (${voz.rango[0]}–${voz.rango[1]})`;
     selectVoz.appendChild(opt);
   }
-  selectVoz.value = "tenor";
+  selectVoz.value = window.RangoVocal && VOCES[window.RangoVocal.claveVoz()] ? window.RangoVocal.claveVoz() : "tenor";
+  // El rango que eliges en la barra de arriba manda: cambiarlo cambia aquí la voz de la escala.
+  window.addEventListener("rango-vocal-cambio", (e) => {
+    const clave = e.detail && e.detail.clave;
+    if (clave && VOCES[clave]) {
+      // El texto de la opción de «Mi rango» cambia con las notas: se repinta con las nuevas.
+      Array.from(selectVoz.options).forEach((o) => {
+        if (VOCES[o.value]) o.textContent = `${VOCES[o.value].nombre} (${VOCES[o.value].rango[0]}–${VOCES[o.value].rango[1]})`;
+      });
+      selectVoz.value = clave;
+      selectVoz.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
 
   const selectPatron = el("patron");
   const gruposPorCategoria = {};

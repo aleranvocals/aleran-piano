@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
+<link rel="stylesheet" href="rediseno.css?v=2" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -25,77 +26,85 @@
 <body>
 <div class="app">
   <header class="cabecera">
-    <h1>Herramientas de Áleran Vocals</h1>
-    <p class="subtitulo">Piano real, entrenamiento con micrófono y juegos de oído para practicar canto. Todo gratis, todo en tu navegador.</p>
-    <p class="descripcion">¿No sabes qué te falta? Empieza por la Guía. ¿Ya sabes qué quieres practicar? Elige la herramienta directamente abajo.</p>
+    <h1>Áleran Vocals</h1>
+    <p class="subtitulo">Herramientas para practicar canto. Gratis, en tu navegador.</p>
   </header>
 
+  <p class="hub-seccion">Practicar</p>
   <div class="hub-grid">
-    <a class="hub-tarjeta" href="guia.html">
-      <span class="hub-icono">🧭</span>
-      <span class="hub-nombre">Guía</span>
-      <span class="hub-detalle">¿No sabes por dónde empezar? Elige lo que más te cuesta ahora mismo y te decimos qué herramienta usar.</span>
-    </a>
-    <a class="hub-tarjeta destacada" href="piano.html">
+    <a class="hub-tarjeta" href="piano.html">
       <span class="hub-icono">🎹</span>
       <span class="hub-nombre">Solfeo</span>
-      <span class="hub-detalle">Nota individual, notas aleatorias, escalas vocales (25+), giros melódicos, tus propias notas, metrónomo y "cantar y calificar".</span>
+      <span class="hub-detalle">Escalas, notas y giros</span>
     </a>
-    <a class="hub-tarjeta destacada" href="entrenamiento.html">
+    <a class="hub-tarjeta" href="entrenamiento.html">
       <span class="hub-icono">🎤</span>
-      <span class="hub-nombre">Entrenamiento</span>
-      <span class="hub-detalle">Rango vocal, nota sostenida con vibrato, messa di voce, control de aire, y espectrograma en vivo. Usa el micrófono.</span>
+      <span class="hub-nombre">Entrena</span>
+      <span class="hub-detalle">Rango, sostener, espectro</span>
     </a>
-    <a class="hub-tarjeta destacada" href="oido.html">
+    <a class="hub-tarjeta" href="oido.html">
       <span class="hub-icono">🧠</span>
       <span class="hub-nombre">Oído</span>
-      <span class="hub-detalle">Intervalos, acordes, adivina la nota y Simon dice. No necesita micrófono.</span>
-    </a>
-    <a class="hub-tarjeta" href="rutina.html">
-      <span class="hub-icono">📋</span>
-      <span class="hub-nombre">Rutina</span>
-      <span class="hub-detalle">Una rutina de calentamiento corta y distinta cada día, con racha de días practicados.</span>
+      <span class="hub-detalle">Intervalos y acordes</span>
     </a>
     <a class="hub-tarjeta" href="ritmo.html">
       <span class="hub-icono">🥁</span>
       <span class="hub-nombre">Ritmo</span>
-      <span class="hub-detalle">Ritmo con palmas, dificultad progresiva de nivel 1 a 10, sincronizado con el metrónomo del kit.</span>
+      <span class="hub-detalle">Palmas con metrónomo</span>
     </a>
-    <a class="hub-tarjeta" href="progreso.html">
-      <span class="hub-icono">📈</span>
-      <span class="hub-nombre">Progreso</span>
-      <span class="hub-detalle">Tus récords guardados en este navegador: rango, sostenido, aciertos, y un calendario de racha.</span>
+    <a class="hub-tarjeta" href="rutina.html">
+      <span class="hub-icono">📋</span>
+      <span class="hub-nombre">Rutina</span>
+      <span class="hub-detalle">Calentamiento diario</span>
+    </a>
+  </div>
+
+  <p class="hub-seccion">Crear y consultar</p>
+  <div class="hub-grid">
+    <a class="hub-tarjeta" href="cifrado.html">
+      <span class="hub-icono">🎵</span>
+      <span class="hub-nombre">Cifrado</span>
+      <span class="hub-detalle">Letra en sílabas y notas</span>
     </a>
     <a class="hub-tarjeta" href="catalogo.html">
       <span class="hub-icono">🎼</span>
       <span class="hub-nombre">Catálogo</span>
-      <span class="hub-detalle">Las 25+ escalas y patrones vocales del kit, para escuchar cada una directamente.</span>
-    </a>
-    <a class="hub-tarjeta" href="glosario.html">
-      <span class="hub-icono">📖</span>
-      <span class="hub-nombre">Glosario</span>
-      <span class="hub-detalle">Términos de técnica vocal explicados en lenguaje llano: passaggio, twang, apoyo, y más.</span>
+      <span class="hub-detalle">25+ escalas para escuchar</span>
     </a>
     <a class="hub-tarjeta" href="mapa-vocal.html">
       <span class="hub-icono">🗺️</span>
       <span class="hub-nombre">Mapa vocal</span>
-      <span class="hub-detalle">Genera un mapa de registros (pecho, cabeza, passaggio, zona de paso, silbido...) y descárgalo como imagen.</span>
+      <span class="hub-detalle">Tus registros en imagen</span>
     </a>
-    <a class="hub-tarjeta" href="cifrado.html">
-      <span class="hub-icono">🎵</span>
-      <span class="hub-nombre">Cifrado</span>
-      <span class="hub-detalle">Pega una letra, divídela en sílabas, decide qué sílabas comparten nota y marca vibrato, twang, voz de cabeza y más con colores.</span>
+    <a class="hub-tarjeta" href="glosario.html">
+      <span class="hub-icono">📖</span>
+      <span class="hub-nombre">Glosario</span>
+      <span class="hub-detalle">Términos explicados</span>
+    </a>
+  </div>
+
+  <p class="hub-seccion">Tu camino</p>
+  <div class="hub-grid">
+    <a class="hub-tarjeta" href="guia.html">
+      <span class="hub-icono">🧭</span>
+      <span class="hub-nombre">Guía</span>
+      <span class="hub-detalle">¿Por dónde empiezo?</span>
+    </a>
+    <a class="hub-tarjeta" href="progreso.html">
+      <span class="hub-icono">📈</span>
+      <span class="hub-nombre">Progreso</span>
+      <span class="hub-detalle">Récords y racha</span>
     </a>
     <a class="hub-tarjeta" href="soporte.html">
       <span class="hub-icono">💬</span>
       <span class="hub-nombre">Soporte</span>
-      <span class="hub-detalle">¿Dudas o encontraste un fallo? Escríbele directo a Áleran por WhatsApp o email.</span>
+      <span class="hub-detalle">Escribe a Áleran</span>
     </a>
   </div>
 
   <div class="captura-lead">
-    <h2>Regalo: rutina de calentamiento de 10 minutos</h2>
-    <p>El PDF con el orden exacto de ejercicios antes de cantar, para no quedarte afónico a media sesión. Te lo mando gratis, solo dime dónde.</p>
+    <h2>Regalo: calentamiento de 10 minutos</h2>
+    <p>El PDF con el orden de ejercicios antes de cantar. Gratis.</p>
     <form id="formCapturaLead" novalidate>
       <label class="campo-honeypot" aria-hidden="true">
         Empresa
@@ -115,10 +124,11 @@
   </div>
 
   <footer class="pie">
-    <p>Ninguna herramienta usa servicios de pago ni sube datos a ningún sitio: los récords se guardan solo en tu navegador, y el micrófono (donde se usa) requiere tu permiso explícito.</p>
+    <p>Tus récords se guardan solo en tu navegador. El micrófono pide tu permiso.</p>
     <p><a href="privacidad.html">Política de privacidad</a></p>
   </footer>
 </div>
+<script src="app-shell.js?v=2"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 <script src="lead.js?v=1"></script>

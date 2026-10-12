@@ -5,7 +5,7 @@
 <script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Entrenamiento — Áleran Vocals</title>
-<meta name="description" content="Entrenamiento con micrófono: medidor de rango vocal, SOVT/sirena libre, cronómetro de nota sostenida con análisis de vibrato en vivo, messa di voce, control de aire, espectrograma en vivo y grabadora de práctica." />
+<meta name="description" content="Entrenamiento con micrófono: rango vocal, sirena, nota sostenida, crescendo, control de aire, espectro con medidor de twang y grabadora." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://aleran-piano.vercel.app/entrenamiento.html" />
 <meta property="og:title" content="Entrenamiento — Áleran Vocals" />
@@ -18,6 +18,7 @@
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
+<link rel="stylesheet" href="rediseno.css?v=2" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -26,8 +27,8 @@
 <body>
 <div class="app">
   <header class="cabecera">
-    <h1>🎤 Entrenamiento</h1>
-    <p class="subtitulo">Rango vocal, SOVT/sirena libre, nota sostenida, messa di voce, control de aire, espectro en vivo y grabadora de práctica — todo con el micrófono de tu dispositivo.</p>
+    <h1>🎤 Entrena</h1>
+    <p class="subtitulo">Ejercicios con tu micrófono.</p>
   </header>
 
   <nav class="nav-principal">
@@ -71,21 +72,18 @@
     <input type="range" id="volumen" min="0.1" max="1" step="0.05" value="0.85" />
   </label>
 
-  <div class="tabs" role="tablist">
-    <button class="subtab activo" data-entren="rango" role="tab" aria-selected="true">Rango vocal</button>
-    <button class="subtab" data-entren="sovt" role="tab" aria-selected="false">SOVT / Sirena</button>
-    <button class="subtab" data-entren="sostenida" role="tab" aria-selected="false">Nota sostenida</button>
-    <button class="subtab" data-entren="messa" role="tab" aria-selected="false">Messa di voce</button>
-    <button class="subtab" data-entren="aire" role="tab" aria-selected="false">Control de aire</button>
-    <button class="subtab" data-entren="espectro" role="tab" aria-selected="false">Espectro en vivo</button>
-    <button class="subtab" data-entren="grabadora" role="tab" aria-selected="false">Grabadora</button>
+  <div class="tabs tabs-fichas" role="tablist">
+    <button class="subtab activo" data-entren="rango" role="tab" aria-selected="true"><span class="ficha-icono" aria-hidden="true">📏</span><span>Medir rango</span></button>
+    <button class="subtab" data-entren="sovt" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🌊</span><span>Sirena</span></button>
+    <button class="subtab" data-entren="sostenida" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">⏳</span><span>Sostener</span></button>
+    <button class="subtab" data-entren="messa" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🎈</span><span>Crescendo</span></button>
+    <button class="subtab" data-entren="aire" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">💨</span><span>Aire</span></button>
+    <button class="subtab" data-entren="espectro" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">📊</span><span>Espectro</span></button>
+    <button class="subtab" data-entren="grabadora" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🔴</span><span>Grabar</span></button>
   </div>
 
   <section id="panel-rango" class="panel">
-    <p class="descripcion">
-      Canta cómodamente desde tu nota más grave hasta tu nota más aguda (y viceversa
-      las veces que quieras). Cuando termines, pulsa "Detener" para ver tu rango.
-    </p>
+    <p class="descripcion">Canta de tu nota más grave a la más aguda. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Hazlo cómodo, sin forzar, y repite el recorrido las veces que quieras. Cuando termines, pulsa Detener para ver tu rango y qué tipo de voz se parece más.">?</button></p>
     <div class="nota-grande" id="rangoNotaActual">—</div>
     <p class="descripcion" id="rangoResultado"></p>
     <div class="acciones">
@@ -95,19 +93,14 @@
   </section>
 
   <section id="panel-sovt" class="panel" hidden>
-    <p class="descripcion">
-      Desliza libremente de grave a agudo y de vuelta mientras haces la
-      técnica que elijas — no hace falta sonar "bonito", solo mantener el
-      sonido mientras te mueves por tu rango. Ideal para calentar antes de
-      cantar o para enfriar la voz al terminar.
-    </p>
+    <p class="descripcion">Desliza de grave a agudo y vuelve, sin forzar. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="No hace falta sonar bonito: solo mantener el sonido mientras te mueves por tu rango. Ideal para calentar antes de cantar o enfriar la voz al terminar.">?</button></p>
     <label class="campo">
       <span>Técnica</span>
       <select id="sovtTecnica">
-        <option value="voz">Solo voz (sirena)</option>
+        <option value="voz">Sirena</option>
         <option value="trino">Trino de labios</option>
-        <option value="pajita">Pajita (straw phonation)</option>
-        <option value="zumbido">Zumbido (humming)</option>
+        <option value="pajita">Pajita</option>
+        <option value="zumbido">Zumbido</option>
       </select>
     </label>
     <div class="nota-grande" id="sovtNotaActual">—</div>
@@ -119,11 +112,7 @@
   </section>
 
   <section id="panel-sostenida" class="panel" hidden>
-    <p class="descripcion">
-      Elige una nota en el piano de arriba (opcional) y sostenla el mayor tiempo
-      posible y lo más estable que puedas. Si no eliges ninguna, se mide la
-      primera nota que cantes.
-    </p>
+    <p class="descripcion">Sostén una nota lo más estable y largo que puedas. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Elige una nota en el piano de arriba (opcional). Si no eliges ninguna, se mide la primera nota que cantes.">?</button></p>
     <div class="nota-grande" id="sostenidaTiempo">0.0s</div>
     <p class="marcador" id="sostenidaVibratoEnVivo"></p>
     <canvas id="sostenidaGrafico" width="600" height="120" class="grafico-pitch" role="img" aria-label="Gráfico en vivo de la estabilidad de tu afinación mientras sostienes la nota"></canvas>
@@ -135,12 +124,7 @@
   </section>
 
   <section id="panel-messa" class="panel" hidden>
-    <p class="descripcion">
-      Elige una nota (opcional) y sostenla mientras haces un "globo": empieza
-      muy suave, crece hasta el máximo volumen que puedas sin forzar, y baja
-      de nuevo a un hilo de voz — todo en la misma nota y la misma
-      respiración. Es un clásico control de aire y volumen.
-    </p>
+    <p class="descripcion">En una sola nota: de muy suave a fuerte y de vuelta. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Es la «messa di voce»: empiezas con un hilo de voz, creces hasta el máximo volumen que puedas sin forzar y bajas de nuevo, con la misma nota y la misma respiración. Elige una nota en el piano (opcional).">?</button></p>
     <canvas id="messaGrafico" width="600" height="120" class="grafico-pitch" role="img" aria-label="Gráfico en vivo del volumen de tu voz durante el crescendo-diminuendo"></canvas>
     <p class="descripcion" id="messaResultado"></p>
     <div class="acciones">
@@ -150,11 +134,7 @@
   </section>
 
   <section id="panel-aire" class="panel" hidden>
-    <p class="descripcion">
-      Sin usar las cuerdas vocales: haz una "sss" o "fff" larga y pareja, lo
-      más constante posible, y aguanta el máximo tiempo con el aire que
-      tengas. Mide tu control de la respiración, no tu voz.
-    </p>
+    <p class="descripcion">Una «sss» larga y pareja, sin voz. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Mide tu control del aire, no tu voz: haz una «sss» o «fff» lo más constante posible y aguanta el máximo tiempo.">?</button></p>
     <div class="nota-grande" id="aireTiempo">0.0s</div>
     <canvas id="aireGrafico" width="600" height="120" class="grafico-pitch" role="img" aria-label="Gráfico en vivo de la constancia de tu flujo de aire"></canvas>
     <p class="descripcion" id="aireResultado"></p>
@@ -165,51 +145,22 @@
   </section>
 
   <section id="panel-espectro" class="panel" hidden>
-    <p class="descripcion">
-      Canta o vocaliza y observa en vivo el espectro de frecuencias de tu
-      voz (útil para ver armónicos, brillo y resonancia). El eje vertical
-      va de 0 a 4000 Hz; más brillante = más energía en esa frecuencia.
-    </p>
-    <canvas id="espectroGrafico" width="600" height="160" class="grafico-pitch" role="img" aria-label="Espectrograma en vivo de las frecuencias de tu voz, de 0 a 4000 Hz"></canvas>
+    <p class="descripcion">Mira tu voz en vivo y encuentra el twang. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="El espectro muestra qué frecuencias suenan en tu voz (de 0 a 4000 Hz): más brillo = más energía. El twang es el «ping» que concentra energía entre unos 2.500 y 4.000 Hz, la zona marcada arriba. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes y calibra con una vocal normal. Es una ayuda para encontrarlo y comparar tomas, no un diagnóstico; desactiva la «mejora de voz» o el «aislamiento de voz» del sistema si los tienes.">?</button></p>
 
-    <div class="brillo-medidor">
-      <div class="brillo-etiqueta">
-        <span>💡 Índice de brillo / proyección (aproximado)</span>
-        <span id="brilloValor">—</span>
+    <div class="espectro-visor">
+      <canvas id="espectroGrafico" width="600" height="190" class="grafico-pitch" role="img" aria-label="Espectrograma en vivo de las frecuencias de tu voz, de 0 a 4000 Hz"></canvas>
+      <div class="espectro-eje" aria-hidden="true">
+        <div class="espectro-zona-twang"><span>TWANG</span></div>
+        <div class="espectro-marca" style="top:0%"><span>4000 Hz</span></div>
+        <div class="espectro-marca" style="top:25%"><span>3000 Hz</span></div>
+        <div class="espectro-marca" style="top:50%"><span>2000 Hz</span></div>
+        <div class="espectro-marca" style="top:75%"><span>1000 Hz</span></div>
+        <div class="espectro-marca" style="top:100%"><span style="top:-20px">0 Hz</span></div>
       </div>
-      <div class="brillo-pista"><div class="brillo-barra" id="brilloBarra"></div></div>
-      <p class="descripcion" style="margin-top:0.5rem">
-        Compara la energía en 2.5–3.5 kHz (donde suele proyectar una voz
-        entrenada, el "formante del cantante") frente al resto del rango
-        vocal. <strong>No es una medición clínica:</strong> cambia según el
-        micrófono y la vocal que cantes, así que úsalo para comparar dentro
-        de la misma sesión ("¿subió al darle más 'ping' al sonido?"), no
-        como una puntuación absoluta ni entre sesiones distintas.
-      </p>
     </div>
 
     <div class="twang-medidor" id="twangMedidor">
       <h3 class="twang-titulo">🎯 Medidor de twang</h3>
-      <p class="descripcion">
-        El twang concentra energía entre unos 2.5 y 4 kHz (el «ping» del sonido). Aquí se compara esa zona con el
-        cuerpo de tu voz y se mira cuánto sube respecto a tu voz normal. Cada micrófono realza o recorta esas
-        frecuencias a su manera: elige el tuyo y, para afinar, calibra con una vocal normal.
-      </p>
-      <div class="twang-ajustes">
-        <label class="campo">
-          <span>¿Con qué micrófono cantas?</span>
-          <select id="twangDispositivo"></select>
-        </label>
-        <p class="twang-ayuda" id="twangAyuda"></p>
-        <div class="twang-calibrar">
-          <button id="btnTwangCalibrar" class="boton" type="button">🎚️ Calibrar con mi voz normal (4 s)</button>
-          <span class="twang-calib-estado" id="twangCalibEstado">Sin calibrar: usa un valor medio.</span>
-        </div>
-        <label class="campo">
-          <span>Sensibilidad: <output id="twangSensValor">normal</output></span>
-          <input type="range" id="twangSensibilidad" min="-3" max="3" step="0.5" value="0" aria-label="Sensibilidad del medidor de twang" />
-        </label>
-      </div>
       <div class="twang-visor" id="twangVisor" data-estado="espera">
         <div class="twang-pista" aria-hidden="true">
           <div class="twang-barra" id="twangBarra"></div>
@@ -221,28 +172,45 @@
           <span id="twangTexto">Pulsa «Empezar» y canta una vocal sostenida</span>
         </div>
       </div>
-      <p class="descripcion twang-nota">
-        Calibra con la misma vocal que vayas a trabajar (la «i» y la «a» tienen brillo distinto). Los perfiles de micrófono
-        son aproximados, no medidos en tu equipo; la ciencia tampoco fija una banda exacta para el twang. Úsalo como
-        ayuda para encontrarlo y comparar tomas, no como diagnóstico. Desactiva «mejora de voz» o «aislamiento de voz»
-        del sistema si los tienes.
-      </p>
     </div>
 
     <div class="acciones">
       <button id="btnEspectroIniciar" class="boton principal">🎤 Empezar</button>
       <button id="btnEspectroDetener" class="boton" disabled>⏹ Detener</button>
     </div>
+
+    <details class="ajustes-plegables">
+      <summary>⚙ Ajustes del twang</summary>
+      <div class="twang-ajustes">
+        <label class="campo">
+          <span>Tu micrófono</span>
+          <select id="twangDispositivo"></select>
+        </label>
+        <p class="twang-ayuda" id="twangAyuda"></p>
+        <div class="twang-calibrar">
+          <button id="btnTwangCalibrar" class="boton" type="button">🎚️ Calibrar (4 s)</button>
+          <span class="twang-calib-estado" id="twangCalibEstado">Sin calibrar: usa un valor medio.</span>
+        </div>
+        <label class="campo">
+          <span>Sensibilidad: <output id="twangSensValor">normal</output></span>
+          <input type="range" id="twangSensibilidad" min="-3" max="3" step="0.5" value="0" aria-label="Sensibilidad del medidor de twang" />
+        </label>
+      </div>
+    </details>
+
+    <div class="brillo-medidor">
+      <div class="brillo-etiqueta">
+        <span>💡 Brillo / proyección <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Compara la energía entre 2,5 y 3,5 kHz (donde suele proyectar una voz entrenada) con el resto del rango vocal. No es una medición clínica: cambia según el micrófono y la vocal, úsalo para comparar dentro de la misma sesión.">?</button></span>
+        <span id="brilloValor">—</span>
+      </div>
+      <div class="brillo-pista"><div class="brillo-barra" id="brilloBarra"></div></div>
+    </div>
   </section>
 
   <section id="panel-grabadora" class="panel" hidden>
-    <p class="descripcion">
-      Graba tomas cortas de práctica y guárdalas para escucharlas más
-      tarde: compara cómo sonabas antes con cómo suenas ahora. Las
-      grabaciones se guardan solo en este navegador.
-    </p>
+    <p class="descripcion">Graba tomas de práctica y compáralas. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Las grabaciones se guardan solo en este navegador. Ponles nombre («antes», «después de calentar») para reconocerlas.">?</button></p>
     <label class="campo">
-      <span>Nombre de la toma (opcional, ej: "antes", "después de calentar")</span>
+      <span>Nombre de la toma</span>
       <input type="text" id="grabacionEtiqueta" placeholder="Toma sin nombre" maxlength="60" />
     </label>
     <div class="acciones">
@@ -260,7 +228,7 @@
 
   <footer class="pie">
     <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
-    <p>El micrófono requiere tu permiso y una conexión HTTPS (o http://localhost en pruebas locales). Nada de audio se sube a ningún sitio: el análisis ocurre enteramente en tu navegador.</p>
+    <p>El micrófono pide tu permiso. Nada de audio sale de tu navegador.</p>
     <p><a href="privacidad.html">Política de privacidad</a></p>
   </footer>
 </div>
@@ -268,11 +236,12 @@
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=8"></script>
+<script src="app-shell.js?v=2"></script>
 <script src="audio.js?v=8"></script>
 <script src="progreso.js?v=1"></script>
-<script src="teclado.js?v=9"></script>
+<script src="teclado.js?v=10"></script>
 <script src="twang.js?v=1"></script>
-<script src="entrenamiento.js?v=5"></script>
+<script src="entrenamiento.js?v=6"></script>
 <script src="grabadora.js?v=2"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>

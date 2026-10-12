@@ -5,7 +5,7 @@
  */
 
 const RUTINA_CATEGORIAS = ["calentamiento", "diatonicas", "arpegios", "voz_mixta"];
-const RUTINA_VOZ_POR_DEFECTO = "tenor";
+const RUTINA_VOZ_POR_DEFECTO = (window.RangoVocal && window.RangoVocal.claveVoz()) || "tenor";
 
 let rutinaEjercicios = [];
 let rutinaVarianteExtra = 0;

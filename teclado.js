@@ -171,6 +171,27 @@ function inicializarPiano(manejarClic) {
    ============================================================ */
 
 const CLAVE_MIDI_DISPOSITIVO = "aleran-piano-midi-dispositivo";
+const CLAVE_MIDI_ACTIVO = "aleran-piano-midi-activo";
+
+function pintarBotonMidi(btn, activo, nombre) {
+  if (!btn) return;
+  btn.classList.toggle("midi-conectado", activo);
+  btn.classList.toggle("activo", activo);
+  const texto = btn.querySelector(".midi-texto");
+  if (texto) texto.textContent = activo ? "MIDI activo" : "MIDI apagado";
+  btn.title = activo ? `MIDI activo: ${nombre}. Toca para apagarlo.` : "Activar el controlador MIDI";
+}
+
+function desconectarMidi(btn) {
+  if (midiEntradaActual) midiEntradaActual.onmidimessage = null;
+  midiEntradaActual = null;
+  try {
+    localStorage.setItem(CLAVE_MIDI_ACTIVO, "0");
+  } catch {
+    /* sin consecuencias */
+  }
+  pintarBotonMidi(btn, false);
+}
 let midiManejarNota = null;
 let midiEntradaActual = null;
 
@@ -179,12 +200,14 @@ function configurarMidi(manejarClic) {
   const filaZoom = el("pianoZoom") && el("pianoZoom").closest(".piano-zoom");
   if (!filaZoom) return;
 
+  // El interruptor vive en la barra de herramientas de arriba (siempre a mano); si no existe, en la fila del zoom.
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "boton pequeno midi-boton";
-  btn.title = "Conectar un controlador MIDI (teclado físico por USB)";
-  btn.textContent = "🎹 MIDI";
-  filaZoom.appendChild(btn);
+  btn.className = "chip-dock midi-boton";
+  btn.title = "Activar o desactivar el controlador MIDI";
+  btn.innerHTML = '<span class="punto"></span><span class="midi-texto">MIDI apagado</span>';
+  const dock = document.getElementById("dockHerramientas");
+  (dock || filaZoom).appendChild(btn);
 
   if (!navigator.requestMIDIAccess) {
     btn.addEventListener("click", () => {
@@ -195,7 +218,11 @@ function configurarMidi(manejarClic) {
     return;
   }
 
-  btn.addEventListener("click", () => conectarMidi(btn));
+  // Encender y apagar: apagado, el piano ignora el controlador por completo (y no se vuelve a conectar solo).
+  btn.addEventListener("click", () => {
+    if (midiEntradaActual) desconectarMidi(btn);
+    else conectarMidi(btn);
+  });
   intentarReconectarMidiGuardado(btn);
 }
 
@@ -253,13 +280,11 @@ function conectarEntradaMidi(entrada, btn) {
   entrada.onmidimessage = manejarMensajeMidi;
   try {
     localStorage.setItem(CLAVE_MIDI_DISPOSITIVO, entrada.name);
+    localStorage.setItem(CLAVE_MIDI_ACTIVO, "1");
   } catch {
     /* no pasa nada si no se pudo guardar -- solo tendrá que elegirlo de nuevo */
   }
-  if (btn) {
-    btn.classList.add("midi-conectado");
-    btn.title = `MIDI conectado: ${entrada.name}`;
-  }
+  pintarBotonMidi(btn, true, entrada.name);
 }
 
 // Si ya se eligió un dispositivo antes, lo reconecta solo (sin volver a
@@ -267,12 +292,14 @@ function conectarEntradaMidi(entrada, btn) {
 // entre visitas del mismo sitio, así que esto suele quedar instantáneo.
 function intentarReconectarMidiGuardado(btn) {
   let nombreGuardado;
+  let activo = true;
   try {
     nombreGuardado = localStorage.getItem(CLAVE_MIDI_DISPOSITIVO);
+    activo = localStorage.getItem(CLAVE_MIDI_ACTIVO) !== "0"; // apagado a mano = no se vuelve a encender solo
   } catch {
     nombreGuardado = null;
   }
-  if (!nombreGuardado) return;
+  if (!nombreGuardado || !activo) return;
   // Solo se reconecta solo si el permiso YA está concedido. Pedirlo al cargar
   // la página, sin que nadie haya tocado nada, hace que el navegador muestre
   // un aviso que casi todos ignoran -- y tras varias veces ignorado Chrome lo
@@ -297,6 +324,8 @@ function intentarReconectarMidiGuardado(btn) {
 // mandan así). Un Note On toca/escribe; el Note Off suelta la nota (igual que
 // soltar el dedo en pantalla), así que un acorde mantenido suena entero.
 function manejarMensajeMidi(evento) {
+  // Con la pestaña en segundo plano el controlador se usa para otra cosa: que no suene el piano.
+  if (document.hidden) return;
   const [estado, notaMidi, velocidad] = evento.data;
   const tipo = estado & 0xf0;
   if (tipo === 0x90 && velocidad > 0) {
@@ -402,3 +431,22 @@ function actualizarAfinometro(cents) {
   aguja.className = "afinometro-aguja" + (abs <= 10 ? " centrado" : abs <= 30 ? " cerca" : "");
   el("afinometroTexto").textContent = `${cents > 0 ? "+" : ""}${Math.round(cents)}¢`;
 }
+
+
+/* Lo que queda fuera de tu rango vocal (el que eliges en la barra de arriba) se atenúa en el teclado. */
+function aplicarRangoEnTeclado() {
+  const cont = document.getElementById("piano");
+  if (!cont || !window.RangoVocal) return;
+  const r = window.RangoVocal.obtener();
+  const sinFiltro = !r.elegido || r.clave === "completo";
+  cont.querySelectorAll(".tecla").forEach((t) => {
+    const midi = parseInt(t.dataset.midi, 10);
+    t.classList.toggle("fuera-rango", !sinFiltro && (midi < r.midiMin || midi > r.midiMax));
+  });
+}
+window.addEventListener("rango-vocal-cambio", aplicarRangoEnTeclado);
+document.addEventListener("DOMContentLoaded", () => setTimeout(aplicarRangoEnTeclado, 0));
+// El teclado se reconstruye al cambiar el zoom: reaplicar el rango tras ese cambio.
+document.addEventListener("input", (e) => {
+  if (e.target && e.target.id === "pianoZoom") setTimeout(aplicarRangoEnTeclado, 0);
+});

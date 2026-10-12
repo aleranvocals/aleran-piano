@@ -39,7 +39,8 @@ function sugerirTipoVoz(minMidi, maxMidi) {
   const centro = (minMidi + maxMidi) / 2;
   let mejor = null;
   let mejorDist = Infinity;
-  for (const voz of Object.values(VOCES)) {
+  for (const [clave, voz] of Object.entries(VOCES)) {
+    if (clave === "completo" || clave === "personalizado") continue;
     const vCentro = (nombreAMidi(voz.rango[0]) + nombreAMidi(voz.rango[1])) / 2;
     const dist = Math.abs(centro - vCentro);
     if (dist < mejorDist) {

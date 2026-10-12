@@ -1,0 +1,234 @@
+/* =====================================================================
+   Rediseño — mismo contenido, otra cara: menos texto a la vista,
+   botones en lugar de desplegables, un solo lenguaje visual (chips,
+   fichas y botones comparten radio, borde y estados).
+   Se carga DESPUÉS de style.css y lo sobrescribe a propósito.
+   ===================================================================== */
+:root {
+  --radio: 12px;
+  --radio-chip: 999px;
+  --sombra-suave: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 6px 18px rgba(0, 0, 0, 0.25);
+  --foco: 0 0 0 3px rgba(192, 34, 65, 0.35);
+}
+:root[data-tema="claro"] {
+  --sombra-suave: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 18px rgba(90, 40, 30, 0.08);
+}
+
+.app { max-width: 720px; padding: 1.25rem 1rem 3rem; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-shadow: var(--foco); }
+
+/* --- Cabecera más corta ------------------------------------------------ */
+.cabecera { padding-right: 3.2rem; margin-bottom: 0.9rem; }
+.cabecera h1 { font-size: 1.75rem; margin-bottom: 0.15rem; letter-spacing: 0.01em; }
+.subtitulo { font-size: 0.9rem; margin: 0; color: var(--muted); }
+
+/* --- Menú: una fila + «Más» -------------------------------------------- */
+.nav-principal.nav-compacto { display: block; margin-bottom: 0.6rem; }
+.nav-barra { display: flex; align-items: center; gap: 0.4rem; }
+.nav-lista { display: flex; gap: 0.4rem; flex: 1 1 auto; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.nav-lista::-webkit-scrollbar { display: none; }
+.nav-compacto a, .nav-mas {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 0 0.85rem;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--bone-dim);
+  font: 500 0.86rem var(--font-body); white-space: nowrap;
+  border-radius: var(--radio-chip); cursor: pointer; text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.nav-compacto a:hover, .nav-mas:hover { border-color: var(--crimson); color: var(--bone); }
+.nav-compacto a.activo, .nav-mas.activo { background: var(--crimson); border-color: var(--crimson); color: var(--claro-fijo); }
+.nav-inicio { width: 40px; padding: 0 !important; font-size: 1.05rem; }
+.nav-mas-panel { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 0.6rem; }
+.nav-mas-panel a { justify-content: flex-start; }
+
+/* --- Barra de herramientas siempre a mano ------------------------------ */
+.dock {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+  padding: 0.45rem 0; margin-bottom: 0.7rem;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+.chip-dock {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  min-height: 36px; padding: 0 0.8rem;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--bone);
+  font: 500 0.82rem var(--font-body); border-radius: var(--radio-chip); cursor: pointer;
+}
+.chip-dock:hover { border-color: var(--crimson); }
+.chip-dock.sin-elegir { border-color: var(--crimson-bright); }
+.chip-dock.activo, .chip-dock.midi-conectado { background: rgba(147, 23, 44, 0.22); border-color: var(--crimson-bright); }
+.chip-dock .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.chip-dock.activo .punto, .chip-dock.midi-conectado .punto { background: #55d37c; }
+
+/* --- Botones: una escala clara ----------------------------------------- */
+.boton {
+  min-height: 44px; padding: 0.6rem 1.15rem;
+  border-radius: var(--radio); font-size: 0.93rem; font-weight: 600; letter-spacing: 0.01em;
+}
+.boton.principal {
+  background: linear-gradient(180deg, var(--crimson-bright), var(--crimson));
+  border-color: var(--crimson); box-shadow: var(--sombra-suave);
+}
+.boton.pequeno { min-height: 34px; padding: 0.3rem 0.75rem; font-size: 0.82rem; border-radius: 10px; }
+.acciones { gap: 0.5rem; margin: 1rem 0 0.5rem; }
+.acciones .boton.principal { flex: 1 1 140px; }
+
+/* --- Panel y campos ---------------------------------------------------- */
+.panel { border-radius: 14px; padding: 1rem; gap: 0.85rem; box-shadow: var(--sombra-suave); }
+.campo { gap: 0.45rem; }
+.campo > span { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.campo.checkbox > span { text-transform: none; letter-spacing: 0; font-size: 0.9rem; font-weight: 400; color: var(--bone-dim); }
+.descripcion { font-size: 0.85rem; line-height: 1.45; margin: 0; }
+.panel > .descripcion:first-child { color: var(--bone-dim); }
+
+/* --- Pestañas → control segmentado (modos) o fichas (herramientas) ----- */
+.tabs {
+  display: flex; flex-wrap: nowrap; gap: 0.3rem; overflow-x: auto; scrollbar-width: none;
+  padding: 0.25rem; margin: 0 0 1rem;
+  background: var(--panel-2); border-radius: var(--radio-chip); border: 1px solid var(--line);
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab, .subtab {
+  flex: 1 0 auto; border: 0; border-radius: var(--radio-chip); padding: 0.5rem 0.9rem;
+  color: var(--bone-dim); font-size: 0.88rem; font-weight: 600; white-space: nowrap;
+}
+.tab:hover, .subtab:hover { color: var(--bone); }
+.tab.activo, .subtab.activo { background: var(--crimson); color: var(--claro-fijo); border-bottom: 0; }
+
+.tabs.tabs-fichas {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 0.5rem;
+  overflow: visible; background: none; border: 0; padding: 0; border-radius: 0;
+}
+.tabs-fichas .tab, .tabs-fichas .subtab {
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem; white-space: normal; text-align: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radio);
+  padding: 0.7rem 0.3rem; font-size: 0.8rem; line-height: 1.2;
+}
+.tabs-fichas .ficha-icono { font-size: 1.35rem; line-height: 1; }
+.tabs-fichas .tab.activo, .tabs-fichas .subtab.activo {
+  background: rgba(147, 23, 44, 0.2); border: 1px solid var(--crimson-bright); color: var(--bone);
+}
+
+/* --- Botones en lugar de desplegables ---------------------------------- */
+.select-oculto { display: none !important; }
+.grupo-botones { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.grupo-titulo { flex: 1 0 100%; margin-top: 0.4rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.chip {
+  min-height: 38px; padding: 0.35rem 0.85rem; border-radius: var(--radio-chip);
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--bone-dim);
+  font: 500 0.85rem var(--font-body); cursor: pointer; text-align: left; line-height: 1.2;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.chip:hover { border-color: var(--crimson); color: var(--bone); }
+.chip.activo { background: var(--crimson); border-color: var(--crimson); color: var(--claro-fijo); }
+.metronomo-flotante .chip { min-height: 30px; padding: 0.2rem 0.6rem; font-size: 0.8rem; }
+
+.stepper { display: inline-flex; align-items: center; gap: 0.5rem; }
+.paso {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--bone); font-size: 1.2rem; cursor: pointer;
+}
+.paso:hover { border-color: var(--crimson); }
+.paso-valor { min-width: 4.2ch; text-align: center; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+
+/* --- Ayuda «?» --------------------------------------------------------- */
+.ayuda-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; margin-left: 0.4rem; vertical-align: middle;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); color: var(--bone-dim);
+  font: 700 0.75rem var(--font-body); cursor: pointer; padding: 0;
+}
+.ayuda-btn:hover, .ayuda-btn[aria-expanded="true"] { border-color: var(--crimson-bright); color: var(--bone); }
+.ayuda-pop {
+  margin: 0.3rem 0 0.2rem; padding: 0.7rem 0.85rem; font-size: 0.84rem; line-height: 1.5;
+  background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--crimson-bright);
+  border-radius: 10px; color: var(--bone-dim);
+}
+
+/* --- Hoja «Tu rango vocal» ---------------------------------------------- */
+.hoja-fondo { position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, 0.6); display: flex; align-items: flex-end; justify-content: center; }
+.hoja {
+  width: min(560px, 100%); max-height: 88vh; overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px 18px 0 0;
+  padding: 1rem 1rem 1.4rem; box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+}
+.hoja-cabecera { display: flex; align-items: center; justify-content: space-between; }
+.hoja-cabecera h2 { margin: 0; font-family: var(--font-display); font-size: 1.4rem; }
+.hoja-cerrar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); color: var(--bone); cursor: pointer; }
+.hoja-texto { margin: 0.2rem 0 0.8rem; color: var(--muted); font-size: 0.88rem; }
+.rango-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; }
+.rango-opcion {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+  padding: 0.7rem 0.8rem; border-radius: var(--radio); border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--bone); cursor: pointer; text-align: left;
+}
+.rango-opcion strong { font-size: 0.95rem; }
+.rango-opcion span { font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rango-opcion:hover { border-color: var(--crimson); }
+.rango-opcion.activo { border-color: var(--crimson-bright); background: rgba(147, 23, 44, 0.2); }
+.rango-personal { margin-top: 0.9rem; display: grid; gap: 0.6rem; }
+.rango-fila { display: flex; align-items: center; gap: 0.6rem; }
+.rango-fila > span { width: 3.5rem; color: var(--muted); font-size: 0.85rem; }
+
+/* --- Teclado: lo que queda fuera de tu rango se atenúa ------------------ */
+.tecla.fuera-rango { filter: brightness(0.62); }
+
+/* --- Portada: las fichas usan el mismo lenguaje que el menú ------------- */
+.hub-seccion { margin: 1.1rem 0 0.5rem; font: 700 0.72rem var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.hub-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 0.4rem; }
+.hub-tarjeta, .hub-tarjeta.destacada {
+  align-items: flex-start; gap: 0.15rem;
+  padding: 0.9rem; border-radius: var(--radio); background: var(--panel-2); border: 1px solid var(--line);
+}
+.hub-tarjeta:hover { border-color: var(--crimson); transform: none; }
+.hub-tarjeta.destacada .hub-nombre::after { content: none; }
+.hub-icono { font-size: 1.5rem; }
+.hub-nombre { font-size: 1.05rem; font-family: var(--font-body); font-weight: 700; }
+.hub-detalle { font-size: 0.8rem; line-height: 1.35; color: var(--muted); }
+
+/* --- Espectro en vivo ---------------------------------------------------- */
+.espectro-visor { position: relative; }
+.espectro-visor canvas { display: block; width: 100%; height: 190px; border-radius: var(--radio); }
+.espectro-eje { position: absolute; inset: 0; pointer-events: none; }
+.espectro-marca { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(237, 231, 225, 0.14); }
+.espectro-marca span {
+  position: absolute; left: 6px; top: -9px; padding: 0 4px; border-radius: 4px;
+  background: rgba(10, 8, 8, 0.7); color: var(--bone-dim); font: 600 0.68rem var(--font-body); font-variant-numeric: tabular-nums;
+}
+.espectro-zona-twang {
+  position: absolute; left: 0; right: 0; top: 0; height: 37.5%;
+  background: linear-gradient(180deg, rgba(192, 34, 65, 0.16), rgba(192, 34, 65, 0.04));
+  border-bottom: 1px solid rgba(192, 34, 65, 0.4); border-radius: var(--radio) var(--radio) 0 0;
+}
+.espectro-zona-twang span { position: absolute; right: 8px; top: 4px; font: 700 0.66rem var(--font-body); letter-spacing: 0.08em; color: var(--crimson-bright); }
+.twang-medidor { margin-top: 0.9rem; padding-top: 0; border-top: 0; }
+.twang-titulo { font-family: var(--font-body); font-size: 0.95rem; font-weight: 700; margin: 0 0 0.4rem; }
+.twang-ajustes { margin: 0.5rem 0 0; }
+.brillo-medidor { margin-top: 0.6rem; }
+.ajustes-plegables { border: 1px solid var(--line); border-radius: var(--radio); padding: 0.6rem 0.8rem; background: var(--panel-2); }
+.ajustes-plegables > summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; color: var(--bone-dim); }
+.ajustes-plegables[open] > summary { margin-bottom: 0.7rem; }
+
+@media (max-width: 420px) {
+  .app { padding-inline: 0.75rem; }
+  .cabecera h1 { font-size: 1.5rem; }
+}
+
+/* --- Catálogo: una línea por escala, el resto bajo demanda ---------------- */
+.catalogo-info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.catalogo-detalle {
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 0.8rem; color: var(--muted);
+}
+.catalogo-tecnicas { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.mini-chip { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font-size: 0.68rem; color: var(--bone-dim); }
+
+/* --- Ajustes tras revisar en móvil --------------------------------------- */
+.nav-barra, .dock, .tabs { max-width: 100%; }
+.nav-lista { min-width: 0; }
+.app > * { min-width: 0; }
+.espectro-marca:last-child { top: calc(100% - 1px) !important; }
+.hub-tarjeta, .hub-tarjeta.destacada { padding: 0.75rem 0.85rem; }
+.hub-icono { font-size: 1.3rem; }
