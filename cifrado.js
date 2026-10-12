@@ -1258,9 +1258,62 @@ function eventosCancionCompleta(bpm, metrica) {
 }
 
 let cancionCompletaReproduciendo = false;
+// Sesión de la canción completa en curso o en pausa. Pausar corta el audio y recuerda por qué evento iba; «Continuar»
+// retoma desde el inicio de ese mismo evento (la nota que sonaba se repite entera, como al retomar una frase).
+let sesionCancion = null;
+
+function limpiarResaltadoSonando() {
+  document.querySelectorAll(".celda-nota.sonando").forEach((el) => el.classList.remove("sonando"));
+}
+
+function actualizarBotonesCancion() {
+  const reproduciendo = cancionCompletaReproduciendo;
+  const enPausa = Boolean(sesionCancion && sesionCancion.pausada);
+  document.getElementById("btnCifradoReproducirTodo").disabled = reproduciendo || enPausa;
+  const btnPausa = document.getElementById("btnCifradoPausarTodo");
+  btnPausa.disabled = !reproduciendo && !enPausa;
+  btnPausa.textContent = enPausa ? "▶ Continuar" : "⏸ Pausa";
+  document.getElementById("btnCifradoDetenerTodo").disabled = !reproduciendo && !enPausa;
+}
+
+async function lanzarSesionCancion(desde) {
+  const s = sesionCancion;
+  if (!s) return;
+  s.pausada = false;
+  cancionCompletaReproduciendo = true;
+  actualizarBotonesCancion();
+  elEstado.textContent = "";
+  // El metrónomo suena por defecto mientras se reproduce, acentuando cada "metrica" tiempos -- el mismo número
+  // que se usa para la pausa entre frases, así el clic y la pausa cuentan el mismo compás.
+  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(s.bpm, s.metrica);
+  try {
+    await window.PianoEngine.reproducirSecuencia(s.eventos.slice(desde), 0.8, {
+      onEventoInicio: (i) => {
+        s.indice = desde + i;
+        (s.resaltarPorIndice.get(desde + i) || []).forEach((el) => el.classList.add("sonando"));
+      },
+      onEventoFin: (i) => {
+        (s.resaltarPorIndice.get(desde + i) || []).forEach((el) => el.classList.remove("sonando"));
+      },
+    });
+  } catch (err) {
+    elEstado.textContent = `Error de audio: ${err.message}`;
+  } finally {
+    if (window.MetronomoEngine) window.MetronomoEngine.detener();
+    if (!s.pausada) {
+      // Terminó (o se detuvo): se cierra la sesión.
+      cancionCompletaReproduciendo = false;
+      if (sesionCancion === s) sesionCancion = null;
+      limpiarResaltadoSonando();
+    } else {
+      cancionCompletaReproduciendo = false;
+    }
+    actualizarBotonesCancion();
+  }
+}
 
 async function reproducirCancionCompleta() {
-  if (!window.PianoEngine || cancionCompletaReproduciendo) return;
+  if (!window.PianoEngine || cancionCompletaReproduciendo || sesionCancion) return;
   const bpm = parseInt(elBpm.value, 10) || 100;
   const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
   const { eventos, resaltarPorIndice } = eventosCancionCompleta(bpm, metrica);
@@ -1268,39 +1321,141 @@ async function reproducirCancionCompleta() {
     elEstado.textContent = "No hay ninguna línea con notas para reproducir todavía.";
     return;
   }
+  sesionCancion = { eventos, resaltarPorIndice, bpm, metrica, indice: 0, pausada: false };
+  await lanzarSesionCancion(0);
+}
 
-  cancionCompletaReproduciendo = true;
-  const btnReproducir = document.getElementById("btnCifradoReproducirTodo");
-  const btnDetener = document.getElementById("btnCifradoDetenerTodo");
-  btnReproducir.disabled = true;
-  btnDetener.disabled = false;
-  elEstado.textContent = "";
-  // El metrónomo suena por defecto mientras se reproduce, acentuando cada
-  // "metrica" tiempos -- el mismo número que se usa para la pausa entre
-  // frases, así el clic y la pausa cuentan el mismo compás.
-  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(bpm, metrica);
-  try {
-    await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {
-      onEventoInicio: (i) => {
-        (resaltarPorIndice.get(i) || []).forEach((el) => el.classList.add("sonando"));
-      },
-      onEventoFin: (i) => {
-        (resaltarPorIndice.get(i) || []).forEach((el) => el.classList.remove("sonando"));
-      },
-    });
-  } catch (err) {
-    elEstado.textContent = `Error de audio: ${err.message}`;
-  } finally {
-    cancionCompletaReproduciendo = false;
-    btnReproducir.disabled = false;
-    btnDetener.disabled = true;
-    if (window.MetronomoEngine) window.MetronomoEngine.detener();
+function pausarOContinuarCancion() {
+  const s = sesionCancion;
+  if (!s) return;
+  if (s.pausada) {
+    lanzarSesionCancion(s.indice);
+    return;
   }
+  s.pausada = true;
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  limpiarResaltadoSonando();
+  cancionCompletaReproduciendo = false;
+  actualizarBotonesCancion();
+  elEstado.textContent = "En pausa: «Continuar» sigue desde la nota donde ibas.";
 }
 
 function detenerCancionCompleta() {
+  const s = sesionCancion;
+  if (s) s.pausada = false; // un «Detener» desde la pausa cierra la sesión por completo
+  sesionCancion = null;
   if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
   if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  cancionCompletaReproduciendo = false;
+  limpiarResaltadoSonando();
+  actualizarBotonesCancion();
+  elEstado.textContent = "";
+}
+
+// --- Descargas: MIDI y MP3 de la canción completa -----------------------------------------------------------------
+// Usan exactamente los mismos eventos que «Reproducir toda la canción»: si una línea pasó por el editor de ritmo
+// llevan sus figuras y ligaduras; si no, todas las notas son negras.
+
+function nombreBaseDescarga() {
+  const base = (document.title || "cifrado").replace(/[^\w\-áéíóúñÁÉÍÓÚÑ ]+/g, "").trim().replace(/\s+/g, "-");
+  return base || "cifrado";
+}
+
+function descargarBlob(blob, nombre) {
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombre;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function numeroVariable(n) {
+  // Cantidad de longitud variable de MIDI.
+  const bytes = [n & 0x7f];
+  n >>= 7;
+  while (n > 0) {
+    bytes.unshift((n & 0x7f) | 0x80);
+    n >>= 7;
+  }
+  return bytes;
+}
+
+// MIDI formato 0, un solo canal con piano: tempo = el BPM de la página, compás = la métrica elegida.
+function crearMidiDeEventos(eventos, bpm, metrica) {
+  const TPQ = 480;
+  const ticksPorSegundo = (TPQ * bpm) / 60;
+  const pista = [];
+  const microsPorNegra = Math.round(60000000 / bpm);
+  pista.push(0x00, 0xff, 0x51, 0x03, (microsPorNegra >> 16) & 0xff, (microsPorNegra >> 8) & 0xff, microsPorNegra & 0xff);
+  pista.push(0x00, 0xff, 0x58, 0x04, metrica, 0x02, 0x18, 0x08); // compás metrica/4
+  pista.push(0x00, 0xc0, 0x00); // programa 0: piano de cola
+
+  const evs = [];
+  let segundos = 0;
+  for (const { midi, duracion } of eventos) {
+    const inicio = Math.round(segundos * ticksPorSegundo);
+    segundos += duracion;
+    const fin = Math.round(segundos * ticksPorSegundo);
+    if (midi >= 0 && fin > inicio) {
+      const nota = Math.max(0, Math.min(127, midi));
+      evs.push({ t: inicio, orden: 1, bytes: [0x90, nota, 0x64] });
+      evs.push({ t: fin, orden: 0, bytes: [0x80, nota, 0x40] });
+    }
+  }
+  evs.sort((a, b) => a.t - b.t || a.orden - b.orden);
+  let anterior = 0;
+  for (const e of evs) {
+    pista.push(...numeroVariable(e.t - anterior), ...e.bytes);
+    anterior = e.t;
+  }
+  pista.push(0x00, 0xff, 0x2f, 0x00); // fin de pista
+
+  const cabecera = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (TPQ >> 8) & 0xff, TPQ & 0xff];
+  const longitud = pista.length;
+  const trk = [0x4d, 0x54, 0x72, 0x6b, (longitud >>> 24) & 0xff, (longitud >>> 16) & 0xff, (longitud >>> 8) & 0xff, longitud & 0xff];
+  return new Blob([new Uint8Array([...cabecera, ...trk, ...pista])], { type: "audio/midi" });
+}
+
+function descargarMidiCancion() {
+  const bpm = parseInt(elBpm.value, 10) || 100;
+  const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
+  const { eventos } = eventosCancionCompleta(bpm, metrica);
+  if (!eventos.some((e) => e.midi >= 0)) {
+    elEstado.textContent = "No hay notas para exportar todavía.";
+    return;
+  }
+  descargarBlob(crearMidiDeEventos(eventos, bpm, metrica), `${nombreBaseDescarga()}.mid`);
+  elEstado.textContent = "MIDI descargado (con el ritmo del editor donde lo hayas ajustado; el resto, negras).";
+}
+
+let exportandoMp3 = false;
+async function descargarMp3Cancion() {
+  if (!window.PianoEngine || exportandoMp3) return;
+  const bpm = parseInt(elBpm.value, 10) || 100;
+  const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
+  const { eventos } = eventosCancionCompleta(bpm, metrica);
+  if (!eventos.some((e) => e.midi >= 0)) {
+    elEstado.textContent = "No hay notas para exportar todavía.";
+    return;
+  }
+  const segundos = Math.round(eventos.reduce((acc, e) => acc + e.duracion, 0));
+  const btn = document.getElementById("btnCifradoMp3");
+  exportandoMp3 = true;
+  btn.disabled = true;
+  elEstado.textContent = `Grabando el MP3… dura lo mismo que la canción (unos ${segundos} s). No cierres la pestaña.`;
+  try {
+    await window.PianoEngine.exportarMp3(eventos, 0.8, `${nombreBaseDescarga()}.mp3`);
+    elEstado.textContent = "MP3 descargado.";
+  } catch (err) {
+    elEstado.textContent = `No se pudo crear el MP3: ${err.message}`;
+  } finally {
+    exportandoMp3 = false;
+    btn.disabled = false;
+  }
 }
 
 /* =========================================================
@@ -1347,6 +1502,9 @@ document.getElementById("btnCifradoImprimir").addEventListener("click", () => {
 
 document.getElementById("btnCifradoReproducirTodo").addEventListener("click", reproducirCancionCompleta);
 document.getElementById("btnCifradoDetenerTodo").addEventListener("click", detenerCancionCompleta);
+document.getElementById("btnCifradoPausarTodo").addEventListener("click", pausarOContinuarCancion);
+document.getElementById("btnCifradoMidi").addEventListener("click", descargarMidiCancion);
+document.getElementById("btnCifradoMp3").addEventListener("click", descargarMp3Cancion);
 
 document.getElementById("btnCifradoCopiar").addEventListener("click", async () => {
   const texto = generarTextoPlano();
