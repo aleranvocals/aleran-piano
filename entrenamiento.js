@@ -24,12 +24,11 @@ function cambiarSubmodoEntrenamiento(modo) {
   el("panel-sostenida").hidden = modo !== "sostenida";
   el("panel-messa").hidden = modo !== "messa";
   el("panel-aire").hidden = modo !== "aire";
-  // «Espectro» y «Twang» son dos entradas a la misma pantalla (el medidor vive debajo del espectro): cambia el enfoque.
-  const panelEsp = el("panel-espectro");
-  panelEsp.hidden = modo !== "espectro" && modo !== "twang";
-  panelEsp.dataset.vista = modo;
-  const ajustes = panelEsp.querySelector(".ajustes-plegables");
-  if (ajustes && modo === "twang") ajustes.open = true;
+  // Espectro = explorar y comparar tomas; Twang = entrenar con una cifra. Pantallas distintas.
+  el("panel-espectro").hidden = modo !== "espectro";
+  el("panel-twang").hidden = modo !== "twang";
+  if (modo === "twang") dibujarHistorialTwang(performance.now());
+  if (modo === "espectro") dibujarCurva();
   el("panel-grabadora").hidden = modo !== "grabadora";
   el("estadoEntrenamiento").textContent = "";
 }
@@ -817,8 +816,216 @@ function pintarTwang(r) {
   el("twangTexto").textContent = texto;
   el("twangBarra").style.width = `${r ? r.porcentaje : 0}%`;
   el("twangDelta").textContent = r && r.deltaDb !== null
-    ? `${r.deltaDb >= 0 ? "+" : ""}${r.deltaDb.toFixed(1)} dB sobre tu voz normal${detectorTwang && detectorTwang.calibrado ? "" : " (sin calibrar)"}`
+    ? `${r.deltaDb >= 0 ? "+" : ""}${r.deltaDb.toFixed(1)}`
     : "—";
+  el("twangUnidad").textContent = detectorTwang && detectorTwang.calibrado
+    ? "dB sobre tu voz normal"
+    : "dB sobre una voz media (sin calibrar)";
+}
+
+/** Ajusta el lienzo al tamaño real en pantalla (y a su densidad de píxeles) y dibuja en píxeles CSS: texto y líneas nítidos. */
+function prepararCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const cw = Math.max(1, canvas.clientWidth);
+  const ch = Math.max(1, canvas.clientHeight);
+  const w = Math.round(cw * dpr);
+  const h = Math.round(ch * dpr);
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w: cw, h: ch };
+}
+
+// --- Twang: historial, racha y mejor marca (pestaña Twang) -------------------
+const TWANG_VENTANA_MS = 12000;
+const TWANG_CLAVE_MEJOR = "aleran-twang-mejor-racha";
+let twangHist = [];
+let twangSesion = { racha: 0, ultimo: 0, cuadrosVoz: 0, cuadrosTwang: 0, mejor: 0 };
+
+function twangMejorGuardada() {
+  const n = Number(twangLeer(TWANG_CLAVE_MEJOR));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function twangTextoSegundos(ms) {
+  return `${(ms / 1000).toFixed(1).replace(".", ",")} s`;
+}
+
+function twangReiniciarSesion() {
+  twangHist = [];
+  twangSesion = { racha: 0, ultimo: 0, cuadrosVoz: 0, cuadrosTwang: 0, mejor: twangMejorGuardada() };
+  el("twangRacha").textContent = twangTextoSegundos(0);
+  el("twangMejor").textContent = twangTextoSegundos(twangSesion.mejor);
+  el("twangPorcentaje").textContent = "—";
+  dibujarHistorialTwang(performance.now());
+}
+
+function twangRegistrar(r, ahora) {
+  const s = twangSesion;
+  const dt = s.ultimo ? Math.min(100, ahora - s.ultimo) : 0;
+  s.ultimo = ahora;
+  const conTwang = r.estado === "twang";
+  if (conTwang) s.racha += dt;
+  else s.racha = 0;
+  if (r.estado === "voz" || conTwang) {
+    s.cuadrosVoz++;
+    if (conTwang) s.cuadrosTwang++;
+  }
+  if (s.racha > s.mejor) s.mejor = s.racha;
+  twangHist.push({ t: ahora, d: r.deltaDb, act: conTwang });
+  while (twangHist.length && ahora - twangHist[0].t > TWANG_VENTANA_MS) twangHist.shift();
+  el("twangRacha").textContent = twangTextoSegundos(s.racha);
+  el("twangMejor").textContent = twangTextoSegundos(s.mejor);
+  el("twangPorcentaje").textContent = s.cuadrosVoz > 20 ? `${Math.round((100 * s.cuadrosTwang) / s.cuadrosVoz)} %` : "—";
+}
+
+function dibujarHistorialTwang(ahora) {
+  const canvas = el("twangHistorial");
+  if (!canvas) return;
+  const { ctx, w, h } = prepararCanvas(canvas);
+  const DB_MIN = -6;
+  const DB_MAX = 14;
+  const y = (db) => h - ((Math.max(DB_MIN, Math.min(DB_MAX, db)) - DB_MIN) / (DB_MAX - DB_MIN)) * h;
+  ctx.clearRect(0, 0, w, h);
+  const umbral = detectorTwang ? detectorTwang.umbralDb : window.Twang ? window.Twang.UMBRAL_DELTA_DB : 5;
+  // zona de twang (por encima del umbral)
+  ctx.fillStyle = "rgba(62, 207, 110, 0.10)";
+  ctx.fillRect(0, 0, w, y(umbral));
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(237, 231, 225, 0.35)";
+  ctx.beginPath();
+  ctx.moveTo(0, y(0));
+  ctx.lineTo(w, y(0));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = "rgba(237, 231, 225, 0.85)";
+  ctx.beginPath();
+  ctx.moveTo(0, y(umbral));
+  ctx.lineTo(w, y(umbral));
+  ctx.stroke();
+  ctx.font = "11px sans-serif";
+  ctx.fillStyle = "rgba(237, 231, 225, 0.6)";
+  ctx.textAlign = "left";
+  ctx.fillText("tu voz normal", 6, y(0) - 4);
+  ctx.fillStyle = "rgba(237, 231, 225, 0.95)";
+  ctx.fillText("twang", 6, y(umbral) - 4);
+  // trazo: verde cuando cuenta como twang
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = "round";
+  let previo = null;
+  for (const p of twangHist) {
+    if (p.d === null) {
+      previo = null;
+      continue;
+    }
+    const x = w - ((ahora - p.t) / TWANG_VENTANA_MS) * w;
+    if (previo) {
+      ctx.strokeStyle = p.act ? "#3ecf6e" : "#c02241";
+      ctx.beginPath();
+      ctx.moveTo(previo.x, previo.y);
+      ctx.lineTo(x, y(p.d));
+      ctx.stroke();
+    }
+    previo = { x, y: y(p.d) };
+  }
+}
+
+// --- Espectro: curva instantánea y toma guardada para comparar (pestaña Espectro) ---
+const CURVA_PUNTOS = 96;
+let curvaActual = new Float32Array(CURVA_PUNTOS);
+let curvaReferencia = null;
+
+function actualizarCurva(datos, sampleRate) {
+  const nyquist = sampleRate / 2;
+  const n = datos.length;
+  for (let i = 0; i < CURVA_PUNTOS; i++) {
+    const b1 = Math.min(n - 1, Math.floor(((i / CURVA_PUNTOS) * 4000 / nyquist) * n));
+    const b2 = Math.min(n - 1, Math.max(b1, Math.floor((((i + 1) / CURVA_PUNTOS) * 4000 / nyquist) * n)));
+    let suma = 0;
+    for (let b = b1; b <= b2; b++) suma += datos[b];
+    const v = suma / (b2 - b1 + 1) / 255;
+    curvaActual[i] += 0.3 * (v - curvaActual[i]);
+  }
+}
+
+function dibujarCurva() {
+  const canvas = el("espectroCurva");
+  if (!canvas) return;
+  const { ctx, w, h } = prepararCanvas(canvas);
+  const pie = 18;
+  const alto = h - pie;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "rgba(192, 34, 65, 0.10)";
+  const xZona = (2500 / 4000) * w;
+  ctx.fillRect(xZona, 0, w - xZona, alto);
+  ctx.strokeStyle = "rgba(237, 231, 225, 0.12)";
+  ctx.lineWidth = 1;
+  ctx.font = "11px sans-serif";
+  for (let k = 0; k <= 4; k++) {
+    const x = Math.round((k / 4) * (w - 1)) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, alto);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(237, 231, 225, 0.6)";
+    ctx.textAlign = k === 0 ? "left" : k === 4 ? "right" : "center";
+    ctx.fillText(k === 0 ? "0" : `${k} kHz`, x, h - 4);
+  }
+  const GANANCIA = 1.5;
+  const camino = (curva) => {
+    ctx.beginPath();
+    for (let i = 0; i < CURVA_PUNTOS; i++) {
+      const x = (i / (CURVA_PUNTOS - 1)) * w;
+      // media con los vecinos: la curva se lee mejor y no baila tanto
+      const v = (curva[Math.max(0, i - 1)] + 2 * curva[i] + curva[Math.min(CURVA_PUNTOS - 1, i + 1)]) / 4;
+      const y = alto - Math.min(1, v * GANANCIA) * (alto - 4);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+  };
+  if (curvaReferencia) {
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = "rgba(237, 231, 225, 0.85)";
+    ctx.lineWidth = 2;
+    camino(curvaReferencia);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  camino(curvaActual);
+  ctx.lineTo(w, alto);
+  ctx.lineTo(0, alto);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(192, 34, 65, 0.28)";
+  ctx.fill();
+  camino(curvaActual);
+  ctx.strokeStyle = "#c02241";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+}
+
+function guardarTomaCurva() {
+  curvaReferencia = Float32Array.from(curvaActual);
+  el("btnCurvaBorrar").disabled = false;
+  dibujarCurva();
+}
+
+function borrarTomaCurva() {
+  curvaReferencia = null;
+  el("btnCurvaBorrar").disabled = true;
+  dibujarCurva();
+}
+
+function botonesEspectro(enCurso) {
+  ["btnEspectroIniciar", "btnTwangIniciar"].forEach((id) => {
+    if (el(id)) el(id).disabled = enCurso;
+  });
+  ["btnEspectroDetener", "btnTwangDetener"].forEach((id) => {
+    if (el(id)) el(id).disabled = !enCurso;
+  });
 }
 
 function iniciarCalibracionTwang() {
@@ -958,16 +1165,24 @@ function actualizarMedidorBrillo(brillo) {
 
 function bucleEspectro(analizador, canvas) {
   if (!entrenEnCurso) return;
-  analizador.getByteFrequencyData(espectroDatos);
   const sampleRate = obtenerContexto().sampleRate;
-  dibujarColumnaEspectro(canvas, espectroDatos, sampleRate);
-  actualizarMedidorBrillo(indiceBrillo(espectroDatos, sampleRate));
-  if (detectorTwang && espectroFloat) {
-    analizador.getFloatFrequencyData(espectroFloat);
-    const hayVoz = window.MicrofonoEngine.leerPitch ? !!window.MicrofonoEngine.leerPitch() : true;
-    const ahora = performance.now();
-    pintarTwang(detectorTwang.actualizar(espectroFloat, sampleRate, hayVoz, ahora));
-    revisarCalibracionTwang(ahora);
+  if (entrenModoActual === "twang") {
+    if (detectorTwang && espectroFloat) {
+      analizador.getFloatFrequencyData(espectroFloat);
+      const hayVoz = window.MicrofonoEngine.leerPitch ? !!window.MicrofonoEngine.leerPitch() : true;
+      const ahora = performance.now();
+      const r = detectorTwang.actualizar(espectroFloat, sampleRate, hayVoz, ahora);
+      pintarTwang(r);
+      twangRegistrar(r, ahora);
+      dibujarHistorialTwang(ahora);
+      revisarCalibracionTwang(ahora);
+    }
+  } else {
+    analizador.getByteFrequencyData(espectroDatos);
+    dibujarColumnaEspectro(canvas, espectroDatos, sampleRate);
+    actualizarMedidorBrillo(indiceBrillo(espectroDatos, sampleRate));
+    actualizarCurva(espectroDatos, sampleRate);
+    dibujarCurva();
   }
   espectroAnimId = requestAnimationFrame(() => bucleEspectro(analizador, canvas));
 }
@@ -980,14 +1195,16 @@ async function iniciarEspectro() {
   const canvas = el("espectroGrafico");
   canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   actualizarMedidorBrillo(null);
-  el("btnEspectroIniciar").disabled = true;
-  el("btnEspectroDetener").disabled = false;
+  botonesEspectro(true);
   entrenEnCurso = true;
+  if (entrenModoActual === "twang") twangReiniciarSesion();
 
   try {
     el("estadoEntrenamiento").textContent = "Pidiendo permiso del micrófono…";
     await window.MicrofonoEngine.iniciar();
-    el("estadoEntrenamiento").textContent = "🎤 Canta o vocaliza y observa tu espectro…";
+    el("estadoEntrenamiento").textContent = entrenModoActual === "twang"
+      ? "🎤 Canta una vocal sostenida y busca el twang…"
+      : "🎤 Canta o vocaliza y observa tu espectro…";
   } catch (err) {
     el("estadoEntrenamiento").textContent = `No se pudo acceder al micrófono: ${err.message}`;
     finalizarEspectro();
@@ -997,7 +1214,7 @@ async function iniciarEspectro() {
   const analizador = window.MicrofonoEngine.obtenerAnalizador();
   espectroDatos = new Uint8Array(analizador.frequencyBinCount);
   espectroFloat = new Float32Array(analizador.frequencyBinCount);
-  detectorTwang = window.Twang ? crearDetectorTwang() : null;
+  detectorTwang = window.Twang && entrenModoActual === "twang" ? crearDetectorTwang() : null;
   bucleEspectro(analizador, canvas);
 }
 
@@ -1012,9 +1229,9 @@ function finalizarEspectro() {
     cancelAnimationFrame(espectroAnimId);
     espectroAnimId = null;
   }
-  el("btnEspectroIniciar").disabled = false;
-  el("btnEspectroDetener").disabled = true;
+  botonesEspectro(false);
   actualizarMedidorBrillo(null);
+  if (twangSesion.mejor > twangMejorGuardada()) twangGuardar(TWANG_CLAVE_MEJOR, String(Math.round(twangSesion.mejor)));
   detectorTwang = null;
   calibracionTwangFin = 0;
   if (el("btnTwangCalibrar")) {
@@ -1053,6 +1270,12 @@ function inicializarEntrenamiento() {
   el("btnAireDetener").addEventListener("click", detenerAire);
   el("btnEspectroIniciar").addEventListener("click", iniciarEspectro);
   el("btnEspectroDetener").addEventListener("click", detenerEspectro);
+  el("btnTwangIniciar").addEventListener("click", iniciarEspectro);
+  el("btnTwangDetener").addEventListener("click", detenerEspectro);
+  el("btnCurvaGuardar").addEventListener("click", guardarTomaCurva);
+  el("btnCurvaBorrar").addEventListener("click", borrarTomaCurva);
+  dibujarCurva();
+  twangReiniciarSesion();
 
   // Si se llegó desde Guía con "Ir a la herramienta" (?tab=messa, etc.), abre
   // esa pestaña de entrada -- si no hay parámetro o no coincide con ninguna

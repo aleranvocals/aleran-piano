@@ -233,6 +233,20 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-
 .hub-tarjeta, .hub-tarjeta.destacada { padding: 0.75rem 0.85rem; }
 .hub-icono { font-size: 1.3rem; }
 
-/* --- Espectro / Twang: dos entradas, una pantalla ------------------------- */
-#panel-espectro[data-vista="twang"] .brillo-medidor { display: none; }
-#panel-espectro[data-vista="twang"] .espectro-visor canvas { height: 130px; }
+/* --- Espectro (explorar) y Twang (entrenar): dos pantallas distintas ---------- */
+.curva-espectro { margin-top: 0.8rem; }
+.curva-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+.curva-titulo { font-weight: 700; font-size: 0.92rem; }
+.curva-botones { display: inline-flex; gap: 0.4rem; }
+.curva-espectro canvas, .twang-historial canvas { display: block; width: 100%; height: 150px; border-radius: var(--radio); background: var(--panel-2); }
+.twang-historial canvas { height: 130px; margin-top: 0.7rem; }
+.twang-grande { gap: 0.8rem; }
+.twang-cifra { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.twang-cifra #twangDelta { font-family: var(--font-body); font-weight: 800; font-size: 3.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.twang-unidad { color: var(--bone-dim); font-size: 0.85rem; }
+.twang-grande .twang-pista { height: 22px; }
+.twang-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.7rem; }
+.twang-stats > div { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radio); padding: 0.55rem 0.5rem; text-align: center; }
+.twang-stats b { display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.twang-stats span { font-size: 0.72rem; color: var(--bone-dim); }
+.twang-calib-estado { margin: 0.2rem 0 0.6rem; }

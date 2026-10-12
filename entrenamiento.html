@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=3" />
+<link rel="stylesheet" href="rediseno.css?v=4" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -146,12 +146,12 @@
   </section>
 
   <section id="panel-espectro" class="panel" hidden>
-    <p class="descripcion" id="espectroDescripcion">Mira tu voz en vivo y encuentra el twang. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="El espectro muestra qué frecuencias suenan en tu voz (de 0 a 4000 Hz): más brillo = más energía. El twang es el «ping» que concentra energía entre unos 2.500 y 4.000 Hz, la zona marcada arriba. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes y calibra con una vocal normal. Es una ayuda para encontrarlo y comparar tomas, no un diagnóstico; desactiva la «mejora de voz» o el «aislamiento de voz» del sistema si los tienes.">?</button></p>
+    <p class="descripcion" id="espectroDescripcion">Mira cómo suena tu voz y compara tomas. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="El espectrograma muestra qué frecuencias suenan en tu voz (de 0 a 4000 Hz) y cómo cambian con el tiempo: más brillante = más energía. La curva de abajo es la foto de este instante: guarda una toma y compárala con otra (antes y después de un ejercicio, otra vocal, otro micrófono). Para entrenar el twang con una sola cifra usa la pestaña Twang.">?</button></p>
 
     <div class="espectro-visor">
       <canvas id="espectroGrafico" width="600" height="190" class="grafico-pitch" role="img" aria-label="Espectrograma en vivo de las frecuencias de tu voz, de 0 a 4000 Hz"></canvas>
       <div class="espectro-eje" aria-hidden="true">
-        <div class="espectro-zona-twang"><span>TWANG</span></div>
+        <div class="espectro-zona-twang"><span>BRILLO</span></div>
         <div class="espectro-marca" style="top:0%"><span>4000 Hz</span></div>
         <div class="espectro-marca" style="top:25%"><span>3000 Hz</span></div>
         <div class="espectro-marca" style="top:50%"><span>2000 Hz</span></div>
@@ -160,44 +160,16 @@
       </div>
     </div>
 
-    <div class="twang-medidor" id="twangMedidor">
-      <h3 class="twang-titulo">🎯 Medidor de twang</h3>
-      <div class="twang-visor" id="twangVisor" data-estado="espera">
-        <div class="twang-pista" aria-hidden="true">
-          <div class="twang-barra" id="twangBarra"></div>
-          <div class="twang-umbral" id="twangUmbral"></div>
-        </div>
-        <div class="twang-lectura"><span id="twangDelta">—</span></div>
-        <div class="twang-insignia" id="twangInsignia" role="status" aria-live="polite">
-          <span class="twang-check" aria-hidden="true">✓</span>
-          <span id="twangTexto">Pulsa «Empezar» y canta una vocal sostenida</span>
-        </div>
+    <div class="curva-espectro">
+      <div class="curva-cabecera">
+        <span class="curva-titulo">Curva de tu voz <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Línea llena: tu voz ahora. Línea punteada: la toma que guardaste. Si el pico entre 2 y 4 kHz (zona sombreada) sube respecto a la guardada, tu voz brilla más.">?</button></span>
+        <span class="curva-botones">
+          <button id="btnCurvaGuardar" class="boton pequeno" type="button">📌 Guardar toma</button>
+          <button id="btnCurvaBorrar" class="boton pequeno" type="button" disabled>Borrar</button>
+        </span>
       </div>
+      <canvas id="espectroCurva" width="600" height="150" class="grafico-pitch" role="img" aria-label="Curva de energía por frecuencia de tu voz ahora y de la toma guardada"></canvas>
     </div>
-
-    <div class="acciones">
-      <button id="btnEspectroIniciar" class="boton principal">🎤 Empezar</button>
-      <button id="btnEspectroDetener" class="boton" disabled>⏹ Detener</button>
-    </div>
-
-    <details class="ajustes-plegables">
-      <summary>⚙ Ajustes del twang</summary>
-      <div class="twang-ajustes">
-        <label class="campo">
-          <span>Tu micrófono</span>
-          <select id="twangDispositivo"></select>
-        </label>
-        <p class="twang-ayuda" id="twangAyuda"></p>
-        <div class="twang-calibrar">
-          <button id="btnTwangCalibrar" class="boton" type="button">🎚️ Calibrar (4 s)</button>
-          <span class="twang-calib-estado" id="twangCalibEstado">Sin calibrar: usa un valor medio.</span>
-        </div>
-        <label class="campo">
-          <span>Sensibilidad: <output id="twangSensValor">normal</output></span>
-          <input type="range" id="twangSensibilidad" min="-3" max="3" step="0.5" value="0" aria-label="Sensibilidad del medidor de twang" />
-        </label>
-      </div>
-    </details>
 
     <div class="brillo-medidor">
       <div class="brillo-etiqueta">
@@ -206,6 +178,59 @@
       </div>
       <div class="brillo-pista"><div class="brillo-barra" id="brilloBarra"></div></div>
     </div>
+
+    <div class="acciones">
+      <button id="btnEspectroIniciar" class="boton principal">🎤 Empezar</button>
+      <button id="btnEspectroDetener" class="boton" disabled>⏹ Detener</button>
+    </div>
+  </section>
+
+  <section id="panel-twang" class="panel" hidden>
+    <p class="descripcion">Una sola cifra: cuánto brilla tu voz sobre tu voz normal. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="El twang es el «ping» que concentra energía entre unos 2.500 y 4.000 Hz. Calibra una vez con tu voz normal (4 s) y el medidor te dice cuántos dB subes sobre ella; al pasar la marca blanca cuenta como twang. Mantén la racha lo más larga que puedas. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes. Es una ayuda para encontrarlo, no un diagnóstico; desactiva la «mejora de voz» del sistema si la tienes.">?</button></p>
+
+    <div class="twang-visor twang-grande" id="twangVisor" data-estado="espera">
+      <div class="twang-cifra"><span id="twangDelta">—</span><span class="twang-unidad" id="twangUnidad">dB sobre tu voz normal</span></div>
+      <div class="twang-pista" aria-hidden="true">
+        <div class="twang-barra" id="twangBarra"></div>
+        <div class="twang-umbral" id="twangUmbral"></div>
+      </div>
+      <div class="twang-insignia" id="twangInsignia" role="status" aria-live="polite">
+        <span class="twang-check" aria-hidden="true">✓</span>
+        <span id="twangTexto">Pulsa «Empezar» y canta una vocal sostenida</span>
+      </div>
+    </div>
+
+    <div class="twang-historial">
+      <canvas id="twangHistorial" width="600" height="130" class="grafico-pitch" role="img" aria-label="Historial de los últimos 12 segundos de tu twang"></canvas>
+    </div>
+
+    <div class="twang-stats">
+      <div><b id="twangRacha">0,0 s</b><span>Racha ahora</span></div>
+      <div><b id="twangMejor">0,0 s</b><span>Mejor racha</span></div>
+      <div><b id="twangPorcentaje">—</b><span>De la toma con twang</span></div>
+    </div>
+
+    <div class="acciones">
+      <button id="btnTwangIniciar" class="boton principal">🎤 Empezar</button>
+      <button id="btnTwangDetener" class="boton" disabled>⏹ Detener</button>
+      <button id="btnTwangCalibrar" class="boton" type="button">🎚️ Calibrar (4 s)</button>
+    </div>
+    <p class="twang-calib-estado" id="twangCalibEstado">Sin calibrar: usa un valor medio.</p>
+
+    <details class="ajustes-plegables">
+      <summary>⚙ Micrófono y sensibilidad</summary>
+      <div class="twang-ajustes">
+        <label class="campo">
+          <span>Tu micrófono</span>
+          <select id="twangDispositivo"></select>
+        </label>
+        <p class="twang-ayuda" id="twangAyuda"></p>
+        <label class="campo">
+          <span>Sensibilidad: <output id="twangSensValor">normal</output></span>
+          <input type="range" id="twangSensibilidad" min="-3" max="3" step="0.5" value="0" aria-label="Sensibilidad del medidor de twang" />
+        </label>
+      </div>
+    </details>
   </section>
 
   <section id="panel-grabadora" class="panel" hidden>
