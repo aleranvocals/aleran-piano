@@ -766,7 +766,7 @@ let calibracionTwangFin = 0;
 // --- Medidor de twang (la lógica pura está en twang.js) ---
 const TWANG_CLAVE_PERFIL = "aleran-twang-perfil";
 const TWANG_CLAVE_SENS = "aleran-twang-sensibilidad";
-const twangClaveBase = (perfil) => `aleran-twang-base-${perfil}`;
+const twangClaveBase = (perfil) => `aleran-twang-bases-v2-${perfil}`;
 
 function twangLeer(clave) {
   try {
@@ -796,15 +796,21 @@ function twangSensibilidadActual() {
 }
 
 function twangBaseGuardada(perfil) {
-  const n = twangLeer(twangClaveBase(perfil));
-  return n !== null && n !== "" && Number.isFinite(Number(n)) ? Number(n) : null;
+  const crudo = twangLeer(twangClaveBase(perfil));
+  if (!crudo) return null;
+  try {
+    const o = JSON.parse(crudo);
+    return o && typeof o === "object" ? o : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 function crearDetectorTwang() {
   const perfil = twangPerfilActual();
   return new window.Twang.DetectorTwang({
     perfil,
-    base: twangBaseGuardada(perfil),
+    bases: twangBaseGuardada(perfil),
     sensibilidadDb: twangSensibilidadActual(),
   });
 }
@@ -817,10 +823,13 @@ function textoSensibilidad(v) {
 function actualizarTextosTwang() {
   const perfil = twangPerfilActual();
   el("twangAyuda").textContent = window.Twang.PERFILES[perfil].ayuda;
-  const base = twangBaseGuardada(perfil);
-  el("twangCalibEstado").textContent = base === null
-    ? "Sin calibrar: usa un valor medio."
-    : "Calibrado ✓ para este micrófono.";
+  const bases = twangBaseGuardada(perfil);
+  const nombres = { grave: "grave", medio: "medio", agudo: "agudo" };
+  const hechos = bases ? window.Twang.REGISTROS.filter((r) => bases[r]) : [];
+  el("twangCalibEstado").textContent = hechos.length === 0
+    ? "Sin calibrar: usa un valor medio. Calibra con una vocal normal (sin twang)."
+    : `Calibrado ✓ en: ${hechos.map((r) => nombres[r]).join(", ")}.` +
+      (hechos.length < 3 ? ` Calibra también en ${window.Twang.REGISTROS.filter((r) => !bases[r]).map((r) => nombres[r]).join(" y ")} (cantando esas notas) para que no marque falsos twang.` : "");
   const sens = twangSensibilidadActual();
   el("twangSensValor").textContent = textoSensibilidad(sens);
   const umbral = Math.max(1.5, window.Twang.UMBRAL_DELTA_DB - sens);
@@ -852,6 +861,29 @@ function pintarTwang(r) {
   el("twangUnidad").textContent = detectorTwang && detectorTwang.calibrado
     ? "dB sobre tu voz normal"
     : "dB sobre una voz media (sin calibrar)";
+  pintarRelacionTwang(r);
+}
+
+/** Barras de la relación graves-medios-agudos (dB respecto a los graves) y marca de tu voz normal en ese registro. */
+function pintarRelacionTwang(r) {
+  if (!el("relMedios")) return;
+  const ancho = (db) => `${Math.max(3, Math.min(100, ((db + 50) / 50) * 100))}%`;
+  const registros = { grave: "graves (< Sol3)", medio: "medios (Sol3–Sol4)", agudo: "agudos (> Sol4)" };
+  if (!r || !r.bandasRel) {
+    el("relMedios").style.width = "0%";
+    el("relAltos").style.width = "0%";
+    el("relMediosTxt").textContent = "—";
+    el("relAltosTxt").textContent = "—";
+    return;
+  }
+  el("relMedios").style.width = ancho(r.bandasRel.medios);
+  el("relAltos").style.width = ancho(r.bandasRel.altos);
+  el("relMediosRef").style.left = ancho(r.refRel.medios);
+  el("relAltosRef").style.left = ancho(r.refRel.altos);
+  el("relMediosTxt").textContent = `${Math.round(r.bandasRel.medios)} dB`;
+  el("relAltosTxt").textContent = `${Math.round(r.bandasRel.altos)} dB`;
+  el("twangRegistroTxt").textContent =
+    `Nota ${registros[r.registro] || ""}` + (r.referenciaPropia ? " · comparada con tu voz normal ahí ✓" : " · aún sin calibrar en este registro");
 }
 
 /** Ajusta el lienzo al tamaño real en pantalla (y a su densidad de píxeles) y dibuja en píxeles CSS: texto y líneas nítidos. */
@@ -1223,7 +1255,7 @@ function revisarCalibracionTwang(ahora) {
         ? "No oí voz durante los 4 s. Revisa que tu micrófono (chip 🎤 de arriba) sea el bueno y canta una vocal sostenida."
         : `Solo pude medir ${n} lecturas de tu voz. Canta una vocal sostenida durante los 4 s; si estás pegado al micro, aléjate unos 10-15 cm (se satura) y repite.`;
   } else {
-    twangGuardar(twangClaveBase(detectorTwang.perfil), base);
+    twangGuardar(twangClaveBase(detectorTwang.perfil), JSON.stringify(base));
     actualizarTextosTwang();
   }
 }
@@ -1346,11 +1378,12 @@ function bucleEspectro(analizador, canvas) {
   // El twang se mide mientras haya una voz con nota reconocible (más permisivo que para mostrar la nota):
   // exigir una nota muy limpia dejaba el medidor casi siempre en blanco.
   const lecturaTwang = window.MicrofonoEngine.leerPitch ? window.MicrofonoEngine.leerPitch(0.55) : null;
+  const lecturaAltura = lecturaTwang || (window.MicrofonoEngine.leerPitch ? window.MicrofonoEngine.leerPitch(0.3) : null);
   pintarNota(lectura);
   if (detectorTwang && espectroFloat) {
     analizador.getFloatFrequencyData(espectroFloat);
     const ahora = performance.now();
-    const r = detectorTwang.actualizar(espectroFloat, sampleRate, !!lecturaTwang, ahora);
+    const r = detectorTwang.actualizar(espectroFloat, sampleRate, !!lecturaTwang, ahora, lecturaAltura ? lecturaAltura.frecuencia : null);
     pintarTwang(r);
     twangRegistrar(r, ahora);
     dibujarHistorialTwang(ahora);

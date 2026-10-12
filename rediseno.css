@@ -318,3 +318,13 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-
 .tabs.tabs-fichas.tabs-3-4 { grid-template-columns: repeat(12, 1fr); }
 .tabs-fichas.tabs-3-4 > :nth-child(-n + 3) { grid-column: span 4; }
 .tabs-fichas.tabs-3-4 > :nth-child(n + 4) { grid-column: span 3; }
+
+/* --- Relación graves · medios · agudos del twang ----------------------------------- */
+.twang-relacion { margin-top: 0.7rem; padding: 0.7rem 0.8rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radio); display: grid; gap: 0.4rem; }
+.rel-titulo { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--bone-dim); display: flex; align-items: center; gap: 0.4rem; }
+.rel-fila { display: grid; grid-template-columns: 4.2rem 1fr 3.6rem; gap: 0.6rem; align-items: center; font-size: 0.85rem; }
+.rel-fila b { text-align: right; font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+.rel-barra { position: relative; height: 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); overflow: visible; }
+.rel-barra i { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--crimson-bright); border-radius: 999px; transition: width 0.12s linear; }
+.rel-barra u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--bone); opacity: 0.9; text-decoration: none; left: 0; }
+.rel-nota { font-size: 0.75rem; color: var(--bone-dim); }
