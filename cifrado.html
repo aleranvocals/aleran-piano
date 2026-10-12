@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=13" />
+<link rel="stylesheet" href="rediseno.css?v=14" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -77,6 +77,31 @@
       <input type="file" id="inputCifradoAbrir" accept="application/json" hidden />
     </div>
     <p id="estadoCifrado" class="estado" aria-live="polite"></p>
+  </section>
+
+  <section class="panel" id="cifradoNubePanel">
+    <p class="descripcion">☁️ Mis canciones <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Tus canciones se guardan en tu cuenta (la misma que usas para compartir tu progreso con Áleran), así las tienes en cualquier dispositivo. Las que Áleran prepara para ti con «Audio a Cifrado» aparecen aquí solas.">?</button></p>
+    <div id="nubeSinCodigo">
+      <label class="campo">
+        <span>Tu código de alumno</span>
+        <input type="text" id="nubeCodigo" placeholder="lo que va después de mi-clase/ en tu enlace" autocomplete="off" />
+      </label>
+      <div class="acciones">
+        <button id="btnNubeVincular" class="boton principal" type="button">Vincular mi cuenta</button>
+      </div>
+    </div>
+    <div id="nubeConCodigo" hidden>
+      <div id="nubeLista" class="nube-lista"></div>
+      <label class="campo">
+        <span>Nombre para guardar la canción actual</span>
+        <input type="text" id="nubeTitulo" maxlength="120" placeholder="Ej. Hijo de la Luna" />
+      </label>
+      <div class="acciones">
+        <button id="btnNubeGuardar" class="boton principal" type="button">☁️ Guardar en mi cuenta</button>
+        <button id="btnNubeDesvincular" class="boton" type="button">Desvincular</button>
+      </div>
+    </div>
+    <p id="nubeEstado" class="estado" aria-live="polite"></p>
   </section>
 
   <section class="panel cifrado-resultado">
@@ -152,6 +177,7 @@
 <script src="audio.js?v=12"></script>
 <script src="teclado.js?v=12"></script>
 <script src="cifrado.js?v=21"></script>
+<script src="cifrado-nube.js?v=1"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

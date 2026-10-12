@@ -342,3 +342,11 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-
 .leyenda-plataforma { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; padding: 0.55rem 0.8rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radio); font-size: 0.85rem; color: var(--bone-dim); }
 .leyenda-plataforma b { color: var(--bone); }
 .leyenda-plataforma i { font-style: normal; font-size: 0.75rem; opacity: 0.8; }
+
+/* --- Cifrado: mis canciones en la nube ---------------------------------------------- */
+.nube-lista { display: grid; gap: 0.4rem; margin: 0.5rem 0 0.8rem; }
+.nube-fila { display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.6rem; align-items: center; padding: 0.5rem 0.7rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radio); }
+.nube-nombre { font-weight: 600; overflow-wrap: anywhere; }
+.nube-meta { font-size: 0.75rem; color: var(--bone-dim); white-space: nowrap; }
+.nube-borrar { color: var(--bone-dim); }
+@media (max-width: 560px) { .nube-fila { grid-template-columns: 1fr auto auto; } .nube-meta { grid-column: 1 / -1; order: 3; } }
