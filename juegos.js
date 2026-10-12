@@ -145,6 +145,7 @@
   function arrancar(nuevo) {
     detener(false);
     juego = nuevo;
+    Arte.particulas.length = 0;
     $("btnJugar").disabled = true;
     $("btnParar").disabled = false;
     ultimoTs = performance.now();
@@ -171,6 +172,104 @@
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, W, H);
   }
+
+  // ================================================================ arte compartido (pixel art sencillo, sin imágenes)
+  const Arte = {
+    estrellas: Array.from({ length: 70 }, (_, i) => ({ x: (i * 97 + 13) % 640, y: (i * 53 + 7) % 270, r: i % 5 === 0 ? 2 : 1, f: i * 0.73 })),
+    particulas: [],
+    cielo(ctx, t, c1, c2) {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, c1);
+      g.addColorStop(1, c2);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      for (const e of this.estrellas) {
+        ctx.fillStyle = `rgba(255,255,255,${0.25 + 0.75 * Math.abs(Math.sin(t * 0.9 + e.f))})`;
+        ctx.fillRect(e.x, e.y, e.r, e.r);
+      }
+    },
+    luna(ctx, x, y, r, fondo) {
+      ctx.fillStyle = "#f3e9ff";
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = fondo;
+      ctx.beginPath();
+      ctx.arc(x + r * 0.45, y - r * 0.25, r * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+    },
+    montanas(ctx, desp, color, base, alto, paso, semilla) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (let x = 0; x <= W + 8; x += 8) {
+        const xx = x + desp;
+        const y = base - alto * (0.55 + 0.45 * Math.sin((xx / paso) * 1.7 + semilla) * Math.cos((xx / paso) * 0.6 + semilla * 2));
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+    },
+    texto(ctx, txt, x, y, tam, color, align = "left") {
+      ctx.font = `900 ${tam}px "Segoe UI Black", Impact, sans-serif`;
+      ctx.textAlign = align;
+      ctx.lineJoin = "round";
+      ctx.lineWidth = Math.max(3, tam / 4);
+      ctx.strokeStyle = "rgba(8,4,14,0.9)";
+      ctx.strokeText(txt, x, y);
+      ctx.fillStyle = color;
+      ctx.fillText(txt, x, y);
+    },
+    pastilla(ctx, x, y, w, h, color, borde) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, Math.min(8, h / 2));
+      ctx.fill();
+      if (borde) {
+        ctx.strokeStyle = borde;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    },
+    sprite(ctx, filas, paleta, x, y, s) {
+      filas.forEach((fila, j) => {
+        for (let i = 0; i < fila.length; i++) {
+          const c = paleta[fila[i]];
+          if (!c) continue;
+          ctx.fillStyle = c;
+          ctx.fillRect(Math.round(x + i * s), Math.round(y + j * s), s, s);
+        }
+      });
+    },
+    emitir(x, y, n, color, vel = 110, vida = 0.7, grav = 160) {
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = vel * (0.35 + Math.random() * 0.65);
+        this.particulas.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, vida, v0: vida, c: color, g: grav, s: 2 + Math.floor(Math.random() * 3) });
+      }
+    },
+    estela(x, y, color) {
+      this.particulas.push({ x, y: y + (Math.random() - 0.5) * 6, vx: -45 - Math.random() * 30, vy: (Math.random() - 0.5) * 20, vida: 0.45, v0: 0.45, c: color, g: 0, s: 3 });
+    },
+    actualizar(dt) {
+      for (const p of this.particulas) {
+        p.vida -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += p.g * dt;
+      }
+      this.particulas = this.particulas.filter((p) => p.vida > 0).slice(-260);
+    },
+    dibujar(ctx) {
+      for (const p of this.particulas) {
+        ctx.globalAlpha = Math.max(0, p.vida / p.v0);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s);
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
 
   // ================================================================ 🎯 PASILLO (afinación)
   function crearPasillo() {
@@ -214,6 +313,9 @@
       puertas,
       resultados,
       actualizar(dt) {
+        this.t = (this.t || 0) + dt;
+        this.dist = (this.dist || 0) + v * dt;
+        Arte.actualizar(dt);
         const m = Tono.leer();
         hayVoz = m !== null;
         if (hayVoz) midiSuave += 0.4 * (m - midiSuave);
@@ -243,6 +345,7 @@
               texto: p.ok ? `¡Bien! ${nombreNota(p.nota)}` : med === null ? `No te oí · era ${nombreNota(p.nota)}` : `Era ${nombreNota(p.nota)} · cantaste ${nombreNota(med)}`,
             };
             estado(aviso.texto, p.ok ? "ok" : "mal");
+            Arte.emitir(BOLA_X + 10, yDe(p.nota), p.ok ? 26 : 12, p.ok ? "#3ecf6e" : "#ff3b4e", p.ok ? 150 : 90);
           }
         }
         if (aviso) aviso.t -= dt;
@@ -260,56 +363,123 @@
         }
       },
       dibujar(ctx) {
-        fondo(ctx);
-        // rejilla de notas de la escala (para leer dónde estás)
-        ctx.font = "12px sans-serif";
-        ctx.textAlign = "left";
+        const t = this.t || 0;
+        const dist = this.dist || 0;
+        // ---- fondo: cielo, luna y dos capas de montañas con parallax
+        Arte.cielo(ctx, t, "#0b0820", "#2b1236");
+        Arte.luna(ctx, 560, 62, 22, "#1a0f33");
+        Arte.montanas(ctx, dist * 0.12, "#1b1038", H - 96, 80, 110, 1.3);
+        Arte.montanas(ctx, dist * 0.3, "#26164a", H - 52, 56, 70, 3.1);
+        // techo y suelo de piedra
+        ctx.fillStyle = "#120a26";
+        ctx.fillRect(0, H - 16, W, 16);
+        ctx.fillRect(0, 0, W, 10);
+        ctx.fillStyle = "#3a2766";
+        ctx.fillRect(0, H - 16, W, 2);
+        ctx.fillRect(0, 10, W, 2);
+        // ---- pauta: una línea por nota de la escala (la tónica, en carmesí)
+        let yAnterior = -99;
         for (const n of notas) {
           const y = yDe(n);
           const esTonica = mod12(n - config.tonica) === 0;
-          ctx.strokeStyle = esTonica ? "rgba(192,34,65,0.55)" : "rgba(237,231,225,0.10)";
+          ctx.strokeStyle = esTonica ? "rgba(224,51,85,0.55)" : "rgba(180,160,255,0.14)";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(40, y);
+          ctx.moveTo(44, y);
           ctx.lineTo(W, y);
           ctx.stroke();
-          ctx.fillStyle = esTonica ? "#c02241" : "rgba(237,231,225,0.55)";
-          ctx.fillText(nombreNota(n), 4, y + 4);
+          if (!esTonica && Math.abs(yAnterior - y) < 15) continue; // sin amontonar etiquetas
+          yAnterior = y;
+          Arte.pastilla(ctx, 4, y - 7, 38, 14, esTonica ? "#93172c" : "rgba(40,28,76,0.9)");
+          ctx.font = "bold 10px Consolas, monospace";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#efe6e0";
+          ctx.fillText(nombreNota(n), 23, y + 3.5);
         }
-        // puertas
+        // ---- puertas: pilares de piedra con ladrillos, capitel y un hueco que brilla
         for (const p of puertas) {
-          if (p.x > W + 5 || p.x + ANCHO_PUERTA < 0) continue;
+          if (p.x > W + 8 || p.x + ANCHO_PUERTA < -8) continue;
           const yHueco = yDe(p.nota);
           const mitad = ((H - 52) / (vmax - vmin)) * 0.6;
-          const color = p.hecho ? (p.ok ? "#3ecf6e" : "#ff3b4e") : "#b07a4a";
-          ctx.fillStyle = color;
-          ctx.fillRect(p.x, 0, ANCHO_PUERTA, yHueco - mitad);
-          ctx.fillRect(p.x, yHueco + mitad, ANCHO_PUERTA, H - (yHueco + mitad));
-          ctx.fillStyle = "rgba(0,0,0,0.25)";
-          for (let k = 0; k < 4; k++) ctx.fillRect(p.x + 8 + k * 13, 0, 2, H);
-          ctx.fillStyle = "#fff";
-          ctx.font = "bold 14px sans-serif";
+          const arriba = yHueco - mitad;
+          const abajo = yHueco + mitad;
+          const base = p.hecho ? (p.ok ? ["#2f8f55", "#3ecf6e"] : ["#8f2f3c", "#ff3b4e"]) : ["#46347f", "#6a54b3"];
+          const bloque = (y0, y1) => {
+            if (y1 <= y0) return;
+            ctx.fillStyle = base[0];
+            ctx.fillRect(p.x, y0, ANCHO_PUERTA, y1 - y0);
+            ctx.fillStyle = base[1];
+            ctx.fillRect(p.x, y0, 4, y1 - y0);
+            ctx.fillStyle = "rgba(0,0,0,0.28)";
+            for (let yy = Math.ceil(y0 / 14) * 14; yy < y1; yy += 14) {
+              ctx.fillRect(p.x, yy, ANCHO_PUERTA, 1);
+              const off = (Math.floor(yy / 14) % 2) * 15;
+              for (let xx = p.x + off + 14; xx < p.x + ANCHO_PUERTA; xx += 29) ctx.fillRect(xx, yy, 1, 14);
+            }
+          };
+          bloque(10, arriba);
+          bloque(abajo, H - 16);
+          // capiteles
+          ctx.fillStyle = base[1];
+          ctx.fillRect(p.x - 5, arriba - 8, ANCHO_PUERTA + 10, 8);
+          ctx.fillRect(p.x - 5, abajo, ANCHO_PUERTA + 10, 8);
+          ctx.fillStyle = "rgba(0,0,0,0.3)";
+          ctx.fillRect(p.x - 5, arriba - 2, ANCHO_PUERTA + 10, 2);
+          // luz del hueco
+          const grad = ctx.createLinearGradient(p.x, 0, p.x + ANCHO_PUERTA, 0);
+          const luz = p.hecho ? (p.ok ? "62,207,110" : "255,59,78") : "224,51,85";
+          grad.addColorStop(0, `rgba(${luz},0)`);
+          grad.addColorStop(0.5, `rgba(${luz},${p.hecho ? 0.35 : 0.2 + 0.08 * Math.sin(t * 6)})`);
+          grad.addColorStop(1, `rgba(${luz},0)`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(p.x, arriba, ANCHO_PUERTA, abajo - arriba);
+          // placa con la nota (sobre el pilar de arriba, o debajo si no cabe)
+          const yPlaca = arriba - 30 > 14 ? arriba - 32 : abajo + 16;
+          Arte.pastilla(ctx, p.x + 4, yPlaca, ANCHO_PUERTA - 8, 20, "rgba(10,6,24,0.92)", base[1]);
+          ctx.font = "bold 13px Consolas, monospace";
           ctx.textAlign = "center";
-          ctx.fillText(nombreNota(p.nota), p.x + ANCHO_PUERTA / 2, Math.max(16, yHueco - mitad - 8));
+          ctx.fillStyle = "#fff";
+          ctx.fillText(nombreNota(p.nota), p.x + ANCHO_PUERTA / 2, yPlaca + 14);
         }
-        // bola (tu voz)
+        // ---- el espíritu de la voz (sprite de 12×9 píxeles) y su estela
         const yb = yDe(Math.max(vmin, Math.min(vmax, midiSuave)));
-        ctx.beginPath();
-        ctx.arc(BOLA_X, yb, 10, 0, Math.PI * 2);
-        ctx.fillStyle = hayVoz ? "#7fd4ff" : "rgba(127,212,255,0.35)";
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 12px sans-serif";
+        const objetivo = puertas.find((q) => !q.hecho && q.x + ANCHO_PUERTA > BOLA_X - 10);
+        const afinada = hayVoz && objetivo && Math.abs(diferencia(midiSuave, objetivo.nota)) <= 0.45;
+        if (hayVoz && Math.random() < 0.9) Arte.estela(BOLA_X - 14, yb + 2, afinada ? "#3ecf6e" : "#7fd4ff");
+        const aleteo = Math.floor(t * 9) % 2;
+        const S = 3;
+        const filas = aleteo
+          ? ["....BBBB....", "..BBBBBBBB..", ".BBBLLLBBBB.", "WBBLWKBBBBBM", "WWBBBBBBBBMM", ".WBBBBBBBB..", "..BBBBBBB...", "...BB..BB..."]
+          : ["....BBBB....", "..BBBBBBBB..", ".BBBLLLBBBB.", ".BBLWKBBBBBM", "WWBBBBBBBBMM", "WWWBBBBBBB..", "..BBBBBBB...", "...BB..BB..."];
+        const paleta = { B: hayVoz ? (afinada ? "#5ee08a" : "#7fd4ff") : "#4d6a86", L: "#bfefff", W: hayVoz ? "#3a8fd0" : "#33485c", K: "#10101a", M: "#ff5c7a" };
+        if (afinada) {
+          ctx.fillStyle = "rgba(94,224,138,0.25)";
+          ctx.beginPath();
+          ctx.arc(BOLA_X + 6, yb, 26 + 2 * Math.sin(t * 10), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        Arte.sprite(ctx, filas, paleta, BOLA_X - 18, yb - 12 + Math.sin(t * 8) * 1.5, S);
+        ctx.font = "bold 12px Consolas, monospace";
         ctx.textAlign = "left";
-        ctx.fillText(hayVoz ? nombreNota(midiSuave) : "…", BOLA_X + 16, yb + 4);
-        // marcador
-        ctx.textAlign = "right";
-        ctx.font = "bold 14px sans-serif";
-        ctx.fillStyle = "#efe6e0";
-        ctx.fillText(`${resultados.filter((r) => r.ok).length} / ${resultados.length} · puerta ${Math.min(TOTAL, resultados.length + 1)} de ${TOTAL}`, W - 10, 20);
+        Arte.pastilla(ctx, BOLA_X + 22, yb - 10, 40, 18, "rgba(10,6,24,0.85)");
+        ctx.fillStyle = hayVoz ? "#fff" : "#8a7fa8";
+        ctx.fillText(hayVoz ? nombreNota(midiSuave) : "canta…", BOLA_X + 26, yb + 3);
+        Arte.dibujar(ctx);
+        // ---- marcador: una casilla por puerta
+        const pip = 18;
+        const x0 = W / 2 - (TOTAL * (pip + 4)) / 2;
+        for (let i = 0; i < TOTAL; i++) {
+          const r = resultados[i];
+          Arte.pastilla(ctx, x0 + i * (pip + 4), 16, pip, 12, r ? (r.ok ? "#3ecf6e" : "#ff3b4e") : "rgba(255,255,255,0.14)");
+        }
+        Arte.texto(ctx, `${resultados.filter((r) => r.ok).length} / ${TOTAL}`, W - 14, 30, 18, "#efe6e0", "right");
+        // ---- mensaje flotante de la última puerta
+        if (aviso && aviso.t > 0) {
+          const sube = (1.4 - aviso.t) * 22;
+          ctx.globalAlpha = Math.min(1, aviso.t * 2);
+          Arte.texto(ctx, aviso.texto, W / 2, 70 - sube, 20, aviso.ok ? "#7dffa8" : "#ff7d8a", "center");
+          ctx.globalAlpha = 1;
+        }
       },
     };
     return j;
@@ -574,6 +744,7 @@
       if (fase !== "tu-turno") return;
       const t = (tPerf - j._inicioTurnoPerf) / 1000 - latencia;
       golpes.push({ t });
+      Arte.emitir(112 + (Math.max(0, Math.min(4 * beat, t)) / (4 * beat)) * (W - 40 - 112), 196, 12, "#7fd4ff", 90, 0.5);
     }
     j_registrar = registrarGolpe;
 
@@ -607,6 +778,8 @@
       terminado: false,
       _inicioTurnoPerf: 0,
       actualizar(dt) {
+        this.t = (this.t || 0) + dt;
+        Arte.actualizar(dt);
         tFase += dt;
         const cuatro = 4 * beat + 0.2;
         if (fase === "inicio") {
@@ -671,60 +844,173 @@
         }
       },
       dibujar(ctx) {
-        fondo(ctx);
-        const x0 = 60;
+        const t = this.t || 0;
+        const x0 = 112;
         const x1 = W - 40;
-        const yL = 190;
-        const px = (t) => x0 + (t / (4 * beat)) * (x1 - x0);
-        // pulsos
-        ctx.strokeStyle = "rgba(237,231,225,0.25)";
-        ctx.fillStyle = "rgba(237,231,225,0.7)";
-        ctx.font = "bold 16px sans-serif";
-        ctx.textAlign = "center";
-        for (let b = 0; b <= 4; b++) {
-          const x = px(b * beat);
+        const yL = 196;
+        const px = (tt) => x0 + (tt / (4 * beat)) * (x1 - x0);
+        const enCuenta = fase === "cuenta1" || fase === "cuenta2";
+        const fracBeat = enCuenta || fase === "escucha" || fase === "tu-turno" ? (tFase / beat) % 1 : 1;
+        const pulso = Math.max(0, 1 - fracBeat * 3.2);
+        // ---- escenario: fondo cálido de teatro, focos y tarima
+        Arte.cielo(ctx, t, "#150818", "#3b0f2a");
+        for (let k = 0; k < 3; k++) {
+          const cx = 130 + k * 190 + Math.sin(t * 0.7 + k) * 24;
+          const g = ctx.createLinearGradient(cx, 0, cx, 250);
+          g.addColorStop(0, "rgba(255,120,170,0.20)");
+          g.addColorStop(1, "rgba(255,120,170,0)");
+          ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.moveTo(x, yL - 70);
-          ctx.lineTo(x, yL + 70);
-          ctx.stroke();
-          if (b < 4) ctx.fillText(String(b + 1), x + 14, yL - 78);
+          ctx.moveTo(cx - 10, 0);
+          ctx.lineTo(cx + 10, 0);
+          ctx.lineTo(cx + 70, 250);
+          ctx.lineTo(cx - 70, 250);
+          ctx.closePath();
+          ctx.fill();
         }
-        // patrón esperado
-        ctx.fillStyle = fase === "escucha" || fase === "tu-turno" || fase === "resultado" ? "#c02241" : "rgba(192,34,65,0.35)";
+        ctx.fillStyle = "#1d0d18";
+        ctx.fillRect(0, 262, W, H - 262);
+        ctx.fillStyle = "#4a1c34";
+        ctx.fillRect(0, 262, W, 3);
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        for (let x = 0; x < W; x += 46) ctx.fillRect(x, 265, 2, H - 265);
+        // ---- tambor (pulsa con cada pulso)
+        const dx = 20;
+        const dy = 150 + pulso * 3;
+        const ancho = 62 + pulso * 6;
+        ctx.fillStyle = "#6e2442";
+        ctx.fillRect(dx - pulso * 3, dy, ancho, 74);
+        ctx.fillStyle = "#93172c";
+        ctx.fillRect(dx - pulso * 3, dy + 14, ancho, 8);
+        ctx.fillRect(dx - pulso * 3, dy + 52, ancho, 8);
+        ctx.fillStyle = "#f4e7ee";
+        ctx.beginPath();
+        ctx.ellipse(dx + 31, dy, ancho / 2, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#c02241";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        // ---- riel de pulsos
+        const g = ctx.createLinearGradient(x0, 0, x1, 0);
+        g.addColorStop(0, "rgba(224,51,85,0.15)");
+        g.addColorStop(0.5, "rgba(224,51,85,0.55)");
+        g.addColorStop(1, "rgba(224,51,85,0.15)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x0 - 12, yL - 3, x1 - x0 + 24, 6);
+        for (let b = 0; b < 4; b++) {
+          const x = px(b * beat);
+          const activo = (enCuenta || fase === "escucha" || fase === "tu-turno") && Math.floor(tFase / beat) === b;
+          ctx.fillStyle = activo ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.1)";
+          ctx.fillRect(x - 1, yL - 62, 3, 124);
+          Arte.pastilla(ctx, x - 14, yL + 72, 28, 24, activo ? "#c02241" : "rgba(60,26,48,0.95)", activo ? "#ff5c7a" : "rgba(255,255,255,0.12)");
+          ctx.font = "900 15px Consolas, monospace";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#fff";
+          ctx.fillText(String(b + 1), x, yL + 90);
+        }
+        // ---- golpes esperados: «gemas» de tambor que se iluminan cuando pasa el cabezal
+        const sonando = fase === "escucha" ? tFase : fase === "tu-turno" ? tFase : -1;
         esperados.forEach((e) => {
+          const visible = fase === "escucha" || fase === "tu-turno" || fase === "resultado";
+          const pasada = sonando >= 0 && sonando >= e;
+          const x = px(e);
+          const reciente = pasada && sonando - e < 0.22;
+          if (!visible) {
+            ctx.fillStyle = "rgba(255,255,255,0.12)";
+            ctx.beginPath();
+            ctx.arc(x, yL, 8, 0, Math.PI * 2);
+            ctx.fill();
+            return;
+          }
+          const r = 13 + (reciente ? 7 * (1 - (sonando - e) / 0.22) : 0);
+          if (pasada || fase === "resultado") {
+            ctx.fillStyle = `rgba(255,92,122,${reciente ? 0.45 : 0.16})`;
+            ctx.beginPath();
+            ctx.arc(x, yL, r + 9, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillStyle = pasada || fase === "resultado" ? "#ff5c7a" : "#c02241";
           ctx.beginPath();
-          ctx.arc(px(e), yL, 14, 0, Math.PI * 2);
+          ctx.arc(x, yL, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.beginPath();
+          ctx.arc(x - r * 0.3, yL - r * 0.3, r * 0.28, 0, Math.PI * 2);
           ctx.fill();
         });
-        // tus golpes
+        // ---- tus golpes (cometas que cambian de color con la precisión)
         if (fase === "tu-turno" || fase === "resultado") {
           const r = this._ultimo;
-          golpes.forEach((g, i) => {
-            const x = px(Math.max(0, Math.min(4 * beat, g.t)));
+          golpes.forEach((gp) => {
+            const x = px(Math.max(0, Math.min(4 * beat, gp.t)));
             let color = "#7fd4ff";
+            let etiqueta = "";
             if (fase === "resultado" && r) {
-              const cerca = r.detalles.find((d) => d.delta !== null && Math.abs(g.t - d.esperado) < 0.23 && Math.abs((g.t - d.esperado) * 1000 - d.delta) < 1);
-              color = cerca ? (cerca.cat === "perfecto" ? "#3ecf6e" : cerca.cat === "bien" ? "#f08a24" : "#ff3b4e") : "#888";
+              const cerca = r.detalles.find((d) => d.delta !== null && Math.abs(gp.t - d.esperado) < 0.23 && Math.abs((gp.t - d.esperado) * 1000 - d.delta) < 1);
+              if (cerca) {
+                color = cerca.cat === "perfecto" ? "#3ecf6e" : cerca.cat === "bien" ? "#f08a24" : "#ff3b4e";
+                etiqueta = cerca.cat === "perfecto" ? "PERFECTO" : cerca.cat === "bien" ? "BIEN" : "CASI";
+                etiqueta += ` ${cerca.delta > 0 ? "+" : ""}${Math.round(cerca.delta)} ms`;
+              } else {
+                color = "#8c8199";
+                etiqueta = "de más";
+              }
             }
             ctx.fillStyle = color;
-            ctx.fillRect(x - 2, yL - 40, 4, 80);
+            ctx.fillRect(Math.round(x) - 3, yL - 46, 6, 92);
+            ctx.beginPath();
+            ctx.moveTo(x - 9, yL - 46);
+            ctx.lineTo(x + 9, yL - 46);
+            ctx.lineTo(x, yL - 30);
+            ctx.closePath();
+            ctx.fill();
+            if (etiqueta) {
+              ctx.font = "bold 11px Consolas, monospace";
+              ctx.textAlign = "center";
+              ctx.fillStyle = color;
+              ctx.fillText(etiqueta, x, yL - 54);
+            }
           });
         }
-        // cabezal
-        let t = null;
-        if (fase === "escucha" || fase === "cuenta1" || fase === "cuenta2" || fase === "tu-turno") t = Math.min(4 * beat, tFase);
-        if (t !== null) {
-          ctx.fillStyle = "rgba(255,255,255,0.8)";
-          ctx.fillRect(px(t) - 1, yL - 70, 2, 140);
+        // ---- cabezal
+        let tc = null;
+        if (enCuenta || fase === "escucha" || fase === "tu-turno") tc = Math.min(4 * beat, tFase);
+        if (tc !== null) {
+          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          ctx.fillRect(Math.round(px(tc)) - 1, yL - 70, 3, 140);
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.moveTo(px(tc) - 7, yL - 70);
+          ctx.lineTo(px(tc) + 7, yL - 70);
+          ctx.lineTo(px(tc), yL - 58);
+          ctx.closePath();
+          ctx.fill();
         }
-        ctx.fillStyle = "#efe6e0";
-        ctx.font = "bold 18px sans-serif";
+        Arte.actualizar(0);
+        Arte.dibujar(ctx);
+        // ---- cabecera: fase, cuenta atrás y rondas
+        const titulo = { inicio: "…", cuenta1: "CUENTA", escucha: "ESCUCHA", cuenta2: "PREPÁRATE", "tu-turno": "¡TU TURNO!", resultado: "RESULTADO" }[fase];
+        const colorFase = fase === "tu-turno" ? "#ff5c7a" : fase === "escucha" ? "#7fd4ff" : "#efe6e0";
+        Arte.texto(ctx, titulo, 16, 34, 26 + (fase === "tu-turno" ? pulso * 3 : 0), colorFase);
+        if (enCuenta) Arte.texto(ctx, String(Math.min(4, Math.floor(tFase / beat) + 1)), W / 2, 118, 64 + pulso * 10, "#fff", "center");
+        ctx.font = "bold 13px Consolas, monospace";
         ctx.textAlign = "left";
-        const titulo = { inicio: "…", cuenta1: "Cuenta", escucha: "Escucha", cuenta2: "Prepárate", "tu-turno": "¡Tu turno!", resultado: "Resultado" }[fase];
-        ctx.fillText(`${titulo} · ronda ${Math.min(RONDAS, ronda + (fase === "resultado" ? 0 : 1))} de ${RONDAS}`, 16, 30);
-        ctx.font = "13px sans-serif";
         ctx.fillStyle = "rgba(237,231,225,0.7)";
-        ctx.fillText(`${bpm} BPM · nivel ${config.ritmoNivel}`, 16, 52);
+        ctx.fillText(`${bpm} BPM · nivel ${config.ritmoNivel}`, 18, 54);
+        const pip = 20;
+        const px0 = W - 16 - RONDAS * (pip + 4);
+        for (let i = 0; i < RONDAS; i++) {
+          const rr = resultadosRonda[i];
+          let c = "rgba(255,255,255,0.14)";
+          if (rr) {
+            const perf = rr.detalles.filter((d) => d.cat === "perfecto").length / Math.max(1, rr.detalles.length);
+            c = perf >= 0.99 ? "#3ecf6e" : perf >= 0.5 ? "#f08a24" : "#ff3b4e";
+          } else if (i === ronda) c = "#7fd4ff";
+          Arte.pastilla(ctx, px0 + i * (pip + 4), 18, pip, 12, c);
+        }
       },
     };
     return j;
