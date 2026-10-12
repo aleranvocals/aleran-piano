@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=2" />
+<link rel="stylesheet" href="rediseno.css?v=3" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -79,6 +79,7 @@
     <button class="subtab" data-entren="messa" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🎈</span><span>Crescendo</span></button>
     <button class="subtab" data-entren="aire" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">💨</span><span>Aire</span></button>
     <button class="subtab" data-entren="espectro" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">📊</span><span>Espectro</span></button>
+    <button class="subtab" data-entren="twang" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🎯</span><span>Twang</span></button>
     <button class="subtab" data-entren="grabadora" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🔴</span><span>Grabar</span></button>
   </div>
 
@@ -145,7 +146,7 @@
   </section>
 
   <section id="panel-espectro" class="panel" hidden>
-    <p class="descripcion">Mira tu voz en vivo y encuentra el twang. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="El espectro muestra qué frecuencias suenan en tu voz (de 0 a 4000 Hz): más brillo = más energía. El twang es el «ping» que concentra energía entre unos 2.500 y 4.000 Hz, la zona marcada arriba. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes y calibra con una vocal normal. Es una ayuda para encontrarlo y comparar tomas, no un diagnóstico; desactiva la «mejora de voz» o el «aislamiento de voz» del sistema si los tienes.">?</button></p>
+    <p class="descripcion" id="espectroDescripcion">Mira tu voz en vivo y encuentra el twang. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="El espectro muestra qué frecuencias suenan en tu voz (de 0 a 4000 Hz): más brillo = más energía. El twang es el «ping» que concentra energía entre unos 2.500 y 4.000 Hz, la zona marcada arriba. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes y calibra con una vocal normal. Es una ayuda para encontrarlo y comparar tomas, no un diagnóstico; desactiva la «mejora de voz» o el «aislamiento de voz» del sistema si los tienes.">?</button></p>
 
     <div class="espectro-visor">
       <canvas id="espectroGrafico" width="600" height="190" class="grafico-pitch" role="img" aria-label="Espectrograma en vivo de las frecuencias de tu voz, de 0 a 4000 Hz"></canvas>
@@ -235,13 +236,13 @@
 
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
-<script src="escalas.js?v=8"></script>
-<script src="app-shell.js?v=2"></script>
+<script src="escalas.js?v=9"></script>
+<script src="app-shell.js?v=3"></script>
 <script src="audio.js?v=8"></script>
 <script src="progreso.js?v=1"></script>
-<script src="teclado.js?v=10"></script>
+<script src="teclado.js?v=11"></script>
 <script src="twang.js?v=1"></script>
-<script src="entrenamiento.js?v=6"></script>
+<script src="entrenamiento.js?v=7"></script>
 <script src="grabadora.js?v=2"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>

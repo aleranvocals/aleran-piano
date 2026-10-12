@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=2" />
+<link rel="stylesheet" href="rediseno.css?v=3" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -54,7 +54,7 @@
   </nav>
 
   <section class="panel">
-    <p class="descripcion">Tus récords se guardan en este navegador (no se comparten ni se suben a ningún sitio).</p>
+    <p class="descripcion">Tus récords se guardan en este navegador.</p>
     <div class="tarjetas-progreso" id="tarjetasProgreso"></div>
 
     <h2 class="titulo-seccion">Racha de práctica diaria</h2>
@@ -81,7 +81,7 @@
         <button id="btnVincularQuitar" class="boton pequeno">Desvincular</button>
       </div>
       <p class="estado" id="vincularAviso" aria-live="polite"></p>
-      <p class="nota-vincular">Tu identificador es la parte final del link de tu espacio (mi-clase/<strong>tu-identificador</strong>) que te dio Áleran. Solo comparte tus récords (rango, rachas, aciertos) -- nunca audio ni datos personales.</p>
+      <p class="nota-vincular">Tu identificador es la parte final del link de tu espacio. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Es lo que va después de mi-clase/ en el link que te dio Áleran. Solo se comparten tus récords (rango, rachas, aciertos), nunca audio ni datos personales.">?</button></p>
     </div>
   </section>
 
@@ -91,13 +91,13 @@
 
   <footer class="pie">
     <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
-    <p>Si cambias de navegador o de dispositivo, o borras los datos del sitio, estos récords no se conservan (no hay cuenta ni servidor).</p>
+    <p>Si cambias de navegador o borras los datos, se pierden.</p>
     <p><a href="privacidad.html">Política de privacidad</a></p>
   </footer>
 </div>
 
-<script src="escalas.js?v=8"></script>
-<script src="app-shell.js?v=2"></script>
+<script src="escalas.js?v=9"></script>
+<script src="app-shell.js?v=3"></script>
 <script src="progreso.js?v=1"></script>
 <script src="progreso-vista.js?v=2"></script>
 <script src="progreso-compartir.js?v=1"></script>

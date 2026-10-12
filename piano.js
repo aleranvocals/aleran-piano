@@ -164,6 +164,22 @@ function etiquetaNota(midi) {
   return midiANombre(midi);
 }
 
+// La nota de partida de «Giros» y «Do-Re-Mi» se coloca en la parte baja de tu rango.
+function ajustarTonicasAlRango() {
+  if (!window.RangoVocal) return;
+  const r = window.RangoVocal.obtener();
+  if (!r.elegido) return;
+  ["girosTonica", "solfeoTonica"].forEach((id) => {
+    const sel = el(id);
+    if (!sel) return;
+    const objetivo = midiANombre(Math.max(nombreAMidi("Do2"), Math.min(r.midiMin, nombreAMidi("Fa4"))));
+    if (Array.from(sel.options).some((o) => o.value === objetivo)) {
+      sel.value = objetivo;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+}
+
 function poblarSelects() {
   const selectVoz = el("voz");
   for (const [clave, voz] of Object.entries(VOCES)) {
@@ -183,6 +199,7 @@ function poblarSelects() {
       });
       selectVoz.value = clave;
       selectVoz.dispatchEvent(new Event("change", { bubbles: true }));
+      ajustarTonicasAlRango();
     }
   });
 

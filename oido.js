@@ -119,8 +119,11 @@ function nuevaPreguntaIntervalo() {
 
   // El margen de abajo deja sitio de sobra para el intervalo más grande del
   // nivel (hasta una octava) sin salirse del piano cargado (Do1-Do7).
-  const margenMax = DO7_MIDI - 12;
-  const margenMin = DO1_MIDI;
+  // Con rango vocal elegido, la raíz sale de él (dejando sitio arriba para el intervalo más grande).
+  const propio = rangoPropio();
+  const conRango = window.RangoVocal && window.RangoVocal.obtener().elegido && window.RangoVocal.obtener().clave !== "completo";
+  const margenMin = conRango ? propio[0] : DO1_MIDI;
+  const margenMax = conRango ? Math.max(propio[0], propio[1] - 12) : DO7_MIDI - 12;
   intervaloRaiz = margenMin + Math.floor(Math.random() * (margenMax - margenMin + 1));
   const opcion = pool[Math.floor(Math.random() * pool.length)];
   intervaloCorrecto = opcion.semitonos;
@@ -233,8 +236,10 @@ function nuevaPreguntaAcorde() {
   // para distinguir tipo de acorde por oído (pedido explícito). El acorde
   // más ancho (7ª, hasta 11 semitonos sobre la fundamental) igual cabe de
   // sobra por debajo del techo del piano con este rango.
-  const margenMin = nombreAMidi("Do2");
-  const margenMax = nombreAMidi("Do5");
+  const propioAc = rangoPropio();
+  const conRangoAc = window.RangoVocal && window.RangoVocal.obtener().elegido && window.RangoVocal.obtener().clave !== "completo";
+  const margenMin = conRangoAc ? propioAc[0] : nombreAMidi("Do2");
+  const margenMax = conRangoAc ? Math.max(propioAc[0], propioAc[1] - 11) : nombreAMidi("Do5");
   acordeRaiz = margenMin + Math.floor(Math.random() * (margenMax - margenMin + 1));
 
   const cont = el("acordesOpciones");

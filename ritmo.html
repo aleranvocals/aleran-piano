@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=2" />
+<link rel="stylesheet" href="rediseno.css?v=3" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -28,7 +28,7 @@
 <div class="app">
   <header class="cabecera">
     <h1>🥁 Ritmo</h1>
-    <p class="subtitulo">Ritmo con palmas, dificultad progresiva de nivel 1 a 10 — sincronizado con el metrónomo del kit.</p>
+    <p class="subtitulo">Ritmo con palmas, del nivel 1 al 10.</p>
   </header>
 
   <nav class="nav-principal">
@@ -77,12 +77,7 @@
   </div>
 
   <section class="panel">
-    <p class="descripcion">
-      Elige el nivel (1 = solo negras/blancas/redondas sin silencios, 10 = todo
-      mezclado con semicorcheas y silencios). Usa el mismo tempo y la misma
-      métrica de la barra del metrónomo de arriba (ahora mismo <output id="ritmoBpmTexto">100</output> BPM,
-      <output id="ritmoAcentoTexto">sin acento fijo, 4 pulsos por compás</output>).
-    </p>
+    <p class="descripcion">Mismo tempo que el metrónomo: <output id="ritmoBpmTexto">100</output> BPM, <output id="ritmoAcentoTexto">sin acento fijo, 4 pulsos por compás</output>. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Nivel 1 = solo negras, blancas y redondas sin silencios; nivel 10 = todo mezclado con semicorcheas y silencios. Usa el mismo tempo y la misma métrica de la barra del metrónomo de arriba.">?</button></p>
 
     <label class="campo">
       <span>Nivel: <output id="ritmoNivelValor">1</output> / 10</span>
@@ -109,21 +104,14 @@
         <button id="btnRitmoDetener" class="boton" type="button" disabled>⏹ Detener</button>
       </div>
 
-      <p class="descripcion">
-        Esta rueda no es un juego aparte: muestra las figuras que salieron
-        arriba (sin repetir) y se resalta sola con cada una mientras suena.
-      </p>
+      <p class="descripcion">Se resalta la figura que suena.</p>
       <div class="rueda-contenedor">
         <svg id="secuenciaRuedaSvg" viewBox="0 0 500 500" class="rueda-svg rueda-svg-chica" role="img" aria-label="Rueda que resalta qué figura de la secuencia está sonando"></svg>
       </div>
     </div>
 
     <div id="panelRitmoRueda" hidden>
-      <p class="descripcion">
-        Gira la rueda: la bolita elige uno de los patrones disponibles a este
-        nivel, lo resalta y lo aplaude ella sola un pulso completo, al tempo
-        del metrónomo. Aplaude tú el mismo patrón después, o junto con ella.
-      </p>
+      <p class="descripcion">Gira la rueda y aplaude el patrón que salga. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="La bolita elige uno de los patrones del nivel, lo resalta y lo aplaude ella sola un pulso completo, al tempo del metrónomo. Aplaude tú el mismo patrón después, o junto con ella.">?</button></p>
       <div class="rueda-contenedor">
         <svg id="ruedaSvg" viewBox="0 0 500 500" class="rueda-svg" role="img" aria-label="Rueda de patrones rítmicos"></svg>
       </div>
@@ -141,14 +129,14 @@
 
   <footer class="pie">
     <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
-    <p>El ritmo se sintetiza directo (no son muestras de piano), así que suena aunque el piano todavía esté cargando.</p>
+    <p>Suena aunque el piano aún esté cargando.</p>
     <p><a href="privacidad.html">Política de privacidad</a></p>
   </footer>
 </div>
 
 <script src="smplr.iife.js"></script>
-<script src="escalas.js?v=8"></script>
-<script src="app-shell.js?v=2"></script>
+<script src="escalas.js?v=9"></script>
+<script src="app-shell.js?v=3"></script>
 <script src="audio.js?v=8"></script>
 <script src="progreso.js?v=1"></script>
 <script src="ritmo.js?v=9"></script>

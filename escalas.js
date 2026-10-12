@@ -635,10 +635,20 @@ function crearRng(semilla) {
   return { randint: (a, b) => a + Math.floor(siguiente() * (b - a + 1)) };
 }
 
+// Las notas al azar salen de tu rango vocal (el de la barra de arriba); sin rango elegido, de todo el teclado.
+function limitesAleatorios() {
+  if (typeof window !== "undefined" && window.RangoVocal) {
+    const r = window.RangoVocal.obtener();
+    if (r.elegido && r.clave !== "completo") return [r.midiMin, r.midiMax];
+  }
+  return [DO1_MIDI, DO7_MIDI];
+}
+
 function construirSecuenciaAleatoria(numNotas, semilla) {
   const rng = crearRng(semilla);
+  const [bajo, alto] = limitesAleatorios();
   const secuencia = [];
-  for (let i = 0; i < numNotas; i++) secuencia.push(rng.randint(DO1_MIDI, DO7_MIDI));
+  for (let i = 0; i < numNotas; i++) secuencia.push(rng.randint(bajo, alto));
   return secuencia;
 }
 
@@ -668,7 +678,8 @@ function eventosModoAleatorio({ numNotas, duracionNota, pausa, semilla }) {
     eventos.push({ midi, duracion: duracionNota });
     eventos.push({ midi: -1, duracion: pausa });
   }
-  const info = `${secuencia.length} notas entre Do1 y Do7 — ` + secuencia.map(midiANombre).join(" · ");
+  const [limBajo, limAlto] = limitesAleatorios();
+  const info = `${secuencia.length} notas entre ${midiANombre(limBajo)} y ${midiANombre(limAlto)} — ` + secuencia.map(midiANombre).join(" · ");
   return { eventos, info };
 }
 

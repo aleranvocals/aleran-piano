@@ -232,3 +232,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-
 .espectro-marca:last-child { top: calc(100% - 1px) !important; }
 .hub-tarjeta, .hub-tarjeta.destacada { padding: 0.75rem 0.85rem; }
 .hub-icono { font-size: 1.3rem; }
+
+/* --- Espectro / Twang: dos entradas, una pantalla ------------------------- */
+#panel-espectro[data-vista="twang"] .brillo-medidor { display: none; }
+#panel-espectro[data-vista="twang"] .espectro-visor canvas { height: 130px; }

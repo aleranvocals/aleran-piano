@@ -24,7 +24,12 @@ function cambiarSubmodoEntrenamiento(modo) {
   el("panel-sostenida").hidden = modo !== "sostenida";
   el("panel-messa").hidden = modo !== "messa";
   el("panel-aire").hidden = modo !== "aire";
-  el("panel-espectro").hidden = modo !== "espectro";
+  // «Espectro» y «Twang» son dos entradas a la misma pantalla (el medidor vive debajo del espectro): cambia el enfoque.
+  const panelEsp = el("panel-espectro");
+  panelEsp.hidden = modo !== "espectro" && modo !== "twang";
+  panelEsp.dataset.vista = modo;
+  const ajustes = panelEsp.querySelector(".ajustes-plegables");
+  if (ajustes && modo === "twang") ajustes.open = true;
   el("panel-grabadora").hidden = modo !== "grabadora";
   el("estadoEntrenamiento").textContent = "";
 }

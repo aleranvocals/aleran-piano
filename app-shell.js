@@ -137,51 +137,9 @@
     return f || "index.html";
   }
 
+  // El menú de cada página se queda como estaba (sus filas de botones siempre visibles): solo se marca la activa.
   function construirMenu() {
-    const nav = document.querySelector(".nav-principal");
-    if (!nav) return null;
-    const actual = paginaActual();
-    nav.textContent = "";
-    nav.classList.add("nav-compacto");
-
-    const barra = crear("div", "nav-barra");
-    const inicio = crear("a", "nav-inicio", "🏠");
-    inicio.href = "index.html";
-    inicio.setAttribute("aria-label", "Inicio");
-    if (actual === "index.html") inicio.classList.add("activo");
-    barra.appendChild(inicio);
-
-    const lista = crear("div", "nav-lista");
-    PRINCIPALES.forEach((p) => {
-      const a = crear("a", "", p.texto);
-      a.href = p.href;
-      if (p.href === actual) a.classList.add("activo");
-      lista.appendChild(a);
-    });
-    barra.appendChild(lista);
-
-    const btnMas = crear("button", "nav-mas", "Más");
-    btnMas.type = "button";
-    btnMas.setAttribute("aria-expanded", "false");
-    if (MAS.some((m) => m.href === actual)) btnMas.classList.add("activo");
-    barra.appendChild(btnMas);
-    nav.appendChild(barra);
-
-    const panel = crear("div", "nav-mas-panel");
-    panel.hidden = true;
-    MAS.forEach((m) => {
-      const a = crear("a", "", m.texto);
-      a.href = m.href;
-      if (m.href === actual) a.classList.add("activo");
-      panel.appendChild(a);
-    });
-    nav.appendChild(panel);
-
-    btnMas.addEventListener("click", () => {
-      panel.hidden = !panel.hidden;
-      btnMas.setAttribute("aria-expanded", String(!panel.hidden));
-    });
-    return nav;
+    return document.querySelector(".nav-principal");
   }
 
   // ---------------------------------------------------------------- barra de herramientas (rango + MIDI)

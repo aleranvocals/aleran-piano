@@ -183,8 +183,8 @@ function pintarBotonMidi(btn, activo, nombre) {
 }
 
 function desconectarMidi(btn) {
-  if (midiEntradaActual) midiEntradaActual.onmidimessage = null;
-  midiEntradaActual = null;
+  midiEntradas.forEach((e) => (e.onmidimessage = null));
+  midiEntradas = [];
   try {
     localStorage.setItem(CLAVE_MIDI_ACTIVO, "0");
   } catch {
@@ -193,7 +193,7 @@ function desconectarMidi(btn) {
   pintarBotonMidi(btn, false);
 }
 let midiManejarNota = null;
-let midiEntradaActual = null;
+let midiEntradas = []; // todas las entradas MIDI activas (un teclado suele exponer 2 puertos)
 
 function configurarMidi(manejarClic) {
   midiManejarNota = manejarClic;
@@ -220,7 +220,7 @@ function configurarMidi(manejarClic) {
 
   // Encender y apagar: apagado, el piano ignora el controlador por completo (y no se vuelve a conectar solo).
   btn.addEventListener("click", () => {
-    if (midiEntradaActual) desconectarMidi(btn);
+    if (midiEntradas.length > 0) desconectarMidi(btn);
     else conectarMidi(btn);
   });
   intentarReconectarMidiGuardado(btn);
@@ -264,27 +264,21 @@ async function conectarMidi(btn) {
     alert("No se detectó ningún controlador MIDI conectado por USB.");
     return;
   }
-  let elegida = entradas[0];
-  if (entradas.length > 1) {
-    const lista = entradas.map((e, i) => `${i + 1}. ${e.name}`).join("\n");
-    const respuesta = prompt(`Hay varios dispositivos MIDI conectados:\n${lista}\n\nEscribe el número:`, "1");
-    const indice = parseInt(respuesta, 10) - 1;
-    if (entradas[indice]) elegida = entradas[indice];
-  }
-  conectarEntradaMidi(elegida, btn);
+  // Se activan todas las entradas: un mismo teclado suele mostrarse como dos puertos y así nunca hay que elegir.
+  conectarEntradasMidi(entradas, btn);
 }
 
-function conectarEntradaMidi(entrada, btn) {
-  if (midiEntradaActual) midiEntradaActual.onmidimessage = null;
-  midiEntradaActual = entrada;
-  entrada.onmidimessage = manejarMensajeMidi;
+function conectarEntradasMidi(entradas, btn) {
+  midiEntradas.forEach((e) => (e.onmidimessage = null));
+  midiEntradas = entradas;
+  entradas.forEach((e) => (e.onmidimessage = manejarMensajeMidi));
   try {
-    localStorage.setItem(CLAVE_MIDI_DISPOSITIVO, entrada.name);
+    localStorage.setItem(CLAVE_MIDI_DISPOSITIVO, entradas.map((e) => e.name).join("|"));
     localStorage.setItem(CLAVE_MIDI_ACTIVO, "1");
   } catch {
-    /* no pasa nada si no se pudo guardar -- solo tendrá que elegirlo de nuevo */
+    /* no pasa nada si no se pudo guardar */
   }
-  pintarBotonMidi(btn, true, entrada.name);
+  pintarBotonMidi(btn, true, entradas[0].name);
 }
 
 // Si ya se eligió un dispositivo antes, lo reconecta solo (sin volver a
@@ -309,8 +303,8 @@ function intentarReconectarMidiGuardado(btn) {
     navigator
       .requestMIDIAccess()
       .then((acceso) => {
-        const entrada = Array.from(acceso.inputs.values()).find((e) => e.name === nombreGuardado);
-        if (entrada) conectarEntradaMidi(entrada, btn);
+        const entradas = Array.from(acceso.inputs.values());
+        if (entradas.length > 0) conectarEntradasMidi(entradas, btn);
       })
       .catch(() => {
         /* se pedirá al pulsar el botón */

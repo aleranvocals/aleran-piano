@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=2" />
+<link rel="stylesheet" href="rediseno.css?v=3" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -27,7 +27,7 @@
 <div class="app">
   <header class="cabecera">
     <h1>💬 Soporte</h1>
-    <p class="subtitulo">¿Tienes una duda o algo no funcionó como debía? Escríbele directo a Áleran.</p>
+    <p class="subtitulo">Escríbele directo a Áleran.</p>
   </header>
 
   <nav class="nav-principal">
@@ -55,7 +55,7 @@
 
   <section class="panel">
     <h2 class="titulo-seccion">¿Tienes una duda?</h2>
-    <p class="descripcion">Sobre cómo usar alguna herramienta, sobre técnica vocal, o sobre clases -- escribe y responde él mismo, no un bot.</p>
+    <p class="descripcion">Te responde él mismo, no un bot.</p>
     <div class="acciones">
       <a
         id="btnDudaWhatsapp"
@@ -67,13 +67,7 @@
     </div>
 
     <h2 class="titulo-seccion">¿Encontraste un fallo?</h2>
-    <p class="descripcion">
-      Cuenta qué herramienta era, qué hiciste justo antes y qué pasó (o qué
-      esperabas que pasara) -- cuanto más concreto, más rápido se puede
-      arreglar. Escríbelo aquí abajo (opcional, pero ayuda mucho) y se manda
-      completo a Telegram al toque, además de dejarlo ya escrito en
-      WhatsApp o email.
-    </p>
+    <p class="descripcion">Cuenta qué herramienta era y qué pasó. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Cuanto más concreto (qué hiciste justo antes, qué esperabas que pasara), más rápido se arregla. Lo que escribas se manda completo a Telegram y queda escrito en WhatsApp o email.">?</button></p>
     <label class="campo">
       <span>¿Qué pasó?</span>
       <textarea id="falloDetalle" rows="3" placeholder="Ej: en el Mapa Vocal, al darle Generar no pasó nada..."></textarea>
@@ -85,14 +79,14 @@
   </section>
 
   <footer class="pie">
-    <p>Cada botón también manda un aviso a Telegram en paralelo, como respaldo -- para que nada se quede sin ver aunque no termines de enviarlo en WhatsApp o en el correo. Nada de esto pasa por un sistema automático que responda por Áleran: siempre lo lee y contesta él.</p>
+    <p>Siempre te lee y te responde él.</p>
     <p><a href="privacidad.html">Política de privacidad</a></p>
   </footer>
 </div>
 
 <script src="dom-utils.js?v=1"></script>
 <script src="soporte.js?v=1"></script>
-<script src="app-shell.js?v=2"></script>
+<script src="app-shell.js?v=3"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>

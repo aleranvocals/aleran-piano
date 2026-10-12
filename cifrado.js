@@ -609,7 +609,7 @@ function crearAccionesLinea(lineaObj, esPrimera) {
   btnReproducir.type = "button";
   btnReproducir.className = "boton principal";
   btnReproducir.textContent = "▶ Reproducir";
-  btnReproducir.addEventListener("click", () => reproducirLinea(lineaObj));
+  btnReproducir.addEventListener("click", () => reproducirLinea(lineaObj, btnReproducir));
   fila.appendChild(btnReproducir);
 
   const btnCopiar = document.createElement("button");
@@ -1169,49 +1169,116 @@ function datosReproduccionLinea(lineaObj) {
   return unidadesLineaPorDefecto(lineaObj);
 }
 
-async function reproducirLinea(lineaObj) {
-  if (!window.PianoEngine) {
-    elEstado.textContent = "El motor de audio todavía se está inicializando, espera un segundo…";
-    return;
-  }
-  const bpm = parseInt(elBpm.value, 10) || (lineaObj.ritmo && lineaObj.ritmo.bpm) || 100;
-  const { unidades, celdaPorUnidad } = datosReproduccionLinea(lineaObj);
-  const eventos = unidadesAEventos(unidades, bpm);
-  if (eventos.length === 0) return;
+// ---- Reproductor único: ▶ Reproducir → ⏸ Pausa → ▶ Continuar (el mismo botón) --------------------------------------
+// Solo suena una cosa a la vez (una línea o la canción completa). Pausar corta el audio y recuerda por qué evento iba;
+// «Continuar» retoma desde el inicio de ese evento.
+let repro = null;
 
-  // Una ligadura (solo posible tras pasar por el editor de ritmo, Modo
-  // Músico) puede fundir varias unidades/celdas en un solo evento de audio,
-  // desalineando el índice de evento del índice de celda -- mapaUnidadAEvento
-  // (escalas.js) dice, para cada celda, a qué evento le tocó de verdad, así
-  // que el resaltado sigue siendo exacto en vez de tener que desactivarlo
-  // entero para cualquier línea que ya tuviera ritmo asignado. celdaPorUnidad
-  // (arriba) resuelve el otro desalineamiento: un melisma reparte varias
-  // unidades en UNA sola celda.
-  const celdas = lineaObj._el ? Array.from(lineaObj._el.querySelectorAll(".celda-nota")) : [];
-  const mapaEventos = mapaUnidadAEvento(unidades);
-  const celdasPorEvento = [];
-  unidades.forEach((u, i) => {
-    const celda = celdas[celdaPorUnidad[i]];
-    if (!celda) return;
-    const evIdx = mapaEventos[i];
-    (celdasPorEvento[evIdx] || (celdasPorEvento[evIdx] = [])).push(celda);
-  });
-  const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
-  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(bpm, metrica);
+function textoBotonRepro(r) {
+  if (!r || !r.boton) return;
+  r.boton.textContent = r.estado === "sonando" ? "⏸ Pausa" : r.estado === "pausa" ? "▶ Continuar" : r.etiqueta;
+}
+
+function limpiarResaltadoSonando() {
+  document.querySelectorAll(".celda-nota.sonando").forEach((c) => c.classList.remove("sonando"));
+}
+
+function actualizarBotonDetener() {
+  const b = document.getElementById("btnCifradoDetenerTodo");
+  if (b) b.disabled = !repro;
+}
+
+async function lanzarRepro(r, desde) {
+  r.estado = "sonando";
+  textoBotonRepro(r);
+  actualizarBotonDetener();
+  elEstado.textContent = "";
+  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(r.bpm, r.metrica);
   try {
-    await window.PianoEngine.reproducirSecuencia(eventos, 0.8, {
+    await window.PianoEngine.reproducirSecuencia(r.eventos.slice(desde), 0.8, {
       onEventoInicio: (i) => {
-        (celdasPorEvento[i] || []).forEach((celda) => celda.classList.add("sonando"));
+        r.indice = desde + i;
+        (r.resaltar.get(desde + i) || []).forEach((c) => c.classList.add("sonando"));
       },
       onEventoFin: (i) => {
-        (celdasPorEvento[i] || []).forEach((celda) => celda.classList.remove("sonando"));
+        (r.resaltar.get(desde + i) || []).forEach((c) => c.classList.remove("sonando"));
       },
     });
   } catch (err) {
     elEstado.textContent = `Error de audio: ${err.message}`;
   } finally {
     if (window.MetronomoEngine) window.MetronomoEngine.detener();
+    if (r.estado === "sonando") {
+      // Terminó solo (no fue pausa ni detener).
+      r.estado = "fin";
+      textoBotonRepro(r);
+      limpiarResaltadoSonando();
+      if (repro === r) repro = null;
+      actualizarBotonDetener();
+    }
   }
+}
+
+function detenerRepro() {
+  const r = repro;
+  repro = null;
+  if (r) {
+    r.estado = "fin";
+    textoBotonRepro(r);
+  }
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  limpiarResaltadoSonando();
+  actualizarBotonDetener();
+}
+
+function alternarRepro(nueva) {
+  if (!window.PianoEngine) {
+    elEstado.textContent = "El motor de audio todavía se está inicializando, espera un segundo…";
+    return;
+  }
+  if (repro && repro.boton === nueva.boton) {
+    if (repro.estado === "sonando") {
+      repro.estado = "pausa";
+      window.PianoEngine.detenerReproduccion();
+      if (window.MetronomoEngine) window.MetronomoEngine.detener();
+      limpiarResaltadoSonando();
+      textoBotonRepro(repro);
+      elEstado.textContent = "En pausa: «Continuar» sigue desde la nota donde ibas.";
+      return;
+    }
+    if (repro.estado === "pausa") {
+      lanzarRepro(repro, repro.indice);
+      return;
+    }
+  }
+  detenerRepro(); // lo que estuviera sonando (u otra línea en pausa) se cierra
+  nueva.estado = "nuevo";
+  nueva.indice = 0;
+  repro = nueva;
+  lanzarRepro(nueva, 0);
+}
+
+async function reproducirLinea(lineaObj, boton) {
+  const bpm = parseInt(elBpm.value, 10) || (lineaObj.ritmo && lineaObj.ritmo.bpm) || 100;
+  const { unidades, celdaPorUnidad } = datosReproduccionLinea(lineaObj);
+  const eventos = unidadesAEventos(unidades, bpm);
+  if (eventos.length === 0) return;
+
+  // Una ligadura puede fundir varias unidades/celdas en un solo evento (ver mapaUnidadAEvento) y un melisma reparte
+  // varias unidades en UNA celda (celdaPorUnidad): por eso el resaltado se arma con el mapa real, no por posición.
+  const celdas = lineaObj._el ? Array.from(lineaObj._el.querySelectorAll(".celda-nota")) : [];
+  const mapaEventos = mapaUnidadAEvento(unidades);
+  const resaltar = new Map();
+  unidades.forEach((u, i) => {
+    const celda = celdas[celdaPorUnidad[i]];
+    if (!celda) return;
+    const evIdx = mapaEventos[i];
+    if (!resaltar.has(evIdx)) resaltar.set(evIdx, []);
+    resaltar.get(evIdx).push(celda);
+  });
+  const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
+  alternarRepro({ eventos, resaltar, bpm, metrica, boton, etiqueta: "▶ Reproducir" });
 }
 
 // Junta las líneas de toda la canción en UNA sola llamada a
@@ -1257,99 +1324,20 @@ function eventosCancionCompleta(bpm, metrica) {
   return { eventos, resaltarPorIndice };
 }
 
-let cancionCompletaReproduciendo = false;
-// Sesión de la canción completa en curso o en pausa. Pausar corta el audio y recuerda por qué evento iba; «Continuar»
-// retoma desde el inicio de ese mismo evento (la nota que sonaba se repite entera, como al retomar una frase).
-let sesionCancion = null;
-
-function limpiarResaltadoSonando() {
-  document.querySelectorAll(".celda-nota.sonando").forEach((el) => el.classList.remove("sonando"));
-}
-
-function actualizarBotonesCancion() {
-  const reproduciendo = cancionCompletaReproduciendo;
-  const enPausa = Boolean(sesionCancion && sesionCancion.pausada);
-  document.getElementById("btnCifradoReproducirTodo").disabled = reproduciendo || enPausa;
-  const btnPausa = document.getElementById("btnCifradoPausarTodo");
-  btnPausa.disabled = !reproduciendo && !enPausa;
-  btnPausa.textContent = enPausa ? "▶ Continuar" : "⏸ Pausa";
-  document.getElementById("btnCifradoDetenerTodo").disabled = !reproduciendo && !enPausa;
-}
-
-async function lanzarSesionCancion(desde) {
-  const s = sesionCancion;
-  if (!s) return;
-  s.pausada = false;
-  cancionCompletaReproduciendo = true;
-  actualizarBotonesCancion();
-  elEstado.textContent = "";
-  // El metrónomo suena por defecto mientras se reproduce, acentuando cada "metrica" tiempos -- el mismo número
-  // que se usa para la pausa entre frases, así el clic y la pausa cuentan el mismo compás.
-  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(s.bpm, s.metrica);
-  try {
-    await window.PianoEngine.reproducirSecuencia(s.eventos.slice(desde), 0.8, {
-      onEventoInicio: (i) => {
-        s.indice = desde + i;
-        (s.resaltarPorIndice.get(desde + i) || []).forEach((el) => el.classList.add("sonando"));
-      },
-      onEventoFin: (i) => {
-        (s.resaltarPorIndice.get(desde + i) || []).forEach((el) => el.classList.remove("sonando"));
-      },
-    });
-  } catch (err) {
-    elEstado.textContent = `Error de audio: ${err.message}`;
-  } finally {
-    if (window.MetronomoEngine) window.MetronomoEngine.detener();
-    if (!s.pausada) {
-      // Terminó (o se detuvo): se cierra la sesión.
-      cancionCompletaReproduciendo = false;
-      if (sesionCancion === s) sesionCancion = null;
-      limpiarResaltadoSonando();
-    } else {
-      cancionCompletaReproduciendo = false;
-    }
-    actualizarBotonesCancion();
-  }
-}
-
-async function reproducirCancionCompleta() {
-  if (!window.PianoEngine || cancionCompletaReproduciendo || sesionCancion) return;
+function reproducirCancionCompleta() {
   const bpm = parseInt(elBpm.value, 10) || 100;
   const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
   const { eventos, resaltarPorIndice } = eventosCancionCompleta(bpm, metrica);
+  const boton = document.getElementById("btnCifradoReproducirTodo");
   if (eventos.length === 0) {
     elEstado.textContent = "No hay ninguna línea con notas para reproducir todavía.";
     return;
   }
-  sesionCancion = { eventos, resaltarPorIndice, bpm, metrica, indice: 0, pausada: false };
-  await lanzarSesionCancion(0);
-}
-
-function pausarOContinuarCancion() {
-  const s = sesionCancion;
-  if (!s) return;
-  if (s.pausada) {
-    lanzarSesionCancion(s.indice);
-    return;
-  }
-  s.pausada = true;
-  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
-  if (window.MetronomoEngine) window.MetronomoEngine.detener();
-  limpiarResaltadoSonando();
-  cancionCompletaReproduciendo = false;
-  actualizarBotonesCancion();
-  elEstado.textContent = "En pausa: «Continuar» sigue desde la nota donde ibas.";
+  alternarRepro({ eventos, resaltar: resaltarPorIndice, bpm, metrica, boton, etiqueta: "▶ Reproducir toda la canción" });
 }
 
 function detenerCancionCompleta() {
-  const s = sesionCancion;
-  if (s) s.pausada = false; // un «Detener» desde la pausa cierra la sesión por completo
-  sesionCancion = null;
-  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
-  if (window.MetronomoEngine) window.MetronomoEngine.detener();
-  cancionCompletaReproduciendo = false;
-  limpiarResaltadoSonando();
-  actualizarBotonesCancion();
+  detenerRepro();
   elEstado.textContent = "";
 }
 
@@ -1502,7 +1490,6 @@ document.getElementById("btnCifradoImprimir").addEventListener("click", () => {
 
 document.getElementById("btnCifradoReproducirTodo").addEventListener("click", reproducirCancionCompleta);
 document.getElementById("btnCifradoDetenerTodo").addEventListener("click", detenerCancionCompleta);
-document.getElementById("btnCifradoPausarTodo").addEventListener("click", pausarOContinuarCancion);
 document.getElementById("btnCifradoMidi").addEventListener("click", descargarMidiCancion);
 document.getElementById("btnCifradoMp3").addEventListener("click", descargarMp3Cancion);
 
