@@ -1490,6 +1490,13 @@ function inicializarEntrenamiento() {
   const tabReal = tabPedida === "twang" ? "espectro" : tabPedida;
   if (tabReal && document.querySelector(`.subtab[data-entren="${tabReal}"]`)) {
     cambiarSubmodoEntrenamiento(tabReal);
+    // ?tab=twang es el enlace directo al detector: baja hasta el medidor, no se queda arriba del panel
+    if (tabPedida === "twang") {
+      setTimeout(() => {
+        const visor = document.getElementById("twangVisor");
+        if (visor) visor.scrollIntoView({ block: "center" });
+      }, 250);
+    }
   }
 }
 

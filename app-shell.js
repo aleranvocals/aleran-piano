@@ -500,6 +500,22 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", alCargar);
   else alCargar();
+
+  // Cada pestaña de herramienta tiene enlace directo (?tab=...): al cambiar de pestaña la dirección se actualiza,
+  // así «copiar enlace» o recargar vuelve a la misma pestaña, y Áleran puede pasarle a un alumno la herramienta exacta.
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest(".tab, .subtab");
+    if (!b) return;
+    const id = b.dataset.modo || b.dataset.entren || b.dataset.oido || b.dataset.juego;
+    if (!id) return;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", id);
+      window.history.replaceState(null, "", url);
+    } catch {
+      /* sin historial: el enlace directo sigue funcionando al abrir la página */
+    }
+  });
   // Los selects que rellenan las páginas en su propio DOMContentLoaded se recogen en una segunda pasada.
   window.addEventListener("load", mejorarTodosLosSelects);
 
