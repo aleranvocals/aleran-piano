@@ -313,3 +313,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-
 
 .chip-curva.activo, .chip-escala.activo { border-color: var(--crimson-bright); background: rgba(192, 34, 65, 0.2); color: var(--bone); }
 .curva-espectro .espectro-rango { margin: 0.2rem 0 0.5rem; }
+
+/* --- Fichas de herramientas: 7 → 3 arriba (más anchas) y 4 abajo, de lado a lado ---------- */
+.tabs.tabs-fichas.tabs-3-4 { grid-template-columns: repeat(12, 1fr); }
+.tabs-fichas.tabs-3-4 > :nth-child(-n + 3) { grid-column: span 4; }
+.tabs-fichas.tabs-3-4 > :nth-child(n + 4) { grid-column: span 3; }
