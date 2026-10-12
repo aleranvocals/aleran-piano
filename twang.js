@@ -20,7 +20,8 @@
   const BANDA_BASE = [300, 2000]; // Hz: el "cuerpo" de la voz cantada
   const BASE_DEFECTO_DB = -28; // relación típica twang/cuerpo de una voz sin twang (sin calibrar)
   const UMBRAL_DELTA_DB = 5; // cuántos dB por encima de tu voz normal cuenta como "posible twang"
-  const PISO_BASE_DB = -85; // por debajo no hay voz suficiente
+  const ENERGIA_VOZ_DB = -78; // al calibrar, un cuerpo de voz por encima de esto cuenta como voz aunque la nota no sea limpia
+const PISO_BASE_DB = -100; // por debajo no hay voz suficiente (el límite del analizador); la voz la confirma el detector de nota
   const SUAVIZADO = 0.2; // media móvil exponencial por cuadro
   const MS_PARA_ACTIVAR = 200;
   const MS_PARA_SOLTAR = 300;
@@ -119,7 +120,8 @@
     terminarCalibracion(minimoMuestras) {
       const muestras = this.calibrando || [];
       this.calibrando = null;
-      if (muestras.length < (minimoMuestras || 25)) return null;
+      this.ultimasMuestras = muestras.length;
+      if (muestras.length < (minimoMuestras || 15)) return null;
       this.base = mediana(muestras);
       this.ema = null;
       return this.base;
@@ -134,7 +136,10 @@
       const baseDb = potenciaMediaDb(espectroDb, sampleRate, BANDA_BASE[0], BANDA_BASE[1]);
       const twangDb = potenciaMediaDb(espectroDb, sampleRate, BANDA_TWANG[0], BANDA_TWANG[1]);
 
-      if (!vozActiva || baseDb < PISO_BASE_DB) {
+      // Calibrando: si estás muy pegado al micro o saturas, el detector de nota falla aunque cantes bien;
+      // para calibrar basta con que haya voz con energía real.
+      const vozPorEnergia = this.calibrando !== null && baseDb > ENERGIA_VOZ_DB;
+      if ((!vozActiva && !vozPorEnergia) || baseDb < PISO_BASE_DB) {
         if (ahoraMs - this.ultimoCuadroVozMs > 400) {
           this.ema = null;
           this.superaDesde = null;

@@ -7,6 +7,9 @@
 // Respiro entre que el piano toca la nota de referencia y se empieza a
 // escuchar al alumno -- ver silenciarPianoAhora() en audio.js para el porqué.
 const PAUSA_ANTES_DE_ESCUCHAR_MS = 250;
+// Para cantar una nota hace falta tiempo de reacción: ventana mínima y un instante inicial que no puntúa.
+const VENTANA_CANTO_MIN_S = 2.2;
+const IGNORAR_INICIO_CANTO_S = 0.5;
 
 let modoActual = "individual";
 let notaIndividual = nombreAMidi("Do3");
@@ -932,6 +935,12 @@ function cancelarCantoSiHaceFalta() {
 }
 
 function calificarCents(cents) {
+  // La octava cuenta: la nota correcta una octava arriba/abajo NO es un acierto (y se dice claro).
+  const octavas = Math.round(cents / 1200);
+  if (octavas !== 0 && Math.abs(cents - 1200 * octavas) <= 100) {
+    const cuantas = Math.abs(octavas) === 1 ? "una octava" : `${Math.abs(octavas)} octavas`;
+    return { emoji: "↕️", texto: `Nota correcta, pero ${cuantas} ${octavas > 0 ? "más arriba" : "más abajo"}`, puntos: 20 };
+  }
   const abs = Math.abs(cents);
   if (abs <= 12) return { emoji: "✅", texto: "¡Perfecto!", puntos: 100 };
   if (abs <= 30) return { emoji: "🙂", texto: cents > 0 ? "Un poco alto" : "Un poco bajo", puntos: 80 };
@@ -1021,9 +1030,7 @@ async function cantarYCalificar() {
 
     el("estado").textContent = `🎤 Ahora canta: ${etiquetaNota(evento.midi)}…`;
     mostrarAfinometro(true);
-    const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(1, evento.duracion), (cents) =>
-      actualizarAfinometro(cents)
-    );
+    const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(VENTANA_CANTO_MIN_S, evento.duracion), (cents) => actualizarAfinometro(cents), IGNORAR_INICIO_CANTO_S);
     mostrarAfinometro(false);
     marcarTeclaActiva(evento.midi, false);
     if (cantoCancelado) break;
@@ -1128,9 +1135,7 @@ async function escucharEImitar() {
 
       marcarTeclaActiva(evento.midi, true);
       mostrarAfinometro(true);
-      const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(1, evento.duracion), (cents) =>
-        actualizarAfinometro(cents)
-      );
+      const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(VENTANA_CANTO_MIN_S, evento.duracion), (cents) => actualizarAfinometro(cents), IGNORAR_INICIO_CANTO_S);
       mostrarAfinometro(false);
       marcarTeclaActiva(evento.midi, false);
       if (cantoCancelado) break;

@@ -401,29 +401,116 @@ function limpiarTeclasActivas() {
     .forEach((t) => t.classList.remove("activa"));
 }
 
-/** Aguja de afinación en vivo (como un afinador de guitarra): solo se
- * muestra mientras el micrófono está escuchando algo con un objetivo claro
- * (una nota a cantar, o la referencia de una nota sostenida), no todo el
- * rato. La usan "Cantar y calificar" (piano.js) y "Nota sostenida"
- * (entrenamiento.js). */
-function mostrarAfinometro(mostrar) {
-  el("afinometro").hidden = !mostrar;
-  if (!mostrar) actualizarAfinometro(null);
+/** Afinómetro: un arco de bloques (rojo en los bordes, verde en el centro) que se enciende donde estás y te
+ * dice «¡Bien!», «¡Casi! Sube un poquito» o «Baja…». Solo se muestra mientras el micrófono escucha con un objetivo
+ * claro. Lo usan "Cantar y calificar", "Escucha e imita" (piano.js), "Nota sostenida" y "Sirena" (entrenamiento.js).
+ * La lectura se suaviza (mediana + media) y el bloque solo cambia con histéresis: no «baila». */
+const AFI_SEGMENTOS = 11;
+const AFI_CENTRO = 5;
+const AFI_CENTS_POR_SEGMENTO = 9;
+let afiIdx = AFI_CENTRO;
+let afiSuave = null;
+let afiHistorial = [];
+let afiUltimaLecturaMs = 0;
+
+function construirAfinometro() {
+  const cont = el("afinometro");
+  if (!cont || cont.dataset.listo === "1") return;
+  cont.dataset.listo = "1";
+  cont.classList.add("afinometro-grande");
+  cont.innerHTML = "";
+  const arco = document.createElement("div");
+  arco.className = "afi-arco";
+  arco.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < AFI_SEGMENTOS; i++) {
+    const s = document.createElement("span");
+    const d = Math.abs(i - AFI_CENTRO);
+    s.className = "afi-seg";
+    s.dataset.zona = d <= 1 ? "verde" : d <= 3 ? "ambar" : "rojo";
+    s.style.setProperty("--ang", `${-78 + (i / (AFI_SEGMENTOS - 1)) * 156}deg`);
+    arco.appendChild(s);
+  }
+  const bemol = document.createElement("span");
+  bemol.className = "afi-signo afi-bemol";
+  bemol.textContent = "♭";
+  const sost = document.createElement("span");
+  sost.className = "afi-signo afi-sost";
+  sost.textContent = "♯";
+  arco.append(bemol, sost);
+  const msg = document.createElement("div");
+  msg.className = "afi-mensaje";
+  msg.id = "afinometroMensaje";
+  msg.setAttribute("role", "status");
+  msg.setAttribute("aria-live", "polite");
+  const det = document.createElement("div");
+  det.className = "afinometro-texto";
+  det.id = "afinometroTexto";
+  cont.append(arco, msg, det);
 }
 
+function mostrarAfinometro(mostrar) {
+  construirAfinometro();
+  const cont = el("afinometro");
+  if (!cont) return;
+  cont.hidden = !mostrar;
+  afiUltimaLecturaMs = 0; // empieza de cero: sin arrastrar la lectura anterior
+  if (!mostrar) actualizarAfinometro(null);
+  else actualizarAfinometro(null);
+}
+
+/** `cents`: cuánto te desvías del objetivo (negativo = grave, positivo = agudo), o null si no hay voz. */
 function actualizarAfinometro(cents) {
-  const aguja = el("afinometroAguja");
+  construirAfinometro();
+  const cont = el("afinometro");
+  if (!cont) return;
+  const segs = cont.querySelectorAll(".afi-seg");
+  const msg = el("afinometroMensaje");
+  const det = el("afinometroTexto");
+  const ahora = performance.now();
   if (cents === null || cents === undefined) {
-    aguja.style.transform = "rotate(0deg)";
-    aguja.className = "afinometro-aguja";
-    el("afinometroTexto").textContent = "—";
+    // Un respiro: la voz tiene huecos entre sílabas y el medidor no debe parpadear con cada uno.
+    if (afiSuave !== null && afiUltimaLecturaMs && ahora - afiUltimaLecturaMs < 350) return;
+    afiSuave = null;
+    afiHistorial = [];
+    afiIdx = AFI_CENTRO;
+    segs.forEach((s) => s.classList.remove("activo"));
+    cont.dataset.nivel = "";
+    msg.textContent = "Escuchando…";
+    det.textContent = "—";
     return;
   }
-  const limitado = Math.max(-50, Math.min(50, cents));
-  aguja.style.transform = `rotate(${(limitado / 50) * 45}deg)`;
-  const abs = Math.abs(cents);
-  aguja.className = "afinometro-aguja" + (abs <= 10 ? " centrado" : abs <= 30 ? " cerca" : "");
-  el("afinometroTexto").textContent = `${cents > 0 ? "+" : ""}${Math.round(cents)}¢`;
+  afiUltimaLecturaMs = ahora;
+  afiHistorial.push(cents);
+  if (afiHistorial.length > 5) afiHistorial.shift();
+  const orden = afiHistorial.slice().sort((a, b) => a - b);
+  const mediana = orden[Math.floor(orden.length / 2)];
+  afiSuave = afiSuave === null ? mediana : afiSuave + 0.3 * (mediana - afiSuave);
+  const c = afiSuave;
+  // Otra octava: se avisa aparte y el arco muestra solo el resto.
+  const octavas = Math.abs(c) > 600 ? Math.round(c / 1200) : 0;
+  const resto = c - 1200 * octavas;
+  const crudo = AFI_CENTRO + resto / AFI_CENTS_POR_SEGMENTO;
+  if (Math.abs(crudo - afiIdx) > 0.65) afiIdx = Math.max(0, Math.min(AFI_SEGMENTOS - 1, Math.round(crudo)));
+  segs.forEach((s, i) => s.classList.toggle("activo", i === afiIdx));
+  const d = Math.abs(afiIdx - AFI_CENTRO);
+  let nivel;
+  let texto;
+  if (octavas !== 0) {
+    nivel = "lejos";
+    texto = `Estás ${Math.abs(octavas) === 1 ? "una octava" : Math.abs(octavas) + " octavas"} ${octavas > 0 ? "más arriba" : "más abajo"}`;
+  } else if (d <= 1) {
+    nivel = "bien";
+    texto = "¡Bien!";
+  } else if (d <= 3) {
+    nivel = "casi";
+    texto = resto < 0 ? "¡Casi! Sube un poquito ↑" : "¡Casi! Baja un poquito ↓";
+  } else {
+    nivel = "lejos";
+    texto = Math.abs(resto) > 70 ? (resto < 0 ? "Sube más ↑↑" : "Baja más ↓↓") : resto < 0 ? "Sube ↑" : "Baja ↓";
+  }
+  cont.dataset.nivel = nivel;
+  msg.textContent = texto;
+  det.textContent = `${resto > 0 ? "+" : ""}${Math.round(resto)} cents`;
 }
 
 

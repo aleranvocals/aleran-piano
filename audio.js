@@ -739,11 +739,11 @@ function detenerMicrofono() {
 
 /** Una lectura instantánea del micrófono, o null si no hay una nota clara
  * (silencio, ruido, o el alumno todavía no ha respirado para cantar). */
-function leerPitchInstantaneo() {
+function leerPitchInstantaneo(claridadMinima = PITCH_CLARIDAD_MINIMA) {
   if (!analizadorMicrofono || !detectorPitch) return null;
   analizadorMicrofono.getFloatTimeDomainData(bufferPitch);
   const [frecuencia, claridad] = detectorPitch.findPitch(bufferPitch, obtenerContexto().sampleRate);
-  if (claridad < PITCH_CLARIDAD_MINIMA || frecuencia < PITCH_FREC_MIN || frecuencia > PITCH_FREC_MAX) {
+  if (claridad < claridadMinima || frecuencia < PITCH_FREC_MIN || frecuencia > PITCH_FREC_MAX) {
     return null;
   }
   return { frecuencia, claridad };
@@ -752,7 +752,7 @@ function leerPitchInstantaneo() {
 /** Escucha el micrófono durante `segundos` comparando lo que canta el
  * alumno contra `midiObjetivo`, y devuelve el promedio de desviación en
  * "cents" (100 cents = 1 semitono) durante todas las lecturas válidas. */
-async function escucharYPuntuar(midiObjetivo, segundos, onLectura) {
+async function escucharYPuntuar(midiObjetivo, segundos, onLectura, ignorarInicioS = 0) {
   const frecuenciaObjetivo = midiAFrecuencia(midiObjetivo);
   const inicio = performance.now();
   const centavos = [];
@@ -762,7 +762,8 @@ async function escucharYPuntuar(midiObjetivo, segundos, onLectura) {
     const lectura = leerPitchInstantaneo();
     if (lectura) {
       const cents = 1200 * Math.log2(lectura.frecuencia / frecuenciaObjetivo);
-      centavos.push(cents);
+      // El primer instante es de reacción (buscar la nota): se muestra en el medidor pero no puntúa.
+      if (performance.now() - inicio >= ignorarInicioS * 1000) centavos.push(cents);
       if (onLectura) onLectura(cents, lectura.frecuencia);
     } else if (onLectura) {
       onLectura(null, null);
@@ -770,7 +771,11 @@ async function escucharYPuntuar(midiObjetivo, segundos, onLectura) {
     await esperar(40); // ~25 lecturas/seg -- de sobra para el vibrato de una voz
   }
   if (centavos.length === 0) return { detectado: false };
-  const centsPromedio = centavos.reduce((a, b) => a + b, 0) / centavos.length;
+  // Mediana (no media): si el detector salta de octava en unas pocas lecturas, una media daría una nota
+  // inexistente a medio camino. El campo se sigue llamando centsPromedio por compatibilidad.
+  const ordenados = centavos.slice().sort((a, b) => a - b);
+  const mitad = Math.floor(ordenados.length / 2);
+  const centsPromedio = ordenados.length % 2 ? ordenados[mitad] : (ordenados[mitad - 1] + ordenados[mitad]) / 2;
   return { detectado: true, centsPromedio, numLecturas: centavos.length };
 }
 

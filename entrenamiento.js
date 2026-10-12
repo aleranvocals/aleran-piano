@@ -39,6 +39,7 @@ function cambiarSubmodoEntrenamiento(modo) {
 
 let rangoMinDetectado = null;
 let rangoMaxDetectado = null;
+let rangoLecturas = []; // todas las notas redondeadas oídas: el rango sale de aquí, sin valores sueltos
 let rangoTeclaAnterior = null;
 
 function sugerirTipoVoz(minMidi, maxMidi) {
@@ -64,6 +65,7 @@ async function iniciarRango() {
   }
   rangoMinDetectado = null;
   rangoMaxDetectado = null;
+  rangoLecturas = [];
   rangoTeclaAnterior = null;
   el("rangoResultado").textContent = "";
   el("rangoNotaActual").textContent = "—";
@@ -98,6 +100,7 @@ async function iniciarRango() {
       rangoTeclaAnterior = midiRedondeado;
     }
     el("rangoNotaActual").textContent = midiANombre(midiRedondeado);
+    rangoLecturas.push(midiRedondeado);
     if (rangoMinDetectado === null || midiRedondeado < rangoMinDetectado) rangoMinDetectado = midiRedondeado;
     if (rangoMaxDetectado === null || midiRedondeado > rangoMaxDetectado) rangoMaxDetectado = midiRedondeado;
   });
@@ -123,6 +126,13 @@ function finalizarRango(mostrarResultado) {
   if (rangoMinDetectado === null) {
     el("estadoEntrenamiento").textContent = "No pude detectar tu voz. Prueba de nuevo más cerca del micrófono.";
     return;
+  }
+  // Un salto de octava del detector (o un ruido) en una sola lectura no debe fijar tus extremos:
+  // se descarta el 4 % más grave y más agudo de lo oído.
+  if (rangoLecturas.length >= 25) {
+    const orden = rangoLecturas.slice().sort((a, b) => a - b);
+    rangoMinDetectado = orden[Math.floor(orden.length * 0.04)];
+    rangoMaxDetectado = orden[Math.ceil(orden.length * 0.96) - 1];
   }
   const semitonos = rangoMaxDetectado - rangoMinDetectado;
   const vozSugerida = sugerirTipoVoz(rangoMinDetectado, rangoMaxDetectado);
@@ -939,33 +949,138 @@ function dibujarHistorialTwang(ahora) {
   ctx.lineJoin = "round";
   let previo = null;
   for (const p of twangHist) {
-    if (p.d === null) {
-      previo = null;
-      continue;
-    }
+    if (p.d === null) continue;
     const x = w - ((ahora - p.t) / TWANG_VENTANA_MS) * w;
-    if (previo) {
+    const yy = y(p.d);
+    // Se une a la lectura anterior salvo que haya pasado más de medio segundo sin voz.
+    if (previo && p.t - previo.t < 500) {
       ctx.strokeStyle = p.act ? "#3ecf6e" : "#c02241";
       ctx.beginPath();
       ctx.moveTo(previo.x, previo.y);
-      ctx.lineTo(x, y(p.d));
+      ctx.lineTo(x, yy);
       ctx.stroke();
+    } else {
+      ctx.fillStyle = p.act ? "#3ecf6e" : "#c02241";
+      ctx.beginPath();
+      ctx.arc(x, yy, 2.5, 0, Math.PI * 2);
+      ctx.fill();
     }
-    previo = { x, y: y(p.d) };
+    previo = { x, y: yy, t: p.t };
   }
 }
 
 // --- Espectro: curva instantánea y toma guardada para comparar (pestaña Espectro) ---
-const CURVA_PUNTOS = 96;
+const CURVA_PUNTOS = 128;
+const CLAVE_ESPECTRO_FMAX = "aleran-espectro-rango";
+const CLAVE_CURVA_FMAX = "aleran-curva-fmax";
+const CLAVE_CURVA_LOG = "aleran-curva-log";
+let espectroFmax = 4000; // Hz que muestra el espectrograma (4, 8, 12 o 20 kHz)
+let curvaFmax = 20000; // Hz que muestra la curva de tu voz
+let curvaLog = false; // eje de frecuencias de la curva: lineal o logarítmico
+try {
+  const guardado = Number(localStorage.getItem(CLAVE_ESPECTRO_FMAX));
+  if ([4000, 8000, 12000, 20000].includes(guardado)) espectroFmax = guardado;
+} catch {
+  /* sin consecuencias */
+}
+
+try {
+  const f = Number(localStorage.getItem(CLAVE_CURVA_FMAX));
+  if ([4000, 8000, 12000, 20000].includes(f)) curvaFmax = f;
+  curvaLog = localStorage.getItem(CLAVE_CURVA_LOG) === "1";
+} catch {
+  /* sin consecuencias */
+}
+
+function textoHz(hz) {
+  return hz >= 1000 ? `${(hz / 1000).toString().replace(".", ",")} kHz` : `${hz} Hz`;
+}
+
+/** Marcas del eje (0, ¼, ½, ¾ y tope) y la zona de twang (2,5–4 kHz) según el rango elegido. */
+function pintarEjeEspectro() {
+  const eje = el("espectroEje");
+  if (!eje) return;
+  eje.innerHTML = "";
+  const f = espectroFmax;
+  const zona = document.createElement("div");
+  zona.className = "espectro-zona-twang";
+  const topPct = Math.max(0, (1 - Math.min(4000, f) / f) * 100);
+  const altoPct = Math.max(0, ((Math.min(4000, f) - 2500) / f) * 100);
+  zona.style.top = `${topPct}%`;
+  zona.style.height = `${altoPct}%`;
+  zona.style.borderRadius = "0";
+  if (altoPct > 6) zona.innerHTML = "<span>TWANG</span>";
+  eje.appendChild(zona);
+  [100, 75, 50, 25, 0].forEach((p) => {
+    const m = document.createElement("div");
+    m.className = "espectro-marca";
+    m.style.top = `${100 - p}%`;
+    const s = document.createElement("span");
+    s.textContent = textoHz(Math.round((f * p) / 100));
+    if (p === 0) s.style.top = "-20px";
+    m.appendChild(s);
+    eje.appendChild(m);
+  });
+  document.querySelectorAll(".chip-hz").forEach((b) => b.classList.toggle("activo", Number(b.dataset.fmax) === f));
+}
+
+function elegirRangoEspectro(f) {
+  espectroFmax = f;
+  try {
+    localStorage.setItem(CLAVE_ESPECTRO_FMAX, String(f));
+  } catch {
+    /* sin consecuencias */
+  }
+  const c = el("espectroGrafico");
+  if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height); // lo ya dibujado estaba a otra escala
+  pintarEjeEspectro();
+}
+function pintarChipsCurva() {
+  document.querySelectorAll(".chip-curva").forEach((b) => b.classList.toggle("activo", Number(b.dataset.fmax) === curvaFmax));
+  document.querySelectorAll(".chip-escala").forEach((b) => b.classList.toggle("activo", (b.dataset.log === "1") === curvaLog));
+}
+
+function cambiarAjusteCurva(fmax, log) {
+  if (fmax !== null) curvaFmax = fmax;
+  if (log !== null) curvaLog = log;
+  try {
+    localStorage.setItem(CLAVE_CURVA_FMAX, String(curvaFmax));
+    localStorage.setItem(CLAVE_CURVA_LOG, curvaLog ? "1" : "0");
+  } catch {
+    /* sin consecuencias */
+  }
+  curvaActual.fill(0);
+  curvaReferencia = null; // la toma guardada estaba a otra escala
+  const borrar = el("btnCurvaBorrar");
+  if (borrar) borrar.disabled = true;
+  pintarChipsCurva();
+  dibujarCurva();
+}
+
 let curvaActual = new Float32Array(CURVA_PUNTOS);
 let curvaReferencia = null;
+const CURVA_FMIN_LOG = 50;
+
+/** Frecuencia (Hz) donde empieza la banda `i` de la curva, en el eje lineal o logarítmico elegido. */
+function frecuenciaDeBanda(i) {
+  const t = i / CURVA_PUNTOS;
+  return curvaLog ? CURVA_FMIN_LOG * Math.pow(curvaFmax / CURVA_FMIN_LOG, t) : t * curvaFmax;
+}
+
+/** Posición horizontal (0 a 1) de una frecuencia en la curva. */
+function posicionDeFrecuencia(f) {
+  if (!curvaLog) return Math.max(0, Math.min(1, f / curvaFmax));
+  const t = Math.log(Math.max(f, CURVA_FMIN_LOG) / CURVA_FMIN_LOG) / Math.log(curvaFmax / CURVA_FMIN_LOG);
+  return Math.max(0, Math.min(1, t));
+}
 
 function actualizarCurva(datos, sampleRate) {
-  const nyquist = sampleRate / 2;
+  const nyquist = Math.max(sampleRate / 2, 1);
   const n = datos.length;
+  const aBin = (f) => Math.min(n - 1, Math.max(0, Math.floor((f / nyquist) * n)));
   for (let i = 0; i < CURVA_PUNTOS; i++) {
-    const b1 = Math.min(n - 1, Math.floor(((i / CURVA_PUNTOS) * 4000 / nyquist) * n));
-    const b2 = Math.min(n - 1, Math.max(b1, Math.floor((((i + 1) / CURVA_PUNTOS) * 4000 / nyquist) * n)));
+    const b1 = aBin(frecuenciaDeBanda(i));
+    const b2 = Math.max(b1, aBin(frecuenciaDeBanda(i + 1)));
     let suma = 0;
     for (let b = b1; b <= b2; b++) suma += datos[b];
     const v = suma / (b2 - b1 + 1) / 255;
@@ -980,22 +1095,28 @@ function dibujarCurva() {
   const pie = 18;
   const alto = h - pie;
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = "rgba(192, 34, 65, 0.10)";
-  const xZona = (2500 / 4000) * w;
-  ctx.fillRect(xZona, 0, w - xZona, alto);
+  if (curvaFmax > 2500) {
+    const xz1 = posicionDeFrecuencia(2500) * w;
+    const xz2 = posicionDeFrecuencia(4000) * w;
+    ctx.fillStyle = "rgba(192, 34, 65, 0.10)";
+    ctx.fillRect(xz1, 0, Math.max(2, xz2 - xz1), alto);
+  }
   ctx.strokeStyle = "rgba(237, 231, 225, 0.12)";
   ctx.lineWidth = 1;
   ctx.font = "11px sans-serif";
-  for (let k = 0; k <= 4; k++) {
-    const x = Math.round((k / 4) * (w - 1)) + 0.5;
+  const marcas = curvaLog
+    ? [100, 500, 1000, 2000, 5000, 10000, 20000].filter((f) => f <= curvaFmax)
+    : [0, 1, 2, 3, 4].map((k) => (curvaFmax * k) / 4);
+  marcas.forEach((f) => {
+    const x = Math.min(w - 1, Math.round(posicionDeFrecuencia(f) * (w - 1))) + 0.5;
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, alto);
     ctx.stroke();
     ctx.fillStyle = "rgba(237, 231, 225, 0.6)";
-    ctx.textAlign = k === 0 ? "left" : k === 4 ? "right" : "center";
-    ctx.fillText(k === 0 ? "0" : `${k} kHz`, x, h - 4);
-  }
+    ctx.textAlign = x < 24 ? "left" : x > w - 30 ? "right" : "center";
+    ctx.fillText(f === 0 ? "0" : textoHz(Math.round(f)), x, h - 4);
+  });
   const GANANCIA = 1.5;
   const camino = (curva) => {
     ctx.beginPath();
@@ -1094,9 +1215,13 @@ function revisarCalibracionTwang(ahora) {
   }
   calibracionTwangFin = 0;
   el("btnTwangCalibrar").disabled = false;
-  const base = detectorTwang.terminarCalibracion(25);
+  const base = detectorTwang.terminarCalibracion(15);
   if (base === null) {
-    el("twangCalibEstado").textContent = "No te oí lo bastante: canta más fuerte y sostenido, y repite.";
+    const n = detectorTwang.ultimasMuestras || 0;
+    el("twangCalibEstado").textContent =
+      n === 0
+        ? "No oí voz durante los 4 s. Revisa que tu micrófono (chip 🎤 de arriba) sea el bueno y canta una vocal sostenida."
+        : `Solo pude medir ${n} lecturas de tu voz. Canta una vocal sostenida durante los 4 s; si estás pegado al micro, aléjate unos 10-15 cm (se satura) y repite.`;
   } else {
     twangGuardar(twangClaveBase(detectorTwang.perfil), base);
     actualizarTextosTwang();
@@ -1149,8 +1274,8 @@ function dibujarColumnaEspectro(canvas, datos, sampleRate) {
   ctx.putImageData(imagen, 0, 0);
   // ...y pinta la columna nueva a la derecha, solo hasta 4000 Hz (rango útil
   // de voz: fundamentales + primeros armónicos) para aprovechar el alto.
-  const freqMax = 4000;
-  const nyquist = sampleRate / 2;
+  const freqMax = espectroFmax;
+  const nyquist = Math.max(sampleRate / 2, 1);
   const binCount = datos.length;
   for (let y = 0; y < h; y++) {
     const freq = (1 - y / h) * freqMax;
@@ -1217,12 +1342,15 @@ function bucleEspectro(analizador, canvas) {
   dibujarColumnaEspectro(canvas, espectroDatos, sampleRate);
   actualizarCurva(espectroDatos, sampleRate);
   dibujarCurva();
-  const lectura = window.MicrofonoEngine.leerPitch ? window.MicrofonoEngine.leerPitch() : null;
+  const lectura = window.MicrofonoEngine.leerPitch ? window.MicrofonoEngine.leerPitch(0.85) : null;
+  // El twang se mide mientras haya una voz con nota reconocible (más permisivo que para mostrar la nota):
+  // exigir una nota muy limpia dejaba el medidor casi siempre en blanco.
+  const lecturaTwang = window.MicrofonoEngine.leerPitch ? window.MicrofonoEngine.leerPitch(0.55) : null;
   pintarNota(lectura);
   if (detectorTwang && espectroFloat) {
     analizador.getFloatFrequencyData(espectroFloat);
     const ahora = performance.now();
-    const r = detectorTwang.actualizar(espectroFloat, sampleRate, !!lectura, ahora);
+    const r = detectorTwang.actualizar(espectroFloat, sampleRate, !!lecturaTwang, ahora);
     pintarTwang(r);
     twangRegistrar(r, ahora);
     dibujarHistorialTwang(ahora);
@@ -1312,6 +1440,11 @@ function inicializarEntrenamiento() {
   el("btnAireDetener").addEventListener("click", detenerAire);
   el("btnEspectroIniciar").addEventListener("click", iniciarEspectro);
   el("btnEspectroDetener").addEventListener("click", detenerEspectro);
+  document.querySelectorAll(".chip-hz").forEach((b) => b.addEventListener("click", () => elegirRangoEspectro(Number(b.dataset.fmax))));
+  pintarEjeEspectro();
+  document.querySelectorAll(".chip-curva").forEach((b) => b.addEventListener("click", () => cambiarAjusteCurva(Number(b.dataset.fmax), null)));
+  document.querySelectorAll(".chip-escala").forEach((b) => b.addEventListener("click", () => cambiarAjusteCurva(null, b.dataset.log === "1")));
+  pintarChipsCurva();
   el("btnCurvaGuardar").addEventListener("click", guardarTomaCurva);
   el("btnCurvaBorrar").addEventListener("click", borrarTomaCurva);
   dibujarCurva();

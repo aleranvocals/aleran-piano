@@ -59,7 +59,7 @@ async function reproducirPatronCatalogo(clave, patron, boton) {
       notaInicial: CATALOGO_TONICA,
       pasoSemitonos: 1,
       soloSubida: false,
-      duracionNota: 0.35,
+      duracionNota: 0.8,
       pausa: 0.08,
     });
   } catch (err) {

@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=7" />
+<link rel="stylesheet" href="rediseno.css?v=10" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -72,8 +72,8 @@
     <button id="metroFlotToggle" class="boton" title="Iniciar/detener metrónomo" aria-label="Iniciar/detener metrónomo">▶</button>
     <span class="metronomo-punto mini" id="metronomoPuntoMini" aria-hidden="true"></span>
     <label class="campo-inline">
-      <input type="range" id="metroFlotBpm" min="50" max="350" step="1" value="100" aria-label="Tempo del metrónomo" />
-      <input type="number" id="metroFlotBpmNumero" class="bpm-numero" min="50" max="350" step="1" value="100" aria-label="Escribe el tempo del metrónomo en BPM" /> BPM
+      <input type="range" id="metroFlotBpm" min="50" max="350" step="1" value="70" aria-label="Tempo del metrónomo" />
+      <input type="number" id="metroFlotBpmNumero" class="bpm-numero" min="50" max="350" step="1" value="70" aria-label="Escribe el tempo del metrónomo en BPM" /> BPM
     </label>
     <label class="campo-inline">
       <select id="metroFlotAcento" aria-label="Métrica del metrónomo">
@@ -240,8 +240,8 @@
     <label class="campo">
       <span>Tempo (BPM)</span>
       <div class="campo-inline">
-        <input type="range" id="bpmSlider" min="50" max="350" step="1" value="100" />
-        <input type="number" id="bpmNumero" class="bpm-numero" min="50" max="350" step="1" value="100" aria-label="Escribe el tempo exacto en BPM" />
+        <input type="range" id="bpmSlider" min="50" max="350" step="1" value="70" />
+        <input type="number" id="bpmNumero" class="bpm-numero" min="50" max="350" step="1" value="70" aria-label="Escribe el tempo exacto en BPM" />
       </div>
     </label>
     <label class="campo">
@@ -267,7 +267,7 @@
       <span>Duración según el tempo del metrónomo</span>
     </label>
     <label class="campo" id="campoFiguraRitmica">
-      <span>Figura · a <output id="tempoSincronizadoBpm">100</output> BPM dura <output id="duracionCalculadaTexto">0.60s</output></span>
+      <span>Figura · a <output id="tempoSincronizadoBpm">70</output> BPM dura <output id="duracionCalculadaTexto">0.86s</output></span>
       <select id="figuraRitmica">
         <option value="4">Redonda</option>
         <option value="2">Blanca</option>
@@ -278,8 +278,8 @@
       </select>
     </label>
     <label class="campo" id="campoDuracionManual" hidden>
-      <span>Duración por nota: <output id="duracionNotaValor">0.45s</output></span>
-      <input type="range" id="duracionNota" min="0.08" max="10" step="0.02" value="0.45" />
+      <span>Duración por nota: <output id="duracionNotaValor">0.90s</output></span>
+      <input type="range" id="duracionNota" min="0.08" max="10" step="0.02" value="0.9" />
     </label>
     <label class="campo" id="campoPausa" hidden>
       <span>Pausa entre notas: <output id="pausaValor">0.12s</output></span>
@@ -322,10 +322,10 @@
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=9"></script>
 <script src="app-shell.js?v=4"></script>
-<script src="audio.js?v=9"></script>
+<script src="audio.js?v=12"></script>
 <script src="progreso.js?v=1"></script>
-<script src="teclado.js?v=11"></script>
-<script src="piano.js?v=10"></script>
+<script src="teclado.js?v=12"></script>
+<script src="piano.js?v=12"></script>
 <script src="tema.js?v=1"></script>
 <script src="pwa.js?v=1"></script>
 </body>
