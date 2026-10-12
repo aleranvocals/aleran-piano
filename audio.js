@@ -690,14 +690,37 @@ function microfonoDisponible() {
   return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 }
 
+// Entrada de micrófono elegida en la barra de herramientas (chip 🎤): se guarda en este navegador.
+const CLAVE_MIC_DISPOSITIVO = "aleran-mic-dispositivo";
+
+function micDispositivoGuardado() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLAVE_MIC_DISPOSITIVO) || "null");
+    return v && v.id ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 async function iniciarMicrofono() {
   if (streamMicrofono) return;
   if (!microfonoDisponible()) {
     throw new Error("Este navegador no permite usar el micrófono aquí (¿estás en HTTP sin https?).");
   }
-  streamMicrofono = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-  });
+  const base = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+  const guardado = micDispositivoGuardado();
+  try {
+    streamMicrofono = await navigator.mediaDevices.getUserMedia({
+      audio: guardado ? { ...base, deviceId: { exact: guardado.id } } : base,
+    });
+  } catch (err) {
+    // El micrófono elegido ya no está conectado: se usa el predeterminado en vez de fallar.
+    if (guardado && (err.name === "OverconstrainedError" || err.name === "NotFoundError")) {
+      streamMicrofono = await navigator.mediaDevices.getUserMedia({ audio: base });
+    } else {
+      throw err;
+    }
+  }
   const ctx = obtenerContexto();
   const fuente = ctx.createMediaStreamSource(streamMicrofono);
   analizadorMicrofono = ctx.createAnalyser();

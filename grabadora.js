@@ -149,7 +149,19 @@ async function iniciarGrabacion() {
   el("estadoEntrenamiento").textContent = "Pidiendo permiso del micrófono…";
   el("btnGrabarIniciar").disabled = true;
   try {
-    grabadoraStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let guardado = null;
+    try {
+      const v = JSON.parse(localStorage.getItem("aleran-mic-dispositivo") || "null");
+      guardado = v && v.id ? v : null;
+    } catch {
+      guardado = null;
+    }
+    try {
+      grabadoraStream = await navigator.mediaDevices.getUserMedia({ audio: guardado ? { deviceId: { exact: guardado.id } } : true });
+    } catch (errMic) {
+      if (!guardado) throw errMic;
+      grabadoraStream = await navigator.mediaDevices.getUserMedia({ audio: true }); // el elegido ya no está
+    }
   } catch (err) {
     el("estadoEntrenamiento").textContent = `No se pudo acceder al micrófono: ${err.message}`;
     el("btnGrabarIniciar").disabled = false;

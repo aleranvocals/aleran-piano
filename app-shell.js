@@ -161,12 +161,127 @@
     chipRango.title = "Tu rango vocal: todas las herramientas se adaptan a él";
     chipRango.addEventListener("click", abrirHoja);
     dock.appendChild(chipRango);
+    chipMic = crear("button", "chip-dock");
+    chipMic.type = "button";
+    chipMic.id = "chipMic";
+    chipMic.addEventListener("click", abrirHojaMic);
+    dock.appendChild(chipMic);
     const cabecera = document.querySelector(".cabecera");
     if (nav) nav.insertAdjacentElement("afterend", dock);
     else if (cabecera) cabecera.insertAdjacentElement("afterend", dock);
     else document.querySelector(".app")?.prepend(dock);
     pintarChipRango();
+    pintarChipMic();
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener("devicechange", pintarChipMic);
+    }
     return dock;
+  }
+
+  // ---------------------------------------------------------------- micrófono (entrada de audio de toda la web)
+  const CLAVE_MIC = "aleran-mic-dispositivo";
+  let chipMic = null;
+
+  function micGuardado() {
+    try {
+      const v = JSON.parse(localStorage.getItem(CLAVE_MIC) || "null");
+      return v && v.id ? v : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function nombreMicCorto(n) {
+    return String(n || "")
+      .replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, "")
+      .replace(/^(Predeterminado|Default)\s*-\s*/i, "")
+      .trim();
+  }
+
+  function pintarChipMic() {
+    if (!chipMic) return;
+    const g = micGuardado();
+    const corto = g ? nombreMicCorto(g.nombre) : "Predeterminado";
+    chipMic.textContent = `🎤 ${corto.length > 24 ? corto.slice(0, 23) + "…" : corto}`;
+    chipMic.title = g ? `Micrófono elegido: ${g.nombre}` : "Micrófono: el predeterminado del sistema. Toca para elegir otro.";
+  }
+
+  function guardarMic(id, nombre) {
+    try {
+      if (id) localStorage.setItem(CLAVE_MIC, JSON.stringify({ id, nombre }));
+      else localStorage.removeItem(CLAVE_MIC);
+    } catch {
+      /* sin consecuencias */
+    }
+    // Si había un micrófono abierto, se cierra: el siguiente ejercicio abre el nuevo.
+    if (window.MicrofonoEngine && window.MicrofonoEngine.detener) window.MicrofonoEngine.detener();
+    pintarChipMic();
+    window.dispatchEvent(new CustomEvent("mic-cambio", { detail: { id, nombre } }));
+  }
+
+  async function abrirHojaMic() {
+    cerrarHoja();
+    hoja = crear("div", "hoja-fondo");
+    const caja = crear("div", "hoja");
+    caja.setAttribute("role", "dialog");
+    caja.setAttribute("aria-label", "Tu micrófono");
+    hoja.appendChild(caja);
+    const cab = crear("div", "hoja-cabecera");
+    cab.appendChild(crear("h2", "", "Tu micrófono"));
+    const cerrar = crear("button", "hoja-cerrar", "✕");
+    cerrar.type = "button";
+    cerrar.setAttribute("aria-label", "Cerrar");
+    cerrar.addEventListener("click", cerrarHoja);
+    cab.appendChild(cerrar);
+    caja.appendChild(cab);
+    caja.appendChild(crear("p", "hoja-texto", "La entrada que usan todas las herramientas con micrófono."));
+    const lista = crear("div", "rango-rejilla mic-lista");
+    caja.appendChild(lista);
+    hoja.addEventListener("click", (e) => {
+      if (e.target === hoja) cerrarHoja();
+    });
+    document.body.appendChild(hoja);
+
+    const pintarLista = async () => {
+      lista.innerHTML = "";
+      let dispositivos = [];
+      try {
+        dispositivos = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
+      } catch {
+        dispositivos = [];
+      }
+      const g = micGuardado();
+      const reales = dispositivos.filter((d) => d.deviceId && d.deviceId !== "default" && d.deviceId !== "communications");
+      const opciones = [{ id: "", nombre: "Predeterminado del sistema" }, ...reales.map((d) => ({ id: d.deviceId, nombre: d.label || "Micrófono" }))];
+      opciones.forEach((o) => {
+        const b = crear("button", "rango-opcion");
+        b.type = "button";
+        b.innerHTML = "<strong></strong>";
+        b.firstChild.textContent = o.nombre;
+        if ((g ? g.id : "") === o.id) b.classList.add("activo");
+        b.addEventListener("click", () => {
+          guardarMic(o.id, o.nombre);
+          cerrarHoja();
+        });
+        lista.appendChild(b);
+      });
+      const sinNombres = reales.length === 0 || reales.every((d) => !d.label);
+      if (sinNombres && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const permitir = crear("button", "rango-opcion", "Permitir el micrófono para ver cuáles tienes");
+        permitir.type = "button";
+        permitir.addEventListener("click", async () => {
+          try {
+            const flujo = await navigator.mediaDevices.getUserMedia({ audio: true });
+            flujo.getTracks().forEach((t) => t.stop());
+          } catch {
+            /* el navegador ya mostró su aviso */
+          }
+          pintarLista();
+        });
+        lista.appendChild(permitir);
+      }
+    };
+    pintarLista();
   }
 
   // ---------------------------------------------------------------- hoja «Tu rango vocal»
@@ -387,5 +502,5 @@
   // Los selects que rellenan las páginas en su propio DOMContentLoaded se recogen en una segunda pasada.
   window.addEventListener("load", mejorarTodosLosSelects);
 
-  window.AppShell = { dock: () => document.getElementById("dockHerramientas"), abrirRango: abrirHoja, mejorarSelect };
+  window.AppShell = { dock: () => document.getElementById("dockHerramientas"), abrirRango: abrirHoja, abrirMic: abrirHojaMic, mejorarSelect };
 })();

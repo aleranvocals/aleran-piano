@@ -12,6 +12,7 @@ let entrenModoActual = "rango";
 let entrenEnCurso = false;
 
 function cambiarSubmodoEntrenamiento(modo) {
+  if (modo === "twang") modo = "espectro"; // Espectro y Twang son una sola herramienta (enlaces antiguos ?tab=twang)
   if (entrenEnCurso) detenerTodoEntrenamiento();
   entrenModoActual = modo;
   document.querySelectorAll(".subtab").forEach((btn) => {
@@ -24,11 +25,12 @@ function cambiarSubmodoEntrenamiento(modo) {
   el("panel-sostenida").hidden = modo !== "sostenida";
   el("panel-messa").hidden = modo !== "messa";
   el("panel-aire").hidden = modo !== "aire";
-  // Espectro = explorar y comparar tomas; Twang = entrenar con una cifra. Pantallas distintas.
+  // Espectro y Twang: una sola herramienta (nota, twang, espectrograma y curva).
   el("panel-espectro").hidden = modo !== "espectro";
-  el("panel-twang").hidden = modo !== "twang";
-  if (modo === "twang") dibujarHistorialTwang(performance.now());
-  if (modo === "espectro") dibujarCurva();
+  if (modo === "espectro") {
+    dibujarHistorialTwang(performance.now());
+    dibujarCurva();
+  }
   el("panel-grabadora").hidden = modo !== "grabadora";
   el("estadoEntrenamiento").textContent = "";
 }
@@ -230,6 +232,7 @@ const SOSTENIDA_SILENCIO_LIMITE_MS = 700;
 // gráfica miden contra ESA nota; sin objetivo, contra la primera nota cantada.
 let sostenidaObjetivoMidi = null;
 let sostenidaOctavaCantada = 0;
+let sostenidaOctavas = {}; // octava cantada respecto al objetivo -> nº de lecturas
 
 function manejarClicPianoEntrenamiento(midi) {
   previsualizarNotaPiano(midi);
@@ -295,6 +298,7 @@ async function iniciarSostenida() {
   sostenidaInicioMs = null;
   sostenidaFrecuenciaRef = sostenidaObjetivoMidi !== null ? midiAFrecuencia(sostenidaObjetivoMidi) : null;
   sostenidaOctavaCantada = 0;
+  sostenidaOctavas = {};
   sostenidaUltimoSonidoMs = null;
   el("sostenidaResultado").textContent = "";
   el("sostenidaTiempo").textContent = "0.0s";
@@ -331,8 +335,10 @@ async function iniciarSostenida() {
     }
     let cents = 1200 * Math.log2(lectura.frecuencia / sostenidaFrecuenciaRef);
     if (sostenidaObjetivoMidi !== null) {
-      // Si canta la nota una octava arriba/abajo (voces distintas), se compara con la octava más cercana.
+      // Se mide la estabilidad dentro de la octava más cercana, pero la octava se anota: si no es la del
+      // objetivo, la toma no cuenta (el resultado y el aviso en vivo lo dicen).
       sostenidaOctavaCantada = Math.round(cents / 1200);
+      sostenidaOctavas[sostenidaOctavaCantada] = (sostenidaOctavas[sostenidaOctavaCantada] || 0) + 1;
       cents -= 1200 * sostenidaOctavaCantada;
     }
     sostenidaMuestrasCents.push(cents);
@@ -340,6 +346,10 @@ async function iniciarSostenida() {
     el("sostenidaTiempo").textContent = `${((ahora - sostenidaInicioMs) / 1000).toFixed(1)}s`;
     dibujarGraficoPitch(el("sostenidaGrafico"), sostenidaMuestrasCents);
     actualizarVibratoEnVivo();
+    if (sostenidaObjetivoMidi !== null && sostenidaOctavaCantada !== 0) {
+      el("sostenidaVibratoEnVivo").textContent =
+        `⚠ Una octava ${sostenidaOctavaCantada > 0 ? "más arriba" : "más abajo"} del objetivo (${midiANombre(sostenidaObjetivoMidi)})`;
+    }
   });
 }
 
@@ -400,20 +410,31 @@ function finalizarSostenida(mostrarResultado) {
 
   const analisis = analizarVibrato(sostenidaMuestrasCents, duracion);
   let texto = `Sostuviste la nota ${duracion.toFixed(1)} segundos.`;
+  let octavaOk = true;
   if (sostenidaObjetivoMidi !== null) {
-    texto += ` Objetivo: ${midiANombre(sostenidaObjetivoMidi)}.`;
-    if (sostenidaOctavaCantada !== 0) {
-      texto += ` Cantaste ${Math.abs(sostenidaOctavaCantada) === 1 ? "una octava" : Math.abs(sostenidaOctavaCantada) + " octavas"} ${sostenidaOctavaCantada > 0 ? "más arriba" : "más abajo"}.`;
+    const lecturas = Object.entries(sostenidaOctavas);
+    const total = lecturas.reduce((a, [, n]) => a + n, 0);
+    const enSuOctava = sostenidaOctavas[0] || 0;
+    octavaOk = total === 0 || enSuOctava / total >= 0.8;
+    if (octavaOk) {
+      texto += ` ✅ Nota correcta: ${midiANombre(sostenidaObjetivoMidi)}.`;
+    } else {
+      const dominante = Number(lecturas.sort((a, b) => b[1] - a[1])[0][0]);
+      texto +=
+        ` ❌ El objetivo era ${midiANombre(sostenidaObjetivoMidi)} y cantaste ${midiANombre(sostenidaObjetivoMidi + 12 * dominante)} ` +
+        `(${Math.abs(dominante) === 1 ? "una octava" : Math.abs(dominante) + " octavas"} ${dominante > 0 ? "más arriba" : "más abajo"}). No cuenta.`;
     }
   }
   if (analisis && analisis.tasaHz >= 3 && analisis.tasaHz <= 9 && analisis.profundidad >= 8) {
     texto += ` Vibrato detectado: ~${analisis.tasaHz.toFixed(1)} Hz, profundidad ~${Math.round(analisis.profundidad)} cents.`;
   } else if (analisis) {
-    texto += ` Mantuviste el tono bastante estable (variación media ~${Math.round(analisis.profundidad)} cents).`;
+    const v = Math.round(analisis.profundidad);
+    const juicio = v <= 25 ? "bastante estable" : v <= 60 ? "con algo de oscilación" : "inestable";
+    texto += ` Tu tono estuvo ${juicio} (variación ~${v} cents).`;
   }
   el("sostenidaResultado").textContent = texto;
 
-  const record = duracion >= 1 && Progreso.actualizarRecord("sostenidaMejorSegundos", duracion, (n, a) => n > a);
+  const record = octavaOk && duracion >= 1 && Progreso.actualizarRecord("sostenidaMejorSegundos", duracion, (n, a) => n > a);
   el("estadoEntrenamiento").textContent = record ? "🏆 ¡Nuevo récord de nota sostenida!" : "";
 }
 
@@ -1019,6 +1040,31 @@ function borrarTomaCurva() {
   dibujarCurva();
 }
 
+// --- Nota que estás cantando (pestaña Espectro y Twang) ---
+let notaUltima = { t: 0 };
+
+function pintarNota(lectura) {
+  const nombre = el("notaNombre");
+  const detalle = el("notaDetalle");
+  if (!nombre || !detalle) return;
+  const ahora = performance.now();
+  if (lectura) {
+    const midi = 69 + 12 * Math.log2(lectura.frecuencia / 440);
+    const redondo = Math.round(midi);
+    notaUltima = { t: ahora, nombre: midiANombre(redondo), hz: lectura.frecuencia, cents: Math.round((midi - redondo) * 100) };
+  } else if (ahora - notaUltima.t > 300) {
+    nombre.textContent = "—";
+    detalle.textContent = "canta una vocal";
+    detalle.dataset.afinacion = "";
+    return;
+  }
+  if (!notaUltima.nombre) return;
+  nombre.textContent = notaUltima.nombre;
+  const c = notaUltima.cents;
+  detalle.textContent = `${Math.round(notaUltima.hz)} Hz · ${c >= 0 ? "+" : ""}${c} cents`;
+  detalle.dataset.afinacion = Math.abs(c) <= 10 ? "ok" : "fuera";
+}
+
 function botonesEspectro(enCurso) {
   ["btnEspectroIniciar", "btnTwangIniciar"].forEach((id) => {
     if (el(id)) el(id).disabled = enCurso;
@@ -1154,6 +1200,7 @@ function indiceBrillo(datos, sampleRate) {
 }
 
 function actualizarMedidorBrillo(brillo) {
+  if (!el("brilloValor")) return; // el brillo lo cubre ahora el medidor de twang
   if (brillo === null) {
     el("brilloValor").textContent = "—";
     el("brilloBarra").style.width = "0%";
@@ -1166,23 +1213,20 @@ function actualizarMedidorBrillo(brillo) {
 function bucleEspectro(analizador, canvas) {
   if (!entrenEnCurso) return;
   const sampleRate = obtenerContexto().sampleRate;
-  if (entrenModoActual === "twang") {
-    if (detectorTwang && espectroFloat) {
-      analizador.getFloatFrequencyData(espectroFloat);
-      const hayVoz = window.MicrofonoEngine.leerPitch ? !!window.MicrofonoEngine.leerPitch() : true;
-      const ahora = performance.now();
-      const r = detectorTwang.actualizar(espectroFloat, sampleRate, hayVoz, ahora);
-      pintarTwang(r);
-      twangRegistrar(r, ahora);
-      dibujarHistorialTwang(ahora);
-      revisarCalibracionTwang(ahora);
-    }
-  } else {
-    analizador.getByteFrequencyData(espectroDatos);
-    dibujarColumnaEspectro(canvas, espectroDatos, sampleRate);
-    actualizarMedidorBrillo(indiceBrillo(espectroDatos, sampleRate));
-    actualizarCurva(espectroDatos, sampleRate);
-    dibujarCurva();
+  analizador.getByteFrequencyData(espectroDatos);
+  dibujarColumnaEspectro(canvas, espectroDatos, sampleRate);
+  actualizarCurva(espectroDatos, sampleRate);
+  dibujarCurva();
+  const lectura = window.MicrofonoEngine.leerPitch ? window.MicrofonoEngine.leerPitch() : null;
+  pintarNota(lectura);
+  if (detectorTwang && espectroFloat) {
+    analizador.getFloatFrequencyData(espectroFloat);
+    const ahora = performance.now();
+    const r = detectorTwang.actualizar(espectroFloat, sampleRate, !!lectura, ahora);
+    pintarTwang(r);
+    twangRegistrar(r, ahora);
+    dibujarHistorialTwang(ahora);
+    revisarCalibracionTwang(ahora);
   }
   espectroAnimId = requestAnimationFrame(() => bucleEspectro(analizador, canvas));
 }
@@ -1194,17 +1238,15 @@ async function iniciarEspectro() {
   }
   const canvas = el("espectroGrafico");
   canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-  actualizarMedidorBrillo(null);
   botonesEspectro(true);
   entrenEnCurso = true;
-  if (entrenModoActual === "twang") twangReiniciarSesion();
+  twangReiniciarSesion();
+  notaUltima = { t: 0 };
 
   try {
     el("estadoEntrenamiento").textContent = "Pidiendo permiso del micrófono…";
     await window.MicrofonoEngine.iniciar();
-    el("estadoEntrenamiento").textContent = entrenModoActual === "twang"
-      ? "🎤 Canta una vocal sostenida y busca el twang…"
-      : "🎤 Canta o vocaliza y observa tu espectro…";
+    el("estadoEntrenamiento").textContent = "🎤 Canta una vocal sostenida y observa nota, twang y espectro…";
   } catch (err) {
     el("estadoEntrenamiento").textContent = `No se pudo acceder al micrófono: ${err.message}`;
     finalizarEspectro();
@@ -1214,7 +1256,7 @@ async function iniciarEspectro() {
   const analizador = window.MicrofonoEngine.obtenerAnalizador();
   espectroDatos = new Uint8Array(analizador.frequencyBinCount);
   espectroFloat = new Float32Array(analizador.frequencyBinCount);
-  detectorTwang = window.Twang && entrenModoActual === "twang" ? crearDetectorTwang() : null;
+  detectorTwang = window.Twang ? crearDetectorTwang() : null;
   bucleEspectro(analizador, canvas);
 }
 
@@ -1230,7 +1272,7 @@ function finalizarEspectro() {
     espectroAnimId = null;
   }
   botonesEspectro(false);
-  actualizarMedidorBrillo(null);
+  pintarNota(null);
   if (twangSesion.mejor > twangMejorGuardada()) twangGuardar(TWANG_CLAVE_MEJOR, String(Math.round(twangSesion.mejor)));
   detectorTwang = null;
   calibracionTwangFin = 0;
@@ -1270,8 +1312,6 @@ function inicializarEntrenamiento() {
   el("btnAireDetener").addEventListener("click", detenerAire);
   el("btnEspectroIniciar").addEventListener("click", iniciarEspectro);
   el("btnEspectroDetener").addEventListener("click", detenerEspectro);
-  el("btnTwangIniciar").addEventListener("click", iniciarEspectro);
-  el("btnTwangDetener").addEventListener("click", detenerEspectro);
   el("btnCurvaGuardar").addEventListener("click", guardarTomaCurva);
   el("btnCurvaBorrar").addEventListener("click", borrarTomaCurva);
   dibujarCurva();
@@ -1281,8 +1321,9 @@ function inicializarEntrenamiento() {
   // esa pestaña de entrada -- si no hay parámetro o no coincide con ninguna
   // pestaña real, se queda en "rango" (la que ya marca el HTML por defecto).
   const tabPedida = new URLSearchParams(window.location.search).get("tab");
-  if (tabPedida && document.querySelector(`.subtab[data-entren="${tabPedida}"]`)) {
-    cambiarSubmodoEntrenamiento(tabPedida);
+  const tabReal = tabPedida === "twang" ? "espectro" : tabPedida;
+  if (tabReal && document.querySelector(`.subtab[data-entren="${tabReal}"]`)) {
+    cambiarSubmodoEntrenamiento(tabReal);
   }
 }
 

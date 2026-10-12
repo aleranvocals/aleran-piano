@@ -373,7 +373,7 @@ function ocultarNotasProgramadasSimon(ocultar) {
 function empezarSimon() {
   simonSecuencia = [];
   simonNivel = 0;
-  el("simonFeedback").textContent = "";
+  simonMensaje("");
   el("simonRecord").textContent = Progreso.obtener("simonMejorNivel", 0);
 
   if (el("simonProgramado").checked) {
@@ -386,7 +386,7 @@ function empezarSimon() {
       marcarCampoNotaInvalido(el("simonNotasProgramadas"), false);
     } catch (err) {
       marcarCampoNotaInvalido(el("simonNotasProgramadas"), true, err.message);
-      el("simonFeedback").textContent = err.message;
+      simonMensaje(err.message);
       return;
     }
     const alto = Math.max(...simonSecuenciaProgramada);
@@ -394,7 +394,7 @@ function empezarSimon() {
     if (alto - bajo > SIMON_RANGO_MAXIMO_SEMITONOS) {
       const mensaje = `La secuencia abarca más de 2 octavas (de ${midiANombre(bajo)} a ${midiANombre(alto)}) -- acórtala para que quepa en el piano sin desplazarlo.`;
       marcarCampoNotaInvalido(el("simonNotasProgramadas"), true, mensaje);
-      el("simonFeedback").textContent = mensaje;
+      simonMensaje(mensaje);
       return;
     }
     // Deja a la vista, sin desplazar, la nota más grave de la secuencia --
@@ -409,7 +409,7 @@ function empezarSimon() {
 function siguienteRondaSimon() {
   if (el("simonProgramado").checked) {
     if (simonNivel >= simonSecuenciaProgramada.length) {
-      el("simonFeedback").textContent = "🎉 ¡Completaste la secuencia entera! Pulsa Empezar para repetirla.";
+      simonMensaje("🎉 ¡Completaste la secuencia entera! Pulsa Empezar para repetirla.");
       ocultarNotasProgramadasSimon(false);
       return;
     }
@@ -421,7 +421,7 @@ function siguienteRondaSimon() {
   simonNivel++;
   simonEntrada = [];
   el("simonNivel").textContent = simonNivel;
-  el("simonFeedback").textContent = "Escucha…";
+  simonMensaje("Escucha…");
   reproducirSecuenciaSimon();
 }
 
@@ -439,31 +439,92 @@ async function reproducirSecuenciaSimon() {
   });
   simonReproduciendo = false;
   simonEsperandoEntrada = true;
-  el("simonFeedback").textContent = "Tu turno: repite la secuencia";
+  simonPintarPuntos(0, simonSecuencia.length, false);
+  simonMensaje(`Tu turno: repite las ${simonSecuencia.length} nota${simonSecuencia.length === 1 ? "" : "s"}`);
+}
+
+/** Texto del cuadro de Simón dice; el color del cuadro sale del tipo de mensaje (acierto, fallo, turno...). */
+function simonMensaje(texto) {
+  el("simonFeedback").textContent = texto;
+  const t = String(texto);
+  let estado = "espera";
+  if (t.startsWith("✅") || t.startsWith("🎉") || t.startsWith("✓")) estado = "acierto";
+  else if (t.startsWith("❌")) estado = "fallo";
+  else if (t.startsWith("Tu turno")) estado = "turno";
+  else if (t.startsWith("Escucha")) estado = "escucha";
+  const banner = el("simonBanner");
+  if (banner) banner.dataset.estado = estado;
+}
+
+/** Puntos de progreso: uno por nota de la secuencia (verde = acertada, rojo = la que fallaste). */
+function simonPintarPuntos(hechos, total, fallo) {
+  const cont = el("simonPuntos");
+  if (!cont) return;
+  cont.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const p = document.createElement("span");
+    p.className = i < hechos ? "ok" : i === hechos && fallo ? "mal" : "pend";
+    cont.appendChild(p);
+  }
+}
+
+/** Color de la tecla pulsada: verde si acertaste esa nota, rojo si no. */
+function marcarResultadoTecla(midi, clase) {
+  const tecla = el("piano").querySelector(`[data-midi="${midi}"]`);
+  if (!tecla) return;
+  tecla.classList.add(clase);
+  setTimeout(() => tecla.classList.remove(clase), 500);
 }
 
 /** Devuelve true si consumió el clic (Simon dice esperando tu turno). */
 function manejarClicSimon(midi) {
   if (!simonEsperandoEntrada || simonReproduciendo) return false;
+  const indice = simonEntrada.length;
+  const esperado = simonSecuencia[indice];
+  const total = simonSecuencia.length;
+  const exacta = midi === esperado;
+  // La octava cuenta: la misma nota en otra octava no vale, pero el mensaje te dice que la nota era esa.
+  const otraOctava = !exacta && ((((midi - esperado) % 12) + 12) % 12) === 0;
   marcarTeclaActiva(midi, true);
   setTimeout(() => marcarTeclaActiva(midi, false), 250);
   window.PianoEngine.reproducirSecuencia([{ midi, duracion: 0.3 }], volumenActual(), {});
 
-  simonEntrada.push(midi);
-  const indice = simonEntrada.length - 1;
-  if (simonEntrada[indice] !== simonSecuencia[indice]) {
+  if (!exacta) {
     simonEsperandoEntrada = false;
+    marcarResultadoTecla(midi, "error");
+    simonPintarPuntos(indice, total, true);
     const nivelAlcanzado = simonNivel - 1;
     const record = Progreso.actualizarRecord("simonMejorNivel", nivelAlcanzado, (n, a) => n > a);
-    el("simonFeedback").textContent = `❌ Fallaste en el nivel ${simonNivel}. ${record ? "🏆 ¡Nuevo récord!" : ""} Pulsa Empezar para reintentar.`;
+    simonMensaje(
+      `❌ ${otraOctava ? "Nota correcta pero en otra octava: " : ""}era ${midiANombre(esperado)} y tocaste ${midiANombre(midi)} (nota ${indice + 1} de ${total}). ` +
+        `${record ? "🏆 ¡Nuevo récord! " : ""}Escucha cómo era y pulsa Empezar para reintentar.`
+    );
     el("simonRecord").textContent = Progreso.obtener("simonMejorNivel", 0);
     if (el("simonProgramado").checked) ocultarNotasProgramadasSimon(false);
+    // Suena la secuencia correcta para que aprendas de lo que falló (sin reabrir tu turno).
+    const eventos = [];
+    simonSecuencia.forEach((m, i) => {
+      eventos.push({ midi: m, duracion: 0.5 });
+      if (i < simonSecuencia.length - 1) eventos.push({ midi: -1, duracion: 0.15 });
+    });
+    setTimeout(() => {
+      window.PianoEngine.reproducirSecuencia(eventos, volumenActual(), {
+        onNotaInicio: (m) => marcarTeclaActiva(m, true),
+        onNotaFin: (m) => marcarTeclaActiva(m, false),
+      });
+    }, 1000);
     return true;
   }
-  if (simonEntrada.length === simonSecuencia.length) {
+
+  simonEntrada.push(midi);
+  marcarResultadoTecla(midi, "acierto");
+  simonPintarPuntos(simonEntrada.length, total, false);
+  if (simonEntrada.length === total) {
     simonEsperandoEntrada = false;
-    el("simonFeedback").textContent = "✅ ¡Bien! Siguiente ronda…";
-    setTimeout(siguienteRondaSimon, 900);
+    simonMensaje(`✅ ¡Secuencia completa! Nivel ${simonNivel} superado. Siguiente ronda…`);
+    setTimeout(siguienteRondaSimon, 1100);
+  } else {
+    simonMensaje(`✓ ${midiANombre(midi)} · ${simonEntrada.length} de ${total}. Sigue…`);
   }
   return true;
 }

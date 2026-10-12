@@ -250,3 +250,41 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-
 .twang-stats b { display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .twang-stats span { font-size: 0.72rem; color: var(--bone-dim); }
 .twang-calib-estado { margin: 0.2rem 0 0.6rem; }
+
+/* --- Espectro y Twang: una sola herramienta ------------------------------------- */
+.lecturas-espectro { display: grid; grid-template-columns: minmax(130px, 0.7fr) 1.6fr; gap: 0.7rem; margin-bottom: 0.7rem; align-items: stretch; }
+.lectura-nota { display: flex; flex-direction: column; justify-content: center; gap: 0.15rem; padding: 0.7rem 0.8rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radio); min-width: 0; }
+.lectura-nota b { font-size: 2.6rem; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.lectura-etiqueta { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bone-dim); }
+.lectura-detalle { font-size: 0.78rem; color: var(--bone-dim); font-variant-numeric: tabular-nums; }
+.lectura-detalle[data-afinacion="ok"] { color: #3ecf6e; }
+.lectura-detalle[data-afinacion="fuera"] { color: var(--crimson-bright); }
+.lecturas-espectro .twang-grande { padding: 0.7rem 0.8rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radio); gap: 0.5rem; min-width: 0; }
+.lecturas-espectro .twang-cifra #twangDelta { font-size: 2.2rem; }
+.lecturas-espectro .twang-pista { height: 14px; }
+.lecturas-espectro .twang-insignia { padding: 0.5rem 0.7rem; font-size: 0.85rem; }
+.lecturas-espectro .twang-check { width: 1.3rem; height: 1.3rem; font-size: 0.8rem; }
+.espectro-visor { margin-top: 0.8rem; }
+.twang-historial canvas { height: 110px; }
+@media (max-width: 460px) {
+  .lecturas-espectro { grid-template-columns: 1fr; }
+  .lectura-nota { flex-direction: row; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+}
+
+/* --- Simón dice: feedback claro nota a nota --------------------------------------- */
+.simon-banner { border: 1px solid var(--line); border-radius: var(--radio); background: var(--panel-2); padding: 0.8rem 0.9rem; display: grid; gap: 0.55rem; margin-top: 0.5rem; transition: background 0.2s ease, border-color 0.2s ease; }
+.simon-banner[data-estado="escucha"] { border-color: var(--bone-dim); }
+.simon-banner[data-estado="turno"] { border-color: var(--crimson-bright); }
+.simon-banner[data-estado="acierto"] { border-color: #3ecf6e; background: rgba(62, 207, 110, 0.12); }
+.simon-banner[data-estado="fallo"] { border-color: #ff3b4e; background: rgba(255, 59, 78, 0.12); }
+.simon-mensaje { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.35; }
+.simon-puntos { display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 1rem; }
+.simon-puntos span { width: 0.95rem; height: 0.95rem; border-radius: 50%; border: 2px solid var(--line); }
+.simon-puntos .ok { background: #3ecf6e; border-color: #3ecf6e; }
+.simon-puntos .mal { background: #ff3b4e; border-color: #ff3b4e; }
+.tecla.acierto { background: #3ecf6e !important; }
+.tecla.error { background: #ff3b4e !important; }
+
+/* --- Selector de micrófono --------------------------------------------------------- */
+.mic-lista { grid-template-columns: 1fr; }
+.mic-lista .rango-opcion { text-align: left; }
