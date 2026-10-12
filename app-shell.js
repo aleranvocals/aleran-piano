@@ -127,6 +127,7 @@
     { href: "rutina.html", texto: "📋 Rutina" },
     { href: "catalogo.html", texto: "🎼 Catálogo" },
     { href: "progreso.html", texto: "📈 Progreso" },
+    { href: "juegos.html", texto: "🎮 Juegos" },
     { href: "mapa-vocal.html", texto: "🗺️ Mapa vocal" },
     { href: "glosario.html", texto: "📖 Glosario" },
     { href: "soporte.html", texto: "💬 Soporte" },
