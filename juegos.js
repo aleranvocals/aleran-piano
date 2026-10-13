@@ -37,7 +37,7 @@
     const clave = `${config.notacion}|${config.escala}|${config.tonica}`;
     if (clave === _ortoClave && _orto) return _orto;
     if (config.notacion !== "teorica") {
-      // notación simple: solo sostenidos (Do# Re# Fa# Sol# La#), sin hablar de bemoles
+      // notación simple (sostenidos) o «ambas» (Re#/Mib): las dos usan el mismo mapa de sostenidos
       _ortoClave = clave;
       _orto = { mapa: {}, bemoles: false };
       return _orto;
@@ -63,7 +63,9 @@
     return _orto;
   }
   /** Nombre de una clase de nota (sin octava) en la tonalidad elegida. */
+  const NEGRAS_DOBLES = [null, ["Do#", "Reb"], null, ["Re#", "Mib"], null, null, ["Fa#", "Solb"], null, ["Sol#", "Lab"], null, ["La#", "Sib"], null];
   function nombreClase(pc) {
+    if (config.notacion === "ambas" && NEGRAS_DOBLES[mod12(pc)]) return NEGRAS_DOBLES[mod12(pc)].join("/");
     const o = ortografia();
     const [l, a] = o.mapa[mod12(pc)] || (o.bemoles ? FALLBACK_BEMOLES : FALLBACK_SOSTENIDOS)[mod12(pc)];
     return LETRAS[l] + sufijoAlt(a);
@@ -71,12 +73,14 @@
   /** Nombre de la nota con octava (Do4 = Do central) escrito como corresponde a la tonalidad. */
   const nombreNota = (m) => {
     const r = Math.round(m);
+    if (config.notacion === "ambas" && NEGRAS_DOBLES[mod12(r)]) return NEGRAS_DOBLES[mod12(r)].join("/") + (Math.floor(r / 12) - 1);
     const o = ortografia();
     const [l, a] = o.mapa[mod12(r)] || (o.bemoles ? FALLBACK_BEMOLES : FALLBACK_SOSTENIDOS)[mod12(r)];
     return LETRAS[l] + sufijoAlt(a) + (Math.floor((r - a) / 12) - 1);
   };
   /** Nombre de la tónica i (0–11) según el modo elegido: en menor Mib menor, en mayor Mib mayor… */
   function nombreTonica(i) {
+    if (config.notacion === "ambas" && NEGRAS_DOBLES[mod12(i)]) return NEGRAS_DOBLES[mod12(i)].join("/");
     if (config.notacion !== "teorica") return NOMBRES[mod12(i)];
     const [l, a] = (config.escala === "menor" ? TONICA_MENOR : TONICA_MAYOR)[mod12(i)];
     return LETRAS[l] + sufijoAlt(a);
@@ -86,7 +90,7 @@
   // ---------------------------------------------------------------- configuración que se recuerda
   const CLAVE_CONFIG = "aleran-juegos-config";
   const config = Object.assign(
-    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", entrada: "mic", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio", notacion: "sostenidos" },
+    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", entrada: "mic", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio", notacion: "ambas" },
     (() => {
       try {
         return JSON.parse(localStorage.getItem(CLAVE_CONFIG) || "{}");
@@ -172,49 +176,64 @@
         lienzoCont.parentNode.insertBefore(cont, lienzoCont.nextSibling);
         const css = document.createElement("style");
         css.textContent = `
-          #pianoJuego{position:relative;margin:10px 0 2px;overflow-x:auto;padding-bottom:6px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;contain:inline-size}
-          #pianoJuego .teclas{position:relative;display:flex;height:96px;width:max-content;min-width:100%}
-          #pianoJuego .blanca{position:relative;width:34px;flex:0 0 34px;height:96px;background:#efe6e0;border:1px solid #20161a;border-radius:0 0 6px 6px;
-            color:#3a2a30;font:600 9px/1 'Work Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;cursor:pointer;user-select:none;touch-action:none}
-          #pianoJuego .negra{position:absolute;top:0;width:22px;height:58px;margin-left:-11px;background:#1a1216;border:1px solid #000;border-radius:0 0 4px 4px;z-index:2;cursor:pointer;
-            color:#d8c9d0;font:600 8px/1 'Work Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;user-select:none;touch-action:none}
-          #pianoJuego .marcada{box-shadow:inset 0 -5px 0 var(--marca)}
+          #pianoJuego{position:relative;margin:10px 0 2px;width:100%;max-width:100%;box-sizing:border-box}
+          #pianoJuego .scroll{overflow-x:auto;padding-bottom:4px}
+          #pianoJuego .teclas{position:relative;height:104px;margin:0 auto}
+          #pianoJuego .blanca{position:absolute;top:0;height:104px;background:#efe6e0;border:1px solid #20161a;border-radius:0 0 6px 6px;box-sizing:border-box;
+            color:#3a2a30;font:700 11px/1 'Work Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;cursor:pointer;user-select:none;touch-action:none}
+          #pianoJuego .negra{position:absolute;top:0;height:64px;background:#1a1216;border:1px solid #000;border-radius:0 0 4px 4px;z-index:2;cursor:pointer;box-sizing:border-box;
+            color:#e8dde2;font:700 9px/1.15 'Work Sans',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:4px;user-select:none;touch-action:none}
+          #pianoJuego .negra .b{color:#a8c8ff;font-weight:600}
+          #pianoJuego .marcada{box-shadow:inset 0 -6px 0 var(--marca)}
           #pianoJuego .blanca.pulsada{background:#ff8fa3}
           #pianoJuego .negra.pulsada{background:#c02241}
-          #pianoJuego .estado-midi{font-size:12px;color:#a8998f;margin-top:4px}
+          #pianoJuego .estado-midi{font-size:12px;color:#a8998f;margin-top:6px;line-height:1.4}
         `;
         document.head.appendChild(css);
       }
+      // Solo DOS octavas (la 4 y la 5; la 3 y la 4 si la voz es grave): más claro y con teclas grandes.
       const [lo, hi] = rangoActual();
-      const desde = Math.floor((lo - 2) / 12) * 12; // empieza en un Do
-      let hasta = hi + 3;
-      if (hasta - desde > 40) hasta = desde + 40;
-      const blancas = [];
-      for (let m = desde; m <= hasta; m++) if (![1, 3, 6, 8, 10].includes(mod12(m))) blancas.push(m);
-      cont.innerHTML = '<div class="teclas"></div><div class="estado-midi" id="pianoEstado"></div>';
-      const fila = cont.firstChild;
-      blancas.forEach((m) => {
+      let centro = (lo + hi) / 2;
+      const notasJuego = juego && juego.notasPiano ? juego.notasPiano() : null;
+      let inicioOct = centro < 58 ? 3 : 4;
+      if (notasJuego && notasJuego.length) {
+        const mn = Math.min(...notasJuego);
+        const mx = Math.max(...notasJuego);
+        while (mn < (inicioOct + 1) * 12 && inicioOct > 1) inicioOct -= 1;
+        while (mx > (inicioOct + 3) * 12 && inicioOct < 6) inicioOct += 1;
+      }
+      const desde = (inicioOct + 1) * 12; // Do de la octava inicial (Do4 = 60)
+      const hasta = desde + 24; // dos octavas completas + el Do siguiente
+      const blancasEnRango = [];
+      for (let m = desde; m <= hasta; m++) if (![1, 3, 6, 8, 10].includes(mod12(m))) blancasEnRango.push(m);
+      const ANCHO = 44; // ancho de una tecla blanca
+      cont.innerHTML = `<div class="scroll"><div class="teclas" style="width:${blancasEnRango.length * ANCHO}px"></div></div><div class="estado-midi" id="pianoEstado"></div>`;
+      const fila = cont.querySelector(".teclas");
+      const nBlancas = new Map();
+      blancasEnRango.forEach((m, i) => {
+        nBlancas.set(m, i);
         const k = document.createElement("div");
         k.className = "blanca";
         k.dataset.midi = String(m);
-        k.textContent = mod12(m) === 0 ? nombreNota(m) : nombreClase(m);
+        k.style.left = `${i * ANCHO}px`;
+        k.style.width = `${ANCHO}px`;
+        const nom = LETRAS[NATURAL.indexOf(mod12(m))];
+        k.textContent = mod12(m) === 0 ? nom + (Math.floor(m / 12) - 1) : nom;
         fila.appendChild(k);
-        const negra = [1, 3, 6, 8, 10].includes(mod12(m + 1)) && m + 1 <= hasta;
-        if (negra) {
-          const n = document.createElement("div");
-          n.className = "negra";
-          n.dataset.midi = String(m + 1);
-          n.textContent = nombreClase(m + 1);
-          n.style.left = `${fila.children.length * 34}px`;
-          fila.appendChild(n);
-        }
       });
-      // las negras se colocan con posición absoluta respecto a la fila (después de crear las blancas)
-      let x = 0;
-      Array.from(fila.children).forEach((k) => {
-        if (k.classList.contains("blanca")) x += 34;
-        else k.style.left = `${x}px`;
-      });
+      for (let m = desde; m <= hasta; m++) {
+        if (![1, 3, 6, 8, 10].includes(mod12(m))) continue;
+        const izq = nBlancas.get(m - 1);
+        if (izq === undefined) continue;
+        const [sost, bem] = NEGRAS_DOBLES[mod12(m)];
+        const n = document.createElement("div");
+        n.className = "negra";
+        n.dataset.midi = String(m);
+        n.style.width = `${Math.round(ANCHO * 0.62)}px`;
+        n.style.left = `${(izq + 1) * ANCHO - Math.round(ANCHO * 0.31)}px`;
+        n.innerHTML = `<span>${sost}</span><span class="b">${bem}</span>`;
+        fila.appendChild(n);
+      }
       const alPulsar = (e) => {
         const k = e.target.closest("[data-midi]");
         if (!k) return;
@@ -228,8 +247,12 @@
         this.pulsadasPantalla.clear();
       };
       fila.onpointerdown = alPulsar;
-      window.addEventListener("pointerup", alSoltar);
-      window.addEventListener("pointercancel", alSoltar);
+      if (!this._escuchasGlobales) {
+        window.addEventListener("pointerup", alSoltar);
+        window.addEventListener("pointercancel", alSoltar);
+        this._escuchasGlobales = true;
+      }
+      this._desde = desde;
       cont.style.display = "block";
       this.refrescar();
     },
@@ -263,9 +286,10 @@
             };
           });
           this.entradasMidi = entradas;
+          const nombres = Array.from(new Set(entradas.map((e) => e.name.replace(/\s*\(.*\)\s*$/, "").replace(/^MIDIIN\d+\s*/i, "").trim() || e.name)));
           pon(
             entradas.length
-              ? `🎹 MIDI conectado: ${entradas.map((e) => e.name).join(", ")}. También puedes usar el piano de pantalla o el teclado del ordenador.`
+              ? `🎹 MIDI conectado: ${nombres[0]}${entradas.length > 1 ? ` (${entradas.length} puertos)` : ""}. También puedes tocar el piano de pantalla o el teclado del ordenador.`
               : "No veo ningún piano MIDI conectado: usa el piano de pantalla o el teclado del ordenador (A S D F G H J K · W E T Y U)."
           );
         };
@@ -285,9 +309,9 @@
   // teclado del ordenador como piano (A S D F G H J K = Do Re Mi Fa Sol La Si Do; W E T Y U = sostenidos)
   const MAPA_TECLAS_PIANO = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15 };
   function baseTeclasPiano() {
+    if (Piano._desde !== undefined) return Piano._desde; // el Do de la izquierda del piano de pantalla
     const [lo, hi] = rangoActual();
-    const centro = (lo + hi) / 2;
-    return Math.round((centro - 6) / 12) * 12; // el Do que deja el centro de tu rango a media escala
+    return Math.round(((lo + hi) / 2 - 6) / 12) * 12;
   }
 
   // ---------------------------------------------------------------- entrada de tono (micrófono, teclado o piano)
@@ -383,6 +407,7 @@
   function arrancar(nuevo) {
     detener(false);
     juego = nuevo;
+    if (config.entrada === "piano" && Piano.activo) Piano.construir();
     Arte.particulas.length = 0;
     $("btnJugar").disabled = true;
     $("btnParar").disabled = false;
@@ -477,6 +502,15 @@
       ctx.lineTo(W, H);
       ctx.closePath();
       ctx.fill();
+    },
+    /** Fija ctx.font al mayor tamaño (≤ tam) con el que `txt` cabe en `ancho` píxeles. */
+    ajustar(ctx, txt, ancho, tam, familia = "Consolas, monospace") {
+      let s = tam;
+      ctx.font = `bold ${s}px ${familia}`;
+      while (s > 7 && ctx.measureText(txt).width > ancho) {
+        s -= 1;
+        ctx.font = `bold ${s}px ${familia}`;
+      }
     },
     texto(ctx, txt, x, y, tam, color, align = "left") {
       ctx.font = `900 ${tam}px "Segoe UI Black", Impact, sans-serif`;
@@ -581,6 +615,9 @@
         const sig = puertas.find((q) => !q.hecho && q.x + ANCHO_PUERTA > BOLA_X - 10);
         return sig ? { [sig.nota]: "#ff3b6e" } : {};
       },
+      notasPiano() {
+        return notas.slice();
+      },
       puertas,
       resultados,
       actualizar(dt) {
@@ -662,7 +699,7 @@
           if (!esTonica && Math.abs(yAnterior - y) < 15) continue; // sin amontonar etiquetas
           yAnterior = y;
           Arte.pastilla(ctx, 4, y - 7, 38, 14, esTonica ? "#93172c" : "rgba(40,28,76,0.9)");
-          ctx.font = "bold 10px Consolas, monospace";
+          Arte.ajustar(ctx, nombreNota(n), 36, 10);
           ctx.textAlign = "center";
           ctx.fillStyle = "#efe6e0";
           ctx.fillText(nombreNota(n), 23, y + 3.5);
@@ -709,7 +746,7 @@
           // placa con la nota (sobre el pilar de arriba, o debajo si no cabe)
           const yPlaca = arriba - 30 > 14 ? arriba - 32 : abajo + 16;
           Arte.pastilla(ctx, p.x + 4, yPlaca, ANCHO_PUERTA - 8, 20, "rgba(10,6,24,0.92)", base[1]);
-          ctx.font = "bold 13px Consolas, monospace";
+          Arte.ajustar(ctx, nombreNota(p.nota), ANCHO_PUERTA - 12, 13);
           ctx.textAlign = "center";
           ctx.fillStyle = "#fff";
           ctx.fillText(nombreNota(p.nota), p.x + ANCHO_PUERTA / 2, yPlaca + 14);
@@ -759,7 +796,8 @@
         ctx.fillRect(BOLA_X + 7, yb - 3, 2.4, 3);
         ctx.font = "bold 12px Consolas, monospace";
         ctx.textAlign = "left";
-        Arte.pastilla(ctx, BOLA_X + 22, yb - 10, 40, 18, "rgba(10,6,24,0.85)");
+        const textoEsp = hayVoz ? nombreNota(midiSuave) : "canta…";
+        Arte.pastilla(ctx, BOLA_X + 22, yb - 10, Math.max(40, ctx.measureText(textoEsp).width + 10), 18, "rgba(10,6,24,0.85)");
         ctx.fillStyle = hayVoz ? "#fff" : "#8a7fa8";
         ctx.fillText(hayVoz ? nombreNota(midiSuave) : "canta…", BOLA_X + 26, yb + 3);
         Arte.dibujar(ctx);
@@ -1017,6 +1055,9 @@
         const mapa = {};
         plan.lista.forEach((a) => (mapa[a.midi] = a.color));
         return mapa;
+      },
+      notasPiano() {
+        return plan.lista.map((a) => a.midi);
       },
       actualizar(dtReal) {
         const dt = dtReal * TS; // tiempo del juego (más lento); el tiempo real se usa para tu voz y las animaciones
@@ -1524,7 +1565,7 @@
           ctx.globalAlpha = cerca ? 1 : 0.62;
           if (ya) Arte.brillo(ctx, cx, yTop + 9, 52 + 6 * Math.sin(t * 16), "255,255,255", 0.45);
           Arte.pastilla(ctx, cx - 30, yTop - 6, 60, 30, ya ? a.color : "rgba(10,6,24,0.88)", ya ? "#fff" : a.color);
-          ctx.font = "bold 14px Consolas, monospace";
+          Arte.ajustar(ctx, nombreNota(a.midi), 54, 14);
           ctx.textAlign = "center";
           ctx.fillStyle = ya ? "#10101a" : "#fff";
           ctx.fillText(nombreNota(a.midi), cx, yTop + 9);
@@ -1579,7 +1620,7 @@
           const on = sost[a.clave] > 0.05;
           Arte.pastilla(ctx, x0 + i * ancho + 2, H - 40, ancho - 4, 34, on ? a.color : "rgba(14,8,28,0.82)", on ? "#fff" : a.color);
           ctx.textAlign = "center";
-          ctx.font = "bold 12px Consolas, monospace";
+          Arte.ajustar(ctx, nombreNota(a.midi), ancho - 10, 12);
           ctx.fillStyle = on ? "#10101a" : "#fff";
           ctx.fillText(nombreNota(a.midi), x0 + i * ancho + ancho / 2, H - 24);
           ctx.font = "bold 9px 'Work Sans', sans-serif";
@@ -1970,7 +2011,7 @@
       cont.append(
         grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
         grupo("Escala", "escala", [["mayor", "Mayor"], ["menor", "Menor"], ["pentatonica", "Pentatónica"]]),
-        grupo("Notas", "notacion", [["sostenidos", "Con sostenidos (simple)"], ["teorica", "Teórica (con bemoles)"]]),
+        grupo("Notas", "notacion", [["ambas", "Las dos (Re#/Mib)"], ["sostenidos", "Solo sostenidos"], ["teorica", "Teórica (bemoles)"]]),
         grupo("Tónica", "tonica", tonicas),
         grupo("Octava", "octava", [["exacta", "Exacta"], ["cualquiera", "Cualquiera"]]),
         grupo("Nota guía", "guia", [["si", "Sí"], ["no", "No"]]),
@@ -1981,7 +2022,7 @@
         grupo("Notas en juego", "plataformaNivel", [["basico", "Básico · 3"], ["medio", "Medio · 5"], ["completo", "Escala completa · 7"]]),
         grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
         grupo("Escala", "escala", [["mayor", "Mayor"], ["menor", "Menor"], ["pentatonica", "Pentatónica"]]),
-        grupo("Notas", "notacion", [["sostenidos", "Con sostenidos (simple)"], ["teorica", "Teórica (con bemoles)"]]),
+        grupo("Notas", "notacion", [["ambas", "Las dos (Re#/Mib)"], ["sostenidos", "Solo sostenidos"], ["teorica", "Teórica (bemoles)"]]),
         grupo("Tónica", "tonica", tonicas),
         grupo("Octava", "octava", [["exacta", "Exacta"], ["cualquiera", "Cualquiera"]]),
         entrada
