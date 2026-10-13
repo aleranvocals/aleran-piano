@@ -1018,7 +1018,32 @@ function inicializarMapaVocal() {
   MAPA_CAMPOS_EN_VIVO.forEach((id) => el(id).addEventListener("input", mapaProgramarRegeneracionEnVivo));
   MAPA_CASILLAS_EN_VIVO.forEach((id) => el(id).addEventListener("change", () => generarMapaVocal(false)));
 
-  generarMapaVocal(true); // los campos ya vienen con valores por defecto
+  aplicarParametrosUrl();
+  generarMapaVocal(true); // los campos ya vienen con valores por defecto (o los de la URL)
+}
+
+// Rellena el mapa desde la URL (lo usa el Diagnóstico de Maestro):
+// ?pecho=Sol2&passaggio=La4&cabezaInicio=La3&cabezaFinal=Do6&silbido=Sol6&mongol=Mi2&belting=Si4
+// «silbido» y «mongol» vacíos (o ausentes pero con otros parámetros) los desmarcan.
+function aplicarParametrosUrl() {
+  const q = new URLSearchParams(window.location.search);
+  if (![...q.keys()].length) return;
+  const poner = (id, valor) => {
+    if (valor !== null && valor !== "") el(id).value = valor;
+  };
+  poner("mapaPechoInicio", q.get("pecho"));
+  poner("mapaPassaggio", q.get("passaggio"));
+  poner("mapaCabezaInicio", q.get("cabezaInicio"));
+  poner("mapaCabezaFinal", q.get("cabezaFinal"));
+  poner("mapaBeltingNota", q.get("belting"));
+  [["silbido", "mapaTieneSilbido", "mapaSilbidoFinal"], ["mongol", "mapaTieneMongol", "mapaMongolInicio"]].forEach(
+    ([param, casilla, campo]) => {
+      if (!q.has(param)) return;
+      const valor = q.get(param);
+      el(casilla).checked = valor !== "";
+      if (valor !== "") el(campo).value = valor;
+    }
+  );
 }
 
 document.addEventListener("DOMContentLoaded", inicializarMapaVocal);
