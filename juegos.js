@@ -15,13 +15,65 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const NOMBRES = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
-  const nombreNota = (m) => {
-    const r = Math.round(m);
-    return NOMBRES[((r % 12) + 12) % 12] + (Math.floor(r / 12) - 1);
-  };
   const mod12 = (n) => ((n % 12) + 12) % 12;
   const ESCALAS = { mayor: [0, 2, 4, 5, 7, 9, 11], menor: [0, 2, 3, 5, 7, 8, 10], pentatonica: [0, 2, 4, 7, 9] };
+
+  // ---- ortografía musical correcta: cada grado de la escala lleva una LETRA distinta (Do Re Mi Fa Sol La Si) y la
+  // alteración (# o b) que haga falta. Do menor es Do Re Mib Fa Sol Lab Sib, no «Do Re Re# Fa Sol Sol# La#».
+  const LETRAS = ["Do", "Re", "Mi", "Fa", "Sol", "La", "Si"];
+  const NATURAL = [0, 2, 4, 5, 7, 9, 11];
+  // tónica de cada tonalidad según la clase de nota: [índice de letra, alteración] (la grafía habitual: Reb, Mib, Lab, Sib…)
+  const TONICA_MAYOR = [[0, 0], [1, -1], [1, 0], [2, -1], [2, 0], [3, 0], [3, 1], [4, 0], [5, -1], [5, 0], [6, -1], [6, 0]];
+  const TONICA_MENOR = [[0, 0], [0, 1], [1, 0], [2, -1], [2, 0], [3, 0], [3, 1], [4, 0], [4, 1], [5, 0], [6, -1], [6, 0]];
+  const LETRA_DE_GRADO = { mayor: [0, 1, 2, 3, 4, 5, 6], menor: [0, 1, 2, 3, 4, 5, 6], pentatonica: [0, 1, 2, 4, 5] };
+  const FALLBACK_SOSTENIDOS = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [3, 0], [3, 1], [4, 0], [4, 1], [5, 0], [5, 1], [6, 0]];
+  const FALLBACK_BEMOLES = [[0, 0], [1, -1], [1, 0], [2, -1], [2, 0], [3, 0], [4, -1], [4, 0], [5, -1], [5, 0], [6, -1], [6, 0]];
+  const sufijoAlt = (a) => (a === 1 ? "#" : a === -1 ? "b" : a === 2 ? "x" : a === -2 ? "bb" : "");
+  const NOMBRES = FALLBACK_SOSTENIDOS.map(([l, a]) => LETRAS[l] + sufijoAlt(a)); // sin contexto de tonalidad
+  let _ortoClave = "";
+  let _orto = null;
+  /** Mapa clase de nota → [letra, alteración] para la escala y tónica elegidas (con caché). */
+  function ortografia() {
+    const clave = `${config.escala}|${config.tonica}`;
+    if (clave === _ortoClave && _orto) return _orto;
+    const menor = config.escala === "menor";
+    const tp = mod12(config.tonica);
+    const [li] = (menor ? TONICA_MENOR : TONICA_MAYOR)[tp];
+    const pasos = ESCALAS[config.escala] || ESCALAS.mayor;
+    const letraDeGrado = LETRA_DE_GRADO[config.escala] || LETRA_DE_GRADO.mayor;
+    const mapa = {};
+    let bem = 0;
+    let sos = 0;
+    pasos.forEach((p, i) => {
+      const l = (li + letraDeGrado[i]) % 7;
+      const pc = mod12(tp + p);
+      const a = ((pc - NATURAL[l] + 18) % 12) - 6;
+      mapa[pc] = [l, a];
+      if (a < 0) bem += 1;
+      if (a > 0) sos += 1;
+    });
+    _ortoClave = clave;
+    _orto = { mapa, bemoles: bem > sos };
+    return _orto;
+  }
+  /** Nombre de una clase de nota (sin octava) en la tonalidad elegida. */
+  function nombreClase(pc) {
+    const o = ortografia();
+    const [l, a] = o.mapa[mod12(pc)] || (o.bemoles ? FALLBACK_BEMOLES : FALLBACK_SOSTENIDOS)[mod12(pc)];
+    return LETRAS[l] + sufijoAlt(a);
+  }
+  /** Nombre de la nota con octava (Do4 = Do central) escrito como corresponde a la tonalidad. */
+  const nombreNota = (m) => {
+    const r = Math.round(m);
+    const o = ortografia();
+    const [l, a] = o.mapa[mod12(r)] || (o.bemoles ? FALLBACK_BEMOLES : FALLBACK_SOSTENIDOS)[mod12(r)];
+    return LETRAS[l] + sufijoAlt(a) + (Math.floor((r - a) / 12) - 1);
+  };
+  /** Nombre de la tónica i (0–11) según el modo elegido: en menor Mib menor, en mayor Mib mayor… */
+  function nombreTonica(i) {
+    const [l, a] = (config.escala === "menor" ? TONICA_MENOR : TONICA_MAYOR)[mod12(i)];
+    return LETRAS[l] + sufijoAlt(a);
+  }
   const NOMBRE_ESCALA = { mayor: "mayor", menor: "menor", pentatonica: "pentatónica" };
 
   // ---------------------------------------------------------------- configuración que se recuerda
@@ -1647,7 +1699,7 @@
   function pintarOpciones() {
     const cont = $("opcionesJuego");
     cont.innerHTML = "";
-    const tonicas = NOMBRES.map((n, i) => [i, n]);
+    const tonicas = Array.from({ length: 12 }, (_, i) => [i, nombreTonica(i)]);
     const entrada = grupo("Entrada", "entrada", [["mic", "🎤 Micrófono"], ["teclado", "⌨️ Teclado"]]);
     if (config.juego === "pasillo") {
       cont.append(
@@ -1682,7 +1734,7 @@
     const leyenda = document.createElement("div");
     leyenda.className = "leyenda-plataforma";
     leyenda.innerHTML = plan.lista
-      .map((a) => `<span><b>${a.etq}</b> = ${config.octava === "exacta" ? nombreNota(a.midi) : NOMBRES[mod12(a.midi)]} <i>${a.grado}</i></span>`)
+      .map((a) => `<span><b>${a.etq}</b> = ${config.octava === "exacta" ? nombreNota(a.midi) : nombreClase(a.midi)} <i>${a.grado}</i></span>`)
       .join("");
     cont.appendChild(leyenda);
   }
@@ -1789,6 +1841,9 @@
   // ganchos para pruebas automáticas
   window.JuegosTest = {
     config,
+    nombreNota,
+    nombreClase,
+    nombreTonica,
     Tono,
     arrancar: (n) => ({ pasillo: crearPasillo, plataforma: crearPlataformas, ritmo: crearRitmo })[n](),
     iniciarJuego: (n) => {
