@@ -3,13 +3,13 @@
  *
  *  🎯 Pasillo      — afinación: la bola sube y baja con tu voz y tienes que pasar por el hueco de cada puerta
  *                    (la nota objetivo). Entrena cantar la nota exacta y sostenerla.
- *  🕹️ Plataformas — escalas: un personaje en píxeles; cada GRADO de la escala es una acción
- *                    (tónica = avanzar, tercera = saltar, quinta = atacar). Entrena a ir a un grado de la escala
- *                    a voluntad, no cromático.
+ *  🕹️ Plataformas — escala completa: el héroe corre solo y cada GRADO de la escala es una acción
+ *                    (agacharse, saltos de 3 alturas, atacar, escudo, embestida). Cada obstáculo muestra la nota que lo
+ *                    resuelve: entrena a ir a un grado concreto de la escala a voluntad y en el momento justo.
  *  🥁 Eco de ritmo — suena un patrón y lo repites (con la voz «ta», palmas o tocando); mide cuántos ms te desvías.
  *
  * Usa el micrófono y el rango vocal ya elegidos en la barra de arriba (audio.js / app-shell.js).
- * Sin micrófono se puede jugar con el teclado (↑↓ para la altura, 1·2·3 para las acciones, Espacio para el ritmo).
+ * Sin micrófono se puede jugar con el teclado (↑↓ para la altura, 1 a 7 para las acciones, Espacio para el ritmo).
  */
 (function () {
   "use strict";
@@ -27,7 +27,7 @@
   // ---------------------------------------------------------------- configuración que se recuerda
   const CLAVE_CONFIG = "aleran-juegos-config";
   const config = Object.assign(
-    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", entrada: "mic", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo" },
+    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", entrada: "mic", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio" },
     (() => {
       try {
         return JSON.parse(localStorage.getItem(CLAVE_CONFIG) || "{}");
@@ -66,7 +66,7 @@
     midi: null,
     t: 0,
     simulado: null, // altura virtual (teclado o pruebas)
-    teclas: { 1: false, 2: false, 3: false },
+    teclas: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     async iniciar() {
       if (config.entrada === "teclado") {
         if (this.simulado === null) this.simulado = (rangoActual()[0] + rangoActual()[1]) / 2;
@@ -183,10 +183,39 @@
       g.addColorStop(1, c2);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
+      // nebulosas suaves que derivan despacio
+      for (let k = 0; k < 3; k++) {
+        const nx = ((k * 260 + t * (6 + k * 3)) % (W + 300)) - 150;
+        const ny = 70 + k * 80 + Math.sin(t * 0.2 + k) * 14;
+        const ng = ctx.createRadialGradient(nx, ny, 0, nx, ny, 190);
+        ng.addColorStop(0, k === 1 ? "rgba(147,23,44,0.20)" : "rgba(98,60,180,0.16)");
+        ng.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = ng;
+        ctx.fillRect(nx - 190, ny - 190, 380, 380);
+      }
       for (const e of this.estrellas) {
         ctx.fillStyle = `rgba(255,255,255,${0.25 + 0.75 * Math.abs(Math.sin(t * 0.9 + e.f))})`;
         ctx.fillRect(e.x, e.y, e.r, e.r);
       }
+    },
+    /** Resplandor suave (suma luz): sirve de halo para notas, gemas y personajes. */
+    brillo(ctx, x, y, r, rgb, a) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${rgb},${a})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      const prev = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.globalCompositeOperation = prev;
+    },
+    /** Oscurece los bordes: da sensación de pantalla de cine y centra la mirada. */
+    vineta(ctx, fuerza = 0.5) {
+      const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
+      g.addColorStop(0, "rgba(0,0,0,0)");
+      g.addColorStop(1, `rgba(0,0,0,${fuerza})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
     },
     luna(ctx, x, y, r, fondo) {
       ctx.fillStyle = "#f3e9ff";
@@ -406,10 +435,12 @@
           const base = p.hecho ? (p.ok ? ["#2f8f55", "#3ecf6e"] : ["#8f2f3c", "#ff3b4e"]) : ["#46347f", "#6a54b3"];
           const bloque = (y0, y1) => {
             if (y1 <= y0) return;
-            ctx.fillStyle = base[0];
+            const gp = ctx.createLinearGradient(p.x, 0, p.x + ANCHO_PUERTA, 0);
+            gp.addColorStop(0, base[1]);
+            gp.addColorStop(0.18, base[0]);
+            gp.addColorStop(1, "rgba(8,4,20,0.95)");
+            ctx.fillStyle = gp;
             ctx.fillRect(p.x, y0, ANCHO_PUERTA, y1 - y0);
-            ctx.fillStyle = base[1];
-            ctx.fillRect(p.x, y0, 4, y1 - y0);
             ctx.fillStyle = "rgba(0,0,0,0.28)";
             for (let yy = Math.ceil(y0 / 14) * 14; yy < y1; yy += 14) {
               ctx.fillRect(p.x, yy, ANCHO_PUERTA, 1);
@@ -441,30 +472,56 @@
           ctx.fillStyle = "#fff";
           ctx.fillText(nombreNota(p.nota), p.x + ANCHO_PUERTA / 2, yPlaca + 14);
         }
-        // ---- el espíritu de la voz (sprite de 12×9 píxeles) y su estela
+        // ---- el espíritu de la voz: orbe luminoso con alas y una estela en cinta
         const yb = yDe(Math.max(vmin, Math.min(vmax, midiSuave)));
         const objetivo = puertas.find((q) => !q.hecho && q.x + ANCHO_PUERTA > BOLA_X - 10);
         const afinada = hayVoz && objetivo && Math.abs(diferencia(midiSuave, objetivo.nota)) <= 0.45;
-        if (hayVoz && Math.random() < 0.9) Arte.estela(BOLA_X - 14, yb + 2, afinada ? "#3ecf6e" : "#7fd4ff");
-        const aleteo = Math.floor(t * 9) % 2;
-        const S = 3;
-        const filas = aleteo
-          ? ["....BBBB....", "..BBBBBBBB..", ".BBBLLLBBBB.", "WBBLWKBBBBBM", "WWBBBBBBBBMM", ".WBBBBBBBB..", "..BBBBBBB...", "...BB..BB..."]
-          : ["....BBBB....", "..BBBBBBBB..", ".BBBLLLBBBB.", ".BBLWKBBBBBM", "WWBBBBBBBBMM", "WWWBBBBBBB..", "..BBBBBBB...", "...BB..BB..."];
-        const paleta = { B: hayVoz ? (afinada ? "#5ee08a" : "#7fd4ff") : "#4d6a86", L: "#bfefff", W: hayVoz ? "#3a8fd0" : "#33485c", K: "#10101a", M: "#ff5c7a" };
-        if (afinada) {
-          ctx.fillStyle = "rgba(94,224,138,0.25)";
+        this.hist = this.hist || [];
+        this.hist.unshift(yb);
+        if (this.hist.length > 36) this.hist.pop();
+        const rgbE = afinada ? "94,224,138" : hayVoz ? "127,212,255" : "90,110,140";
+        const prevOp = ctx.globalCompositeOperation;
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = this.hist.length - 1; i >= 0; i--) {
+          const a = (1 - i / this.hist.length) * (hayVoz ? 0.5 : 0.18);
+          ctx.fillStyle = `rgba(${rgbE},${a})`;
           ctx.beginPath();
-          ctx.arc(BOLA_X + 6, yb, 26 + 2 * Math.sin(t * 10), 0, Math.PI * 2);
+          ctx.arc(BOLA_X - i * 4.5, this.hist[i], 7 * (1 - i / this.hist.length) + 1, 0, Math.PI * 2);
           ctx.fill();
         }
-        Arte.sprite(ctx, filas, paleta, BOLA_X - 18, yb - 12 + Math.sin(t * 8) * 1.5, S);
+        ctx.globalCompositeOperation = prevOp;
+        Arte.brillo(ctx, BOLA_X, yb, afinada ? 46 + 4 * Math.sin(t * 10) : 34, rgbE, afinada ? 0.55 : 0.35);
+        // alas
+        const bat = Math.sin(t * 15) * 0.5;
+        ctx.fillStyle = `rgba(${rgbE},0.55)`;
+        for (const dir of [-1, 1]) {
+          ctx.save();
+          ctx.translate(BOLA_X - 2, yb - 2);
+          ctx.rotate(dir * (0.7 + bat));
+          ctx.beginPath();
+          ctx.ellipse(0, -10, 5, 13, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        // cuerpo
+        const cg = ctx.createRadialGradient(BOLA_X - 3, yb - 4, 1, BOLA_X, yb, 13);
+        cg.addColorStop(0, "#ffffff");
+        cg.addColorStop(0.45, afinada ? "#7dffa8" : hayVoz ? "#9fdcff" : "#6f879f");
+        cg.addColorStop(1, afinada ? "#2f8f55" : hayVoz ? "#3a8fd0" : "#33485c");
+        ctx.fillStyle = cg;
+        ctx.beginPath();
+        ctx.arc(BOLA_X, yb + Math.sin(t * 8) * 1.2, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#10101a";
+        ctx.fillRect(BOLA_X + 3, yb - 3, 2.4, 3);
+        ctx.fillRect(BOLA_X + 7, yb - 3, 2.4, 3);
         ctx.font = "bold 12px Consolas, monospace";
         ctx.textAlign = "left";
         Arte.pastilla(ctx, BOLA_X + 22, yb - 10, 40, 18, "rgba(10,6,24,0.85)");
         ctx.fillStyle = hayVoz ? "#fff" : "#8a7fa8";
         ctx.fillText(hayVoz ? nombreNota(midiSuave) : "canta…", BOLA_X + 26, yb + 3);
         Arte.dibujar(ctx);
+        Arte.vineta(ctx, 0.5);
         // ---- marcador: una casilla por puerta
         const pip = 18;
         const x0 = W / 2 - (TOTAL * (pip + 4)) / 2;
@@ -485,210 +542,735 @@
     return j;
   }
 
-  // ================================================================ 🕹️ PLATAFORMAS (escalas)
+  // ================================================================ 🕹️ PLATAFORMAS (escala completa)
+  // El héroe CORRE SOLO; tu voz decide qué hace en cada momento. Cada grado de la escala es una acción distinta y
+  // cada obstáculo muestra la nota que lo resuelve (como en Pasillo): hay que cantar la nota justa EN EL MOMENTO justo.
+  const ACCIONES_ORDEN = ["agacharse", "saltoBajo", "saltoMedio", "atacar", "saltoAlto", "escudo", "embestida"];
+  const INFO_ACCION = {
+    agacharse: { etq: "Agacharse", color: "#7fd4ff" },
+    saltoBajo: { etq: "Salto corto", color: "#7dffa8" },
+    saltoMedio: { etq: "Salto", color: "#3ecf6e" },
+    atacar: { etq: "Atacar", color: "#ff7d8a" },
+    saltoAlto: { etq: "Salto alto", color: "#c58bff" },
+    escudo: { etq: "Escudo", color: "#5ec8ff" },
+    embestida: { etq: "Embestida", color: "#ff5cc8" },
+  };
+  const GRADOS = ["1º", "2º", "3º", "4º", "5º", "6º", "7º"];
+
+  /** Qué nota hace qué: depende de la escala, la tónica, el nivel y tu rango vocal. */
+  function planPlataformas() {
+    const pasos = ESCALAS[config.escala];
+    const [lo, hi] = rangoActual();
+    const centro = (lo + hi) / 2;
+    let acts;
+    let idxs;
+    if (config.plataformaNivel === "basico") {
+      acts = ["agacharse", "saltoMedio", "atacar"];
+      idxs = [0, 2, 4];
+    } else if (config.plataformaNivel === "medio" || pasos.length < 7) {
+      acts = ["agacharse", "saltoBajo", "saltoMedio", "atacar", "saltoAlto"];
+      idxs = [0, 1, 2, 3, 4];
+    } else {
+      acts = ACCIONES_ORDEN.slice();
+      idxs = [0, 1, 2, 3, 4, 5, 6];
+    }
+    const alto = pasos[idxs[idxs.length - 1]];
+    // la tónica más cercana a que TODA la escala utilizada quepa en tu rango
+    let T = null;
+    for (let m = lo - 12; m <= hi; m++) {
+      if (mod12(m) !== mod12(config.tonica)) continue;
+      const penal = Math.max(0, lo - m) * 3 + Math.max(0, m + alto - hi) * 3;
+      const pt = penal + Math.abs(m + alto / 2 - centro);
+      if (T === null || pt < T.pt) T = { m, pt };
+    }
+    const base = T ? T.m : lo;
+    const lista = acts.map((clave, i) => ({
+      clave,
+      etq: INFO_ACCION[clave].etq,
+      color: INFO_ACCION[clave].color,
+      midi: base + pasos[idxs[i]],
+      grado: GRADOS[idxs[i]] || `${idxs[i] + 1}º`,
+      tecla: i + 1,
+    }));
+    return { lista, base };
+  }
+
   function crearPlataformas() {
     const LW = 160;
     const LH = 90;
     const ESC = 4; // 160×90 lógicos → 640×360
-    const pasos = ESCALAS[config.escala];
-    const [lo, hi] = rangoActual();
-    const centro = (lo + hi) / 2;
-    // El MIDI más cercano al centro de tu rango para cada grado que se usa como acción.
-    const cerca = (pc) => {
-      let mejor = null;
-      for (let m = lo - 6; m <= hi + 6; m++) if (mod12(m) === mod12(pc) && (mejor === null || Math.abs(m - centro) < Math.abs(mejor - centro))) mejor = m;
-      return mejor;
-    };
-    const acciones = {
-      avanzar: { pc: config.tonica + pasos[0], etiqueta: "Avanzar", grado: "1º (tónica)" },
-      saltar: { pc: config.tonica + pasos[2], etiqueta: "Saltar", grado: "3º" },
-      atacar: { pc: config.tonica + 7, etiqueta: "Atacar", grado: "5º" },
-    };
-    for (const a of Object.values(acciones)) a.midi = cerca(a.pc);
-    const LARGO = 700;
     const SUELO = 70;
+    const plan = planPlataformas();
+    const acciones = {};
+    plan.lista.forEach((a) => (acciones[a.clave] = a));
+    const tieneAccion = (c) => Boolean(acciones[c]);
+    const VEL = { lento: 34, normal: 44, rapido: 56 }[config.velocidad] || 34;
+    const SALTOS = { saltoBajo: -80, saltoMedio: -105, saltoAlto: -135 };
+    const G = 260;
+    const JUGADOR_X = 30;
+    const LARGO = 130 + 26 * 66; // ~26 obstáculos
 
-    // nivel: fosos y enemigos a intervalos; el primero a distancia suficiente para entender el juego
-    const obstaculos = [];
-    let x = 110;
-    let alt = true;
-    while (x < LARGO - 60) {
-      obstaculos.push(alt ? { tipo: "foso", x, w: 20 } : { tipo: "enemigo", x, vivo: true });
-      alt = !alt;
-      x += 70 + Math.floor(Math.random() * 30);
+    // ---------------------------------------------------------------- nivel
+    // tipos: qué acción mínima los resuelve (la más baja disponible que sirva)
+    const primeraDisponible = (lista) => lista.find(tieneAccion) || null;
+    const TIPOS = {
+      piedra: { w: 6, h: 5, req: primeraDisponible(["saltoBajo", "saltoMedio", "saltoAlto"]) },
+      tronco: { w: 7, h: 10, req: primeraDisponible(["saltoMedio", "saltoAlto"]) },
+      muro: { w: 5, h: 20, req: primeraDisponible(["saltoAlto"]) },
+      fosoCorto: { w: 12, h: 0, req: primeraDisponible(["saltoBajo", "saltoMedio", "saltoAlto"]) },
+      fosoMedio: { w: 20, h: 0, req: primeraDisponible(["saltoMedio", "saltoAlto"]) },
+      fosoLargo: { w: 27, h: 0, req: primeraDisponible(["saltoAlto"]) },
+      murcielago: { w: 9, h: 13, req: tieneAccion("agacharse") ? "agacharse" : null },
+      slime: { w: 9, h: 8, req: tieneAccion("atacar") ? "atacar" : null },
+      flecha: { w: 8, h: 4, req: tieneAccion("escudo") ? "escudo" : null },
+      cristal: { w: 5, h: 30, req: tieneAccion("embestida") ? "embestida" : null },
+    };
+    const disponibles = Object.keys(TIPOS).filter((k) => TIPOS[k].req);
+    // introducción: cada acción se presenta con un obstáculo pensado para ella, en orden
+    const INTRO = { agacharse: "murcielago", saltoBajo: "fosoCorto", saltoMedio: "tronco", atacar: "slime", saltoAlto: "muro", escudo: "flecha", embestida: "cristal" };
+    const secuencia = [];
+    for (const a of plan.lista) {
+      const t = INTRO[a.clave];
+      if (t && TIPOS[t].req && !secuencia.includes(t)) secuencia.push(t);
     }
-    const jug = { y: SUELO, vy: 0, suelo: true, ataque: 0, vidas: 3, enfriamiento: 0, parpadeo: 0, nota: { avanzar: 0, saltar: 0, atacar: 0 } };
+    let ultimoT = null;
+    while (secuencia.length < 26) {
+      let t;
+      do {
+        t = disponibles[Math.floor(Math.random() * disponibles.length)];
+      } while (t === ultimoT && disponibles.length > 1);
+      ultimoT = t;
+      secuencia.push(t);
+    }
+    const obstaculos = [];
+    let x = 120;
+    for (const t of secuencia) {
+      const d = TIPOS[t];
+      const o = { tipo: t, x, w: d.w, h: d.h, req: d.req, vivo: true, resuelto: false, golpeado: false, nuevo: obstaculos.every((q) => q.tipo !== t), fase: Math.random() * 6 };
+      obstaculos.push(o);
+      x += 62 + Math.floor(Math.random() * 26);
+    }
+
+    const heroe = {
+      y: SUELO,
+      vy: 0,
+      suelo: true,
+      agachado: false,
+      escudo: false,
+      ataque: 0,
+      embestida: 0,
+      vidas: 3,
+      parpadeo: 0,
+      alto: 18,
+    };
+    const sost = {}; // segundos sosteniendo la nota de cada acción
+    const armado = {}; // ya se disparó en esta pulsación
+    plan.lista.forEach((a) => {
+      sost[a.clave] = 0;
+      armado[a.clave] = false;
+    });
     let cam = 0;
     let puntos = 0;
+    let racha = 0;
     let caida = false;
+    let t = 0;
+    let flash = 0;
+    let sacudida = 0;
+    let anuncio = null; // {texto, color, t}
+    const popups = []; // textos flotantes en coordenadas del mundo
+    let introMostrada = new Set();
 
-    function activa(clave, m) {
-      if (Tono.teclas[{ avanzar: 1, saltar: 2, atacar: 3 }[clave]]) return true;
+    function activa(a, m) {
+      if (Tono.teclas[a.tecla]) return true;
       if (m === null) return false;
-      const t = acciones[clave].midi;
-      let d = m - t;
+      let d = m - a.midi;
       if (config.octava !== "exacta") d = ((d + 6) % 12 + 12) % 12 - 6;
       return Math.abs(d) <= 0.5;
+    }
+
+    function popup(texto, wx, color) {
+      popups.push({ texto, x: JUGADOR_X + cam + 4, y: SUELO - 30, t: 1.1, color }); // sale de encima del héroe
+    }
+
+    function perderVida(msg) {
+      if (heroe.parpadeo > 0 || heroe.embestida > 0) return;
+      heroe.vidas -= 1;
+      heroe.parpadeo = 1.3;
+      racha = 0;
+      sacudida = 0.35;
+      flash = 0.25;
+      Arte.emitir(JUGADOR_X * ESC + 20, (heroe.y - 8) * ESC, 22, "#ff3b4e", 160, 0.7);
+      estado(msg, "mal");
+      if (heroe.vidas <= 0) {
+        j.terminado = true;
+        estado(`Sin vidas. Llegaste al ${Math.round((100 * cam) / LARGO)} % del nivel con ${puntos} puntos. ¡Otra vez!`, "mal");
+        detener(false);
+      }
+    }
+
+    function resolver(o, texto) {
+      if (o.resuelto) return;
+      o.resuelto = true;
+      racha += 1;
+      const bonus = Math.min(5, racha) * 2;
+      puntos += 10 + bonus;
+      popup(texto || "¡Bien!", o.x + o.w / 2, "#7dffa8");
     }
 
     const j = {
       terminado: false,
       acciones,
       obstaculos,
-      jug,
+      jug: heroe,
+      plan,
       get cam() {
         return cam;
       },
       actualizar(dt) {
+        t += dt;
+        Arte.actualizar(dt);
         const m = Tono.leer();
-        for (const k of ["avanzar", "saltar", "atacar"]) jug.nota[k] = activa(k, m) ? jug.nota[k] + dt : 0;
-        jug.enfriamiento = Math.max(0, jug.enfriamiento - dt);
-        jug.parpadeo = Math.max(0, jug.parpadeo - dt);
-        if (jug.nota.avanzar > 0.12 && jug.suelo) cam += 26 * dt;
-        if (jug.nota.avanzar > 0.12 && !jug.suelo) cam += 20 * dt;
-        if (jug.nota.saltar > 0.12 && jug.suelo && jug.enfriamiento === 0) {
-          jug.vy = -118;
-          jug.suelo = false;
-          jug.enfriamiento = 0.35;
+        // ---- tu voz: sostener cada nota
+        for (const a of plan.lista) {
+          const on = activa(a, m);
+          sost[a.clave] = on ? sost[a.clave] + dt : 0;
+          if (!on) armado[a.clave] = false;
         }
-        if (jug.nota.atacar > 0.12 && jug.ataque <= 0 && jug.enfriamiento === 0) {
-          jug.ataque = 0.28;
-          jug.enfriamiento = 0.4;
-        }
-        jug.ataque = Math.max(0, jug.ataque - dt);
-        // física
-        if (!jug.suelo || caida) {
-          jug.vy += 330 * dt;
-          jug.y += jug.vy * dt;
-        }
-        const enFoso = obstaculos.find((o) => o.tipo === "foso" && 30 + cam > o.x + 2 && 30 + cam < o.x + o.w - 2);
-        if (jug.y >= SUELO && !enFoso && !caida) {
-          jug.y = SUELO;
-          jug.vy = 0;
-          jug.suelo = true;
-        } else if (jug.y >= SUELO && enFoso && jug.suelo) {
-          caida = true; // pisó un foso sin saltar
-          jug.suelo = false;
-          jug.vy = 0;
-        }
-        if (caida && jug.y > LH + 20) {
-          perderVida("¡Al foso! Salta (3º grado) antes de llegar.");
-          cam = Math.max(0, enFoso ? enFoso.x - 38 : cam - 30);
-          caida = false;
-          jug.y = SUELO;
-          jug.vy = 0;
-          jug.suelo = true;
-        }
-        // enemigos
-        for (const o of obstaculos) {
-          if (o.tipo !== "enemigo" || !o.vivo) continue;
-          const dx = o.x - (30 + cam);
-          if (jug.ataque > 0 && dx > -4 && dx < 22) {
-            o.vivo = false;
-            puntos += 10;
-            estado("¡Enemigo derrotado! (5º grado)", "ok");
-          } else if (Math.abs(dx) < 6 && jug.y > SUELO - 8 && jug.parpadeo === 0) {
-            perderVida("Te tocó un enemigo: ataca (5º grado) cuando esté cerca.");
-            cam = Math.max(0, cam - 24);
-            jug.parpadeo = 1.2;
+        const listo = (c) => tieneAccion(c) && sost[c] > 0.07;
+        heroe.agachado = listo("agacharse") && heroe.suelo;
+        heroe.escudo = listo("escudo");
+        const dispara = (c) => {
+          if (!listo(c) || armado[c]) return false;
+          armado[c] = true;
+          return true;
+        };
+        for (const c of ["saltoBajo", "saltoMedio", "saltoAlto"]) {
+          if (dispara(c) && heroe.suelo) {
+            heroe.vy = SALTOS[c];
+            heroe.suelo = false;
+            Arte.emitir(JUGADOR_X * ESC + 14, SUELO * ESC, 8, "#d8c9a8", 70, 0.4);
+            tocarNota(acciones[c].midi, 0.18);
           }
         }
-        if (cam >= LARGO - 40 && !this.terminado) {
+        if (dispara("atacar") && heroe.ataque <= 0) {
+          heroe.ataque = 0.32;
+          tocarNota(acciones.atacar.midi, 0.18);
+        }
+        if (dispara("embestida") && heroe.embestida <= 0) {
+          heroe.embestida = 0.55;
+          tocarNota(acciones.embestida.midi, 0.18);
+        }
+        heroe.ataque = Math.max(0, heroe.ataque - dt);
+        heroe.embestida = Math.max(0, heroe.embestida - dt);
+        heroe.parpadeo = Math.max(0, heroe.parpadeo - dt);
+        heroe.alto = heroe.agachado ? 9 : 18;
+
+        // ---- el héroe corre solo
+        cam += VEL * (heroe.embestida > 0 ? 1.7 : 1) * dt;
+        // ---- física vertical
+        const enFoso = obstaculos.find((o) => o.h === 0 && o.tipo.startsWith("foso") && JUGADOR_X + 4 + cam > o.x + 1 && JUGADOR_X + 4 + cam < o.x + o.w - 1);
+        if (!heroe.suelo || caida) {
+          heroe.vy += G * dt;
+          heroe.y += heroe.vy * dt;
+        }
+        if (heroe.y >= SUELO && !caida) {
+          if (!enFoso) {
+            heroe.y = SUELO;
+            heroe.vy = 0;
+            if (!heroe.suelo) Arte.emitir(JUGADOR_X * ESC + 14, SUELO * ESC, 6, "#d8c9a8", 50, 0.3);
+            heroe.suelo = true;
+          } else if (heroe.suelo) {
+            caida = true; // pisó un foso sin saltar
+            heroe.suelo = false;
+            heroe.vy = 0;
+          } else {
+            // aterrizando justo sobre el foso: cae
+            caida = true;
+          }
+        }
+        if (caida && heroe.y > LH + 24) {
+          const pos = enFoso || obstaculos.find((o) => o.h === 0 && o.tipo.startsWith("foso") && o.x + o.w > cam && o.x < cam + 70);
+          perderVida("¡Al foso! Salta antes de llegar (la nota del foso está encima).");
+          cam = Math.max(0, pos ? pos.x - 36 : cam - 30);
+          caida = false;
+          heroe.y = SUELO;
+          heroe.vy = 0;
+          heroe.suelo = true;
+          obstaculos.forEach((o) => {
+            if (o.x > cam + 40) o.resuelto = false;
+          });
+        }
+        // ---- obstáculos
+        const hx = JUGADOR_X + cam; // x del héroe en el mundo
+        for (const o of obstaculos) {
+          const dx = o.x - hx; // distancia por delante
+          // aviso de «nuevo»
+          if (o.nuevo && !introMostrada.has(o.tipo) && dx < 96 && dx > 0) {
+            introMostrada.add(o.tipo);
+            const a = acciones[o.req];
+            anuncio = { texto: `¡Nuevo! ${a.etq}: canta ${nombreNota(a.midi)}`, color: a.color, t: 3 };
+            estado(`Nuevo obstáculo: ${a.etq} (${a.grado} = ${nombreNota(a.midi)})`, "");
+          }
+          if (!o.vivo || o.golpeado) continue;
+          const solapaX = hx + 6 > o.x && hx + 2 < o.x + o.w;
+          if (o.h === 0) {
+            if (!o.resuelto && o.x + o.w < hx && heroe.suelo) resolver(o, "¡Salto!");
+            continue;
+          }
+          if (o.tipo === "piedra" || o.tipo === "tronco" || o.tipo === "muro") {
+            if (solapaX && heroe.y > SUELO - o.h + 0.5) {
+              o.golpeado = true;
+              perderVida(`Chocaste: aquí hacía falta ${INFO_ACCION[o.req].etq.toLowerCase()} (${nombreNota(acciones[o.req].midi)}).`);
+              cam = Math.max(0, cam - 22);
+            } else if (!o.resuelto && o.x + o.w < hx) resolver(o, "¡Salto!");
+          } else if (o.tipo === "murcielago") {
+            const arriba = heroe.y - heroe.alto;
+            if (solapaX && arriba < SUELO - 13 && heroe.y > SUELO - 26) {
+              o.golpeado = true;
+              perderVida(`El murciélago te dio: agáchate cantando ${nombreNota(acciones.agacharse.midi)}.`);
+              cam = Math.max(0, cam - 18);
+            } else if (!o.resuelto && o.x + o.w < hx) resolver(o, "¡Esquivado!");
+          } else if (o.tipo === "slime") {
+            const delante = o.x - hx;
+            if (heroe.ataque > 0 && delante > -2 && delante < 24) {
+              o.vivo = false;
+              resolver(o, "¡Derrotado!");
+              puntos += 5;
+              Arte.emitir((o.x - cam) * ESC + 14, (SUELO - 4) * ESC, 22, "#6ee06e", 130, 0.6);
+            } else if (heroe.embestida > 0 && solapaX) {
+              o.vivo = false;
+              resolver(o, "¡Arrollado!");
+              Arte.emitir((o.x - cam) * ESC + 14, (SUELO - 4) * ESC, 18, "#6ee06e", 130, 0.6);
+            } else if (solapaX && heroe.y > SUELO - 8) {
+              o.golpeado = true;
+              perderVida(`El slime te tocó: ataca cantando ${nombreNota(acciones.atacar.midi)} cuando esté cerca.`);
+              cam = Math.max(0, cam - 20);
+            } else if (!o.resuelto && o.x + o.w < hx) resolver(o, "¡Saltado!");
+          } else if (o.tipo === "flecha") {
+            if (solapaX && heroe.y > SUELO - 12) {
+              if (heroe.escudo || heroe.embestida > 0) {
+                o.vivo = false;
+                resolver(o, "¡Bloqueado!");
+                Arte.emitir((o.x - cam) * ESC + 14, (SUELO - 8) * ESC, 16, "#5ec8ff", 120, 0.5);
+              } else {
+                o.golpeado = true;
+                perderVida(`Te alcanzó la bola de fuego: levanta el escudo cantando ${nombreNota(acciones.escudo.midi)}.`);
+                cam = Math.max(0, cam - 16);
+              }
+            }
+          } else if (o.tipo === "cristal") {
+            if (solapaX && heroe.embestida > 0) {
+              o.vivo = false;
+              resolver(o, "¡Roto!");
+              puntos += 5;
+              Arte.emitir((o.x - cam) * ESC + 14, (SUELO - 14) * ESC, 30, "#ff8ee0", 170, 0.7);
+            } else if (solapaX) {
+              o.golpeado = true;
+              perderVida(`Pared de cristal: embiste cantando ${nombreNota(acciones.embestida.midi)}.`);
+              cam = Math.max(0, cam - 22);
+            }
+          }
+        }
+        // popups
+        for (const p of popups) {
+          p.t -= dt;
+          p.y -= 14 * dt;
+        }
+        while (popups.length && popups[0].t <= 0) popups.shift();
+        if (anuncio) anuncio.t -= dt;
+        flash = Math.max(0, flash - dt);
+        sacudida = Math.max(0, sacudida - dt);
+        if (cam >= LARGO && !this.terminado) {
           this.terminado = true;
+          const total = puntos + heroe.vidas * 20;
           let record = false;
           try {
-            if (window.Progreso) record = Progreso.actualizarRecord("juegoPlataformaPuntos", puntos + jug.vidas * 20, (n, a) => n > a);
+            if (window.Progreso) record = Progreso.actualizarRecord("juegoPlataformaPuntos", total, (n, a) => n > a);
           } catch {
             /* sin récord */
           }
-          estado(`¡Nivel completado! ${puntos} puntos y ${jug.vidas} vida${jug.vidas === 1 ? "" : "s"}.${record ? " 🏆 ¡Récord!" : ""}`, "ok");
+          estado(`¡Nivel completado! ${puntos} puntos y ${heroe.vidas} vida${heroe.vidas === 1 ? "" : "s"}.${record ? " 🏆 ¡Récord!" : ""}`, "ok");
           detener(false);
         }
       },
       dibujar(ctx) {
-        fondo(ctx, "#0e0f18");
-        ctx.setTransform(ESC, 0, 0, ESC, 0, 0);
-        ctx.imageSmoothingEnabled = false;
-        // estrellas y colinas
-        ctx.fillStyle = "#fff";
-        for (let i = 0; i < 24; i++) ctx.fillRect(((i * 37 - cam * 0.1) % LW + LW) % LW, (i * 13) % 50, 1, 1);
-        ctx.fillStyle = "#1b1e33";
-        for (let i = 0; i < 6; i++) {
-          const bx = ((i * 60 - cam * 0.3) % (LW + 60) + LW + 60) % (LW + 60) - 30;
-          ctx.fillRect(bx, SUELO - 18 - (i % 3) * 6, 36, 40);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        const sx = sacudida > 0 ? (Math.random() - 0.5) * 6 * (sacudida / 0.35) : 0;
+        const sy = sacudida > 0 ? (Math.random() - 0.5) * 6 * (sacudida / 0.35) : 0;
+        ctx.translate(sx, sy);
+        // ---- cielo de atardecer morado → carmesí en el horizonte
+        const cielo = ctx.createLinearGradient(0, 0, 0, SUELO * ESC);
+        cielo.addColorStop(0, "#0a0716");
+        cielo.addColorStop(0.55, "#2b1240");
+        cielo.addColorStop(1, "#6e1d3f");
+        ctx.fillStyle = cielo;
+        ctx.fillRect(-10, -10, W + 20, H + 20);
+        // estrellas
+        for (let i = 0; i < 46; i++) {
+          const ex = (((i * 71 - cam * 0.6) % W) + W) % W;
+          const ey = (i * 37) % 170;
+          ctx.fillStyle = `rgba(255,255,255,${0.25 + 0.6 * Math.abs(Math.sin(t * 0.8 + i))})`;
+          ctx.fillRect(ex, ey, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
         }
+        // luna con halo
+        const lx = 520 - (cam * 0.5) % 1400;
+        Arte.brillo(ctx, lx, 70, 70, "255,220,255", 0.25);
+        ctx.fillStyle = "#f6ecff";
+        ctx.beginPath();
+        ctx.arc(lx, 70, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#d9c8ee";
+        ctx.beginPath();
+        ctx.arc(lx - 6, 64, 4, 0, Math.PI * 2);
+        ctx.arc(lx + 7, 76, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // montañas en 3 capas con parallax
+        const capas = [
+          ["#2a1648", 130, 54, 0.15, 90, 1.3],
+          ["#1d0f35", 105, 44, 0.32, 70, 3.1],
+          ["#150a29", 88, 30, 0.55, 52, 5.2],
+        ];
+        for (const [color, base, alto, par, paso, sem] of capas) {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(0, H);
+          for (let px = 0; px <= W + 8; px += 8) {
+            const xx = px + cam * par * ESC;
+            const py = (SUELO * ESC) - base + 40 - alto * (0.5 + 0.5 * Math.sin((xx / paso) * 1.7 + sem) * Math.cos((xx / paso) * 0.6 + sem * 2));
+            ctx.lineTo(px, py);
+          }
+          ctx.lineTo(W, H);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // árboles / pinos en silueta (cerca)
+        ctx.fillStyle = "#0d061a";
+        for (let i = 0; i < 9; i++) {
+          const tx = ((((i * 90 - cam * 0.8 * ESC) % (W + 120)) + W + 120) % (W + 120)) - 60;
+          const th = 40 + (i % 3) * 14;
+          ctx.beginPath();
+          ctx.moveTo(tx, SUELO * ESC);
+          ctx.lineTo(tx + 14, SUELO * ESC - th);
+          ctx.lineTo(tx + 28, SUELO * ESC);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // ---- mundo (en unidades lógicas, vectores suaves)
+        ctx.save();
+        ctx.scale(ESC, ESC);
         // suelo con fosos
-        for (let sx = 0; sx < LW; sx++) {
-          const wx = sx + cam;
-          const foso = obstaculos.some((o) => o.tipo === "foso" && wx >= o.x && wx < o.x + o.w);
+        const wx0 = cam;
+        for (let px = 0; px < LW; px += 1) {
+          const wx = px + wx0;
+          const foso = obstaculos.some((o) => o.h === 0 && o.tipo.startsWith("foso") && wx >= o.x && wx < o.x + o.w);
           if (foso) continue;
-          ctx.fillStyle = "#3b7d4f";
-          ctx.fillRect(sx, SUELO, 1, 2);
-          ctx.fillStyle = (Math.floor(wx / 4) + 0) % 2 ? "#6b4a2d" : "#7a5634";
-          ctx.fillRect(sx, SUELO + 2, 1, LH - SUELO - 2);
+          ctx.fillStyle = "#4f9a4b";
+          ctx.fillRect(px, SUELO, 1.05, 2.2);
+          ctx.fillStyle = "#3a7a3a";
+          ctx.fillRect(px, SUELO + 1.6, 1.05, 1);
+          ctx.fillStyle = Math.floor(wx / 6) % 2 ? "#5a3a2a" : "#664331";
+          ctx.fillRect(px, SUELO + 2.6, 1.05, LH - SUELO);
         }
-        // enemigos
+        // fosos: oscuridad con lava carmesí al fondo
         for (const o of obstaculos) {
-          if (o.tipo !== "enemigo" || !o.vivo) continue;
-          const sx = o.x - cam;
-          if (sx < -10 || sx > LW + 10) continue;
-          ctx.fillStyle = "#4cd15b";
-          ctx.fillRect(sx, SUELO - 6, 9, 6);
-          ctx.fillRect(sx + 1, SUELO - 8, 7, 2);
-          ctx.fillStyle = "#0b2a12";
-          ctx.fillRect(sx + 2, SUELO - 5, 1, 1);
-          ctx.fillRect(sx + 6, SUELO - 5, 1, 1);
+          if (!(o.h === 0 && o.tipo.startsWith("foso"))) continue;
+          const fx = o.x - cam;
+          if (fx > LW + 4 || fx + o.w < -4) continue;
+          const g = ctx.createLinearGradient(0, SUELO, 0, LH);
+          g.addColorStop(0, "#08040f");
+          g.addColorStop(0.7, "#2a0a18");
+          g.addColorStop(1, "#c02241");
+          ctx.fillStyle = g;
+          ctx.fillRect(fx, SUELO, o.w, LH - SUELO);
         }
-        // meta
-        const metaX = LARGO - 30 - cam;
-        if (metaX < LW + 10) {
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(metaX, SUELO - 28, 1, 28);
-          ctx.fillStyle = "#c02241";
-          ctx.fillRect(metaX + 1, SUELO - 28, 10, 7);
-        }
-        // personaje
-        if (!(jug.parpadeo > 0 && Math.floor(jug.parpadeo * 12) % 2)) {
-          const px = 26;
-          const py = Math.round(jug.y);
-          ctx.fillStyle = "#c02241";
-          ctx.fillRect(px, py - 12, 8, 7); // torso
-          ctx.fillStyle = "#f2c9a0";
-          ctx.fillRect(px + 1, py - 18, 6, 6); // cabeza
-          ctx.fillStyle = "#222";
-          ctx.fillRect(px + 5, py - 16, 1, 1);
-          ctx.fillStyle = "#2b2b46";
-          ctx.fillRect(px + 1, py - 5, 3, 5);
-          ctx.fillRect(px + 4, py - 5, 3, 5);
-          if (jug.ataque > 0) {
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(px + 8, py - 14, 14, 2);
-            ctx.fillStyle = "rgba(255,255,255,0.4)";
-            ctx.fillRect(px + 8, py - 18, 12, 10);
+        // elementos del suelo
+        for (const o of obstaculos) {
+          const ox = o.x - cam;
+          if (ox > LW + 20 || ox < -30) continue;
+          if (o.tipo === "piedra") {
+            ctx.fillStyle = "#8d8a99";
+            ctx.beginPath();
+            ctx.ellipse(ox + 3.5, SUELO - 2, 3.8, 3, 0, Math.PI, 0);
+            ctx.lineTo(ox + 7.3, SUELO);
+            ctx.lineTo(ox - 0.3, SUELO);
+            ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.25)";
+            ctx.fillRect(ox + 1.5, SUELO - 4, 2, 1);
+          } else if (o.tipo === "tronco") {
+            ctx.fillStyle = "#6b4426";
+            ctx.fillRect(ox, SUELO - 10, 7, 10);
+            ctx.fillStyle = "#8a5a33";
+            ctx.fillRect(ox, SUELO - 10, 2, 10);
+            ctx.fillStyle = "#c79a62";
+            ctx.beginPath();
+            ctx.ellipse(ox + 3.5, SUELO - 10, 3.5, 1.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (o.tipo === "muro") {
+            const g = ctx.createLinearGradient(ox, 0, ox + 5, 0);
+            g.addColorStop(0, "#7a7396");
+            g.addColorStop(1, "#4a4468");
+            ctx.fillStyle = g;
+            ctx.fillRect(ox, SUELO - 20, 5, 20);
+            ctx.fillStyle = "rgba(0,0,0,0.25)";
+            for (let yy = SUELO - 20; yy < SUELO; yy += 5) ctx.fillRect(ox, yy, 5, 0.5);
+          } else if (o.tipo === "cristal" && o.vivo) {
+            const g = ctx.createLinearGradient(ox, 0, ox + 5, 0);
+            g.addColorStop(0, "rgba(255,142,224,0.85)");
+            g.addColorStop(1, "rgba(127,212,255,0.7)");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(ox + 2.5, SUELO - 30);
+            ctx.lineTo(ox + 5, SUELO - 22);
+            ctx.lineTo(ox + 4, SUELO);
+            ctx.lineTo(ox + 1, SUELO);
+            ctx.lineTo(ox, SUELO - 20);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            ctx.fillRect(ox + 1.2, SUELO - 26, 0.8, 18);
+          } else if (o.tipo === "slime" && o.vivo && !o.golpeado) {
+            const sq = Math.sin(t * 6 + o.fase) * 0.6;
+            ctx.fillStyle = "#58d65e";
+            ctx.beginPath();
+            ctx.ellipse(ox + 4.5, SUELO - 3 - sq / 2, 4.8 + sq * 0.4, 3.6 - sq * 0.4, 0, Math.PI, 0);
+            ctx.lineTo(ox + 9.3, SUELO);
+            ctx.lineTo(ox - 0.3, SUELO);
+            ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.35)";
+            ctx.fillRect(ox + 2, SUELO - 5.2 - sq / 2, 2, 1);
+            ctx.fillStyle = "#0b2a12";
+            ctx.fillRect(ox + 2.4, SUELO - 3.2, 1.2, 1.4);
+            ctx.fillRect(ox + 5.6, SUELO - 3.2, 1.2, 1.4);
+          } else if (o.tipo === "murcielago" && !o.golpeado) {
+            const aleteo = Math.sin(t * 14 + o.fase);
+            const cy = SUELO - 19.5;
+            ctx.fillStyle = "#2a1636";
+            ctx.beginPath();
+            ctx.ellipse(ox + 4.5, cy, 2.6, 3.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(ox + 2.5, cy);
+            ctx.quadraticCurveTo(ox - 3, cy - 5 - aleteo * 2.5, ox - 3.5, cy + 1.5);
+            ctx.quadraticCurveTo(ox, cy + 0.5, ox + 2.5, cy + 2);
+            ctx.moveTo(ox + 6.5, cy);
+            ctx.quadraticCurveTo(ox + 12, cy - 5 - aleteo * 2.5, ox + 12.5, cy + 1.5);
+            ctx.quadraticCurveTo(ox + 9, cy + 0.5, ox + 6.5, cy + 2);
+            ctx.fill();
+            ctx.fillStyle = "#ff3b4e";
+            ctx.fillRect(ox + 3.4, cy - 1, 0.9, 0.9);
+            ctx.fillRect(ox + 5.2, cy - 1, 0.9, 0.9);
+          } else if (o.tipo === "flecha" && o.vivo && !o.golpeado) {
+            const bx = ox + 4;
+            const by = SUELO - 6;
+            ctx.globalCompositeOperation = "lighter";
+            const g = ctx.createRadialGradient(bx, by, 0, bx, by, 9);
+            g.addColorStop(0, "rgba(255,200,120,0.95)");
+            g.addColorStop(0.35, "rgba(255,90,60,0.7)");
+            g.addColorStop(1, "rgba(255,40,80,0)");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(bx, by, 9, 0, Math.PI * 2);
+            ctx.fill();
+            for (let k = 1; k < 5; k++) {
+              ctx.fillStyle = `rgba(255,${90 + k * 20},60,${0.35 - k * 0.06})`;
+              ctx.beginPath();
+              ctx.arc(bx + k * 3.2, by + Math.sin(t * 20 + k) * 0.8, 3 - k * 0.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.globalCompositeOperation = "source-over";
           }
         }
-        // HUD
+        // meta: pórtico con bandera
+        const metaX = LARGO + 40 - cam;
+        if (metaX < LW + 12) {
+          ctx.fillStyle = "#cfc6e6";
+          ctx.fillRect(metaX, SUELO - 34, 1.4, 34);
+          ctx.fillRect(metaX + 20, SUELO - 34, 1.4, 34);
+          ctx.fillRect(metaX, SUELO - 34, 21.4, 1.4);
+          ctx.fillStyle = "#c02241";
+          ctx.beginPath();
+          ctx.moveTo(metaX + 1.4, SUELO - 32);
+          ctx.lineTo(metaX + 20, SUELO - 32);
+          ctx.lineTo(metaX + 20, SUELO - 22 + Math.sin(t * 4) * 1.2);
+          ctx.lineTo(metaX + 10.7, SUELO - 26);
+          ctx.lineTo(metaX + 1.4, SUELO - 22 + Math.sin(t * 4 + 1) * 1.2);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // ---- el héroe
+        if (!(heroe.parpadeo > 0 && Math.floor(heroe.parpadeo * 14) % 2)) {
+          const px = JUGADOR_X;
+          const py = heroe.y;
+          const agachado = heroe.agachado;
+          const aire = !heroe.suelo;
+          const paso = Math.sin(t * 16) * 2;
+          // sombra
+          if (heroe.suelo) {
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
+            ctx.beginPath();
+            ctx.ellipse(px + 4, SUELO + 0.8, 5, 1.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          // estela de embestida
+          if (heroe.embestida > 0) {
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = "#ff5cc8";
+            ctx.fillRect(px - 16, py - 12, 18, 7);
+            ctx.fillStyle = "#ffd0f0";
+            ctx.fillRect(px - 10, py - 10, 10, 3);
+            ctx.globalAlpha = 1;
+          }
+          // capa
+          ctx.fillStyle = "#93172c";
+          ctx.beginPath();
+          ctx.moveTo(px + 1, py - (agachado ? 7 : 14));
+          ctx.quadraticCurveTo(px - 6 - Math.abs(paso), py - (agachado ? 4 : 8), px - 4 - (aire ? 3 : 0), py - (agachado ? 1 : 4));
+          ctx.lineTo(px + 3, py - (agachado ? 3 : 6));
+          ctx.fill();
+          // piernas
+          ctx.fillStyle = "#1e1b36";
+          if (agachado) {
+            ctx.fillRect(px + 1, py - 3, 3, 3);
+            ctx.fillRect(px + 4.5, py - 3, 3, 3);
+          } else if (aire) {
+            ctx.fillRect(px + 1, py - 6, 2.6, 5);
+            ctx.fillRect(px + 4.6, py - 5, 2.6, 4);
+          } else {
+            ctx.fillRect(px + 1.5 + paso * 0.5, py - 6, 2.6, 6);
+            ctx.fillRect(px + 4.5 - paso * 0.5, py - 6, 2.6, 6);
+          }
+          // torso
+          const ty = agachado ? py - 9 : py - 15;
+          ctx.fillStyle = "#c02241";
+          ctx.beginPath();
+          ctx.roundRect(px, ty, 8, agachado ? 6 : 9, 2);
+          ctx.fill();
+          ctx.fillStyle = "#e8d7b0";
+          ctx.fillRect(px, ty + (agachado ? 3.5 : 6), 8, 1.2);
+          // cabeza y pelo
+          ctx.fillStyle = "#f2c9a0";
+          ctx.beginPath();
+          ctx.roundRect(px + 1, ty - 6, 6.4, 6, 2);
+          ctx.fill();
+          ctx.fillStyle = "#2a1636";
+          ctx.beginPath();
+          ctx.moveTo(px + 0.5, ty - 5);
+          ctx.quadraticCurveTo(px + 4, ty - 9.5, px + 8, ty - 4.5);
+          ctx.lineTo(px + 8, ty - 2.5);
+          ctx.lineTo(px + 6.5, ty - 4.5);
+          ctx.lineTo(px + 1, ty - 4);
+          ctx.fill();
+          ctx.fillStyle = "#111";
+          ctx.fillRect(px + 5, ty - 3.5, 1, 1);
+          // espada / ataque
+          if (heroe.ataque > 0) {
+            const a = 1 - heroe.ataque / 0.32;
+            ctx.globalCompositeOperation = "lighter";
+            ctx.strokeStyle = "rgba(255,255,255,0.9)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px + 6, ty + 2, 15, -1.2 + a * 0.6, 0.8 + a * 0.6);
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(255,124,138,0.7)";
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.globalCompositeOperation = "source-over";
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(px + 8, ty + 2.5, 15, 1.6);
+          } else {
+            ctx.fillStyle = "#cfc6e6";
+            ctx.fillRect(px + 7, ty + 4, 2, 5);
+          }
+          // escudo
+          if (heroe.escudo) {
+            ctx.globalCompositeOperation = "lighter";
+            const g = ctx.createRadialGradient(px + 4, py - 9, 3, px + 4, py - 9, 14);
+            g.addColorStop(0, "rgba(94,200,255,0.1)");
+            g.addColorStop(0.8, "rgba(94,200,255,0.55)");
+            g.addColorStop(1, "rgba(94,200,255,0)");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(px + 4, py - 9, 14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalCompositeOperation = "source-over";
+          }
+        }
+        ctx.restore();
+        // ---- notas encima de cada obstáculo cercano (en píxeles de pantalla, nítidas)
+        for (const o of obstaculos) {
+          if (!o.vivo || o.golpeado) continue;
+          const ox = (o.x - cam) * ESC;
+          if (ox > W + 10 || ox + o.w * ESC < JUGADOR_X * ESC) continue;
+          const a = acciones[o.req];
+          const cx = ox + (o.w * ESC) / 2;
+          const yTop = o.tipo === "murcielago" ? (SUELO - 30) * ESC : (SUELO - Math.max(o.h, 8) - 16) * ESC;
+          const cerca = ox < (JUGADOR_X + 64) * ESC;
+          const ya = (o.x - (cam + JUGADOR_X)) < VEL * 0.55 && (o.x - (cam + JUGADOR_X)) > -o.w;
+          ctx.globalAlpha = cerca ? 1 : 0.62;
+          if (ya) Arte.brillo(ctx, cx, yTop + 9, 52 + 6 * Math.sin(t * 16), "255,255,255", 0.45);
+          Arte.pastilla(ctx, cx - 30, yTop - 6, 60, 30, ya ? a.color : "rgba(10,6,24,0.88)", ya ? "#fff" : a.color);
+          ctx.font = "bold 14px Consolas, monospace";
+          ctx.textAlign = "center";
+          ctx.fillStyle = ya ? "#10101a" : "#fff";
+          ctx.fillText(nombreNota(a.midi), cx, yTop + 9);
+          ctx.font = "bold 9px 'Work Sans', sans-serif";
+          ctx.fillStyle = ya ? "#10101a" : a.color;
+          ctx.fillText(a.etq.toUpperCase(), cx, yTop + 20);
+          ctx.globalAlpha = 1;
+        }
+        // popups
+        for (const p of popups) {
+          ctx.globalAlpha = Math.min(1, p.t * 2);
+          Arte.texto(ctx, p.texto, (p.x - cam) * ESC, p.y * ESC, 15, p.color, "center");
+          ctx.globalAlpha = 1;
+        }
+        Arte.dibujar(ctx);
+        // vignette + destello al recibir un golpe
+        Arte.vineta(ctx, 0.5);
+        if (flash > 0) {
+          ctx.fillStyle = `rgba(255,40,70,${flash * 1.2})`;
+          ctx.fillRect(0, 0, W, H);
+        }
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = "#efe6e0";
-        ctx.font = "bold 14px sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText("♥".repeat(jug.vidas) + "  " + puntos + " pts", 10, 20);
-        ctx.fillStyle = "rgba(255,255,255,0.15)";
-        ctx.fillRect(10, 28, 140, 6);
-        ctx.fillStyle = "#c02241";
-        ctx.fillRect(10, 28, 140 * Math.min(1, cam / (LARGO - 40)), 6);
+        // ---- HUD superior: corazones, puntos, racha y progreso
+        for (let i = 0; i < 3; i++) {
+          const hx0 = 16 + i * 22;
+          ctx.fillStyle = i < heroe.vidas ? "#ff3b5c" : "rgba(255,255,255,0.15)";
+          ctx.beginPath();
+          ctx.moveTo(hx0 + 8, 30);
+          ctx.bezierCurveTo(hx0 - 6, 16, hx0 + 4, 6, hx0 + 8, 14);
+          ctx.bezierCurveTo(hx0 + 12, 6, hx0 + 22, 16, hx0 + 8, 30);
+          ctx.fill();
+        }
+        Arte.texto(ctx, `${puntos}`, 100, 28, 20, "#efe6e0");
+        if (racha >= 2) Arte.texto(ctx, `x${Math.min(6, racha)} racha`, 160, 28, 14, "#7dffa8");
+        const prog = Math.min(1, cam / LARGO);
+        Arte.pastilla(ctx, W - 214, 14, 200, 10, "rgba(255,255,255,0.15)");
+        Arte.pastilla(ctx, W - 214, 14, Math.max(8, 200 * prog), 10, "#c02241");
+        if (anuncio && anuncio.t > 0) {
+          ctx.globalAlpha = Math.min(1, anuncio.t);
+          Arte.texto(ctx, anuncio.texto, W / 2, 62, 17, anuncio.color, "center");
+          ctx.globalAlpha = 1;
+        }
+        // ---- barra inferior: todas tus notas y lo que hacen; se enciende la que estás cantando
+        const n = plan.lista.length;
+        const ancho = Math.min(88, (W - 20) / n);
+        const x0 = W / 2 - (ancho * n) / 2;
+        for (let i = 0; i < n; i++) {
+          const a = plan.lista[i];
+          const on = sost[a.clave] > 0.05;
+          Arte.pastilla(ctx, x0 + i * ancho + 2, H - 40, ancho - 4, 34, on ? a.color : "rgba(14,8,28,0.82)", on ? "#fff" : a.color);
+          ctx.textAlign = "center";
+          ctx.font = "bold 12px Consolas, monospace";
+          ctx.fillStyle = on ? "#10101a" : "#fff";
+          ctx.fillText(nombreNota(a.midi), x0 + i * ancho + ancho / 2, H - 24);
+          ctx.font = "bold 9px 'Work Sans', sans-serif";
+          ctx.fillStyle = on ? "#10101a" : a.color;
+          ctx.fillText(a.etq.toUpperCase(), x0 + i * ancho + ancho / 2, H - 12);
+        }
       },
     };
-
-    function perderVida(msg) {
-      jug.vidas -= 1;
-      estado(msg, "mal");
-      if (jug.vidas <= 0) {
-        j.terminado = true;
-        estado(`Sin vidas. Llegaste al ${Math.round((100 * cam) / (LARGO - 40))} % del nivel con ${puntos} puntos. ¡Otra vez!`, "mal");
-        detener(false);
-      }
-    }
     return j;
   }
 
@@ -929,6 +1511,7 @@
             ctx.arc(x, yL, r + 9, 0, Math.PI * 2);
             ctx.fill();
           }
+          Arte.brillo(ctx, x, yL, r + 22, "255,92,122", reciente ? 0.6 : pasada || fase === "resultado" ? 0.28 : 0.14);
           ctx.fillStyle = pasada || fase === "resultado" ? "#ff5c7a" : "#c02241";
           ctx.beginPath();
           ctx.arc(x, yL, r, 0, Math.PI * 2);
@@ -991,6 +1574,7 @@
         }
         Arte.actualizar(0);
         Arte.dibujar(ctx);
+        Arte.vineta(ctx, 0.45);
         // ---- cabecera: fase, cuenta atrás y rondas
         const titulo = { inicio: "…", cuenta1: "CUENTA", escucha: "ESCUCHA", cuenta2: "PREPÁRATE", "tu-turno": "¡TU TURNO!", resultado: "RESULTADO" }[fase];
         const colorFase = fase === "tu-turno" ? "#ff5c7a" : fase === "escucha" ? "#7fd4ff" : "#efe6e0";
@@ -1026,8 +1610,8 @@
     },
     plataforma: {
       titulo: "🕹️ Plataformas",
-      texto: "Cada grado de la escala es una acción: tónica avanzar, tercera saltar, quinta atacar.",
-      ayuda: "Entrena ir a un grado de la escala a voluntad (no cromático). Mantén la nota ~0,12 s para que cuente. Los fosos se saltan con la tercera; los enemigos se atacan con la quinta cuando están cerca. Las notas salen de tu rango vocal y de la tónica y escala que elijas.",
+      texto: "El héroe corre solo: canta la nota de cada obstáculo (agacharte, saltar, atacar, escudo…) justo a tiempo.",
+      ayuda: "Cada grado de la escala es una acción y cada obstáculo muestra la nota que lo resuelve. Mantén la nota unos 0,1 s para que cuente. «Básico» usa 3 notas, «Medio» 5 y «Escala completa» 7 (con escudo y embestida). Las notas salen de tu rango vocal, de la tónica y de la escala que elijas; abajo siempre ves qué nota hace qué.",
     },
     ritmo: {
       titulo: "🥁 Eco de ritmo",
@@ -1076,6 +1660,8 @@
       );
     } else if (config.juego === "plataforma") {
       cont.append(
+        grupo("Notas en juego", "plataformaNivel", [["basico", "Básico · 3"], ["medio", "Medio · 5"], ["completo", "Escala completa · 7"]]),
+        grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
         grupo("Escala", "escala", [["mayor", "Mayor"], ["menor", "Menor"], ["pentatonica", "Pentatónica"]]),
         grupo("Tónica", "tonica", tonicas),
         grupo("Octava", "octava", [["exacta", "Exacta"], ["cualquiera", "Cualquiera"]]),
@@ -1092,26 +1678,11 @@
   }
 
   function pintarLeyendaPlataforma(cont) {
-    const pasos = ESCALAS[config.escala];
-    const [lo, hi] = rangoActual();
-    const centro = (lo + hi) / 2;
-    const cerca = (pc) => {
-      let mejor = null;
-      for (let m = lo - 6; m <= hi + 6; m++) if (mod12(m) === mod12(pc) && (mejor === null || Math.abs(m - centro) < Math.abs(mejor - centro))) mejor = m;
-      return mejor;
-    };
+    const plan = planPlataformas();
     const leyenda = document.createElement("div");
     leyenda.className = "leyenda-plataforma";
-    const items = [
-      ["Avanzar", config.tonica + pasos[0], "1ª (tónica)"],
-      ["Saltar", config.tonica + pasos[2], "3ª"],
-      ["Atacar", config.tonica + 7, "5ª"],
-    ];
-    leyenda.innerHTML = items
-      .map(([a, pc, g]) => {
-        const m = cerca(pc);
-        return `<span><b>${a}</b> = ${config.octava === "exacta" ? nombreNota(m) : NOMBRES[mod12(pc)]} <i>${g}</i></span>`;
-      })
+    leyenda.innerHTML = plan.lista
+      .map((a) => `<span><b>${a.etq}</b> = ${config.octava === "exacta" ? nombreNota(a.midi) : NOMBRES[mod12(a.midi)]} <i>${a.grado}</i></span>`)
       .join("");
     cont.appendChild(leyenda);
   }
@@ -1181,14 +1752,14 @@
         e.preventDefault();
       }
     }
-    if (e.key === "1" || e.key === "2" || e.key === "3") Tono.teclas[e.key] = true;
+    if (/^[1-7]$/.test(e.key)) Tono.teclas[e.key] = true;
     if ((e.code === "Space" || e.key === " ") && config.juego === "ritmo" && !e.repeat) {
       e.preventDefault();
       if (j_registrar) j_registrar(performance.now());
     }
   });
   document.addEventListener("keyup", (e) => {
-    if (e.key === "1" || e.key === "2" || e.key === "3") Tono.teclas[e.key] = false;
+    if (/^[1-7]$/.test(e.key)) Tono.teclas[e.key] = false;
   });
   lienzo.addEventListener("pointerdown", () => {
     if (juego && config.juego === "ritmo" && j_registrar) j_registrar(performance.now());
