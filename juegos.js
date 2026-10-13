@@ -34,8 +34,14 @@
   let _orto = null;
   /** Mapa clase de nota → [letra, alteración] para la escala y tónica elegidas (con caché). */
   function ortografia() {
-    const clave = `${config.escala}|${config.tonica}`;
+    const clave = `${config.notacion}|${config.escala}|${config.tonica}`;
     if (clave === _ortoClave && _orto) return _orto;
+    if (config.notacion !== "teorica") {
+      // notación simple: solo sostenidos (Do# Re# Fa# Sol# La#), sin hablar de bemoles
+      _ortoClave = clave;
+      _orto = { mapa: {}, bemoles: false };
+      return _orto;
+    }
     const menor = config.escala === "menor";
     const tp = mod12(config.tonica);
     const [li] = (menor ? TONICA_MENOR : TONICA_MAYOR)[tp];
@@ -71,6 +77,7 @@
   };
   /** Nombre de la tónica i (0–11) según el modo elegido: en menor Mib menor, en mayor Mib mayor… */
   function nombreTonica(i) {
+    if (config.notacion !== "teorica") return NOMBRES[mod12(i)];
     const [l, a] = (config.escala === "menor" ? TONICA_MENOR : TONICA_MAYOR)[mod12(i)];
     return LETRAS[l] + sufijoAlt(a);
   }
@@ -79,7 +86,7 @@
   // ---------------------------------------------------------------- configuración que se recuerda
   const CLAVE_CONFIG = "aleran-juegos-config";
   const config = Object.assign(
-    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", entrada: "mic", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio" },
+    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", entrada: "mic", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio", notacion: "sostenidos" },
     (() => {
       try {
         return JSON.parse(localStorage.getItem(CLAVE_CONFIG) || "{}");
@@ -1705,6 +1712,7 @@
       cont.append(
         grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
         grupo("Escala", "escala", [["mayor", "Mayor"], ["menor", "Menor"], ["pentatonica", "Pentatónica"]]),
+        grupo("Notas", "notacion", [["sostenidos", "Con sostenidos (simple)"], ["teorica", "Teórica (con bemoles)"]]),
         grupo("Tónica", "tonica", tonicas),
         grupo("Octava", "octava", [["exacta", "Exacta"], ["cualquiera", "Cualquiera"]]),
         grupo("Nota guía", "guia", [["si", "Sí"], ["no", "No"]]),
@@ -1715,6 +1723,7 @@
         grupo("Notas en juego", "plataformaNivel", [["basico", "Básico · 3"], ["medio", "Medio · 5"], ["completo", "Escala completa · 7"]]),
         grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
         grupo("Escala", "escala", [["mayor", "Mayor"], ["menor", "Menor"], ["pentatonica", "Pentatónica"]]),
+        grupo("Notas", "notacion", [["sostenidos", "Con sostenidos (simple)"], ["teorica", "Teórica (con bemoles)"]]),
         grupo("Tónica", "tonica", tonicas),
         grupo("Octava", "octava", [["exacta", "Exacta"], ["cualquiera", "Cualquiera"]]),
         entrada
