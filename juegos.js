@@ -90,7 +90,7 @@
   // ---------------------------------------------------------------- configuración que se recuerda
   const CLAVE_CONFIG = "aleran-juegos-config";
   const config = Object.assign(
-    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", entrada: "mic", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio", notacion: "ambas" },
+    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio", notacion: "ambas", plataformaMapa: "0", entrada: "todo" },
     (() => {
       try {
         return JSON.parse(localStorage.getItem(CLAVE_CONFIG) || "{}");
@@ -322,18 +322,24 @@
     simulado: null, // altura virtual (teclado o pruebas)
     teclas: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     async iniciar() {
-      if (config.entrada === "piano") {
-        Piano.iniciar(); // sin esperar: el aviso de permiso MIDI no debe retrasar el juego
-        return true;
-      }
-      Piano.ocultar();
-      if (config.entrada === "teclado") {
+      const e = config.entrada;
+      const usaPiano = e === "piano" || e === "todo";
+      const usaMic = e === "mic" || e === "todo";
+      if (usaPiano) Piano.iniciar(); // sin esperar: el aviso de permiso MIDI no debe retrasar el juego
+      else Piano.ocultar();
+      if (e === "teclado") {
         if (this.simulado === null) this.simulado = (rangoActual()[0] + rangoActual()[1]) / 2;
         return true;
       }
+      if (!usaMic) return true;
       if (this.activo) return true;
-      if (!window.MicrofonoEngine || !window.MicrofonoEngine.disponible()) return false;
-      await window.MicrofonoEngine.iniciar();
+      if (!window.MicrofonoEngine || !window.MicrofonoEngine.disponible()) return e === "todo";
+      try {
+        await window.MicrofonoEngine.iniciar();
+      } catch (err) {
+        if (e === "todo") return true; // con «Todo» el piano y el teclado siguen funcionando aunque el micro falle
+        throw err;
+      }
       Medidor.reiniciar();
       window.MicrofonoEngine.escucharContinuo((l) => {
         if (l) {
@@ -364,6 +370,10 @@
     leer() {
       if (config.entrada === "piano") return Piano.nota();
       if (config.entrada === "teclado") return this.simulado;
+      if (config.entrada === "todo") {
+        const pn = Piano.nota(); // si hay una tecla pulsada manda; si no, la voz
+        if (pn !== null) return pn;
+      }
       return this.midi !== null && performance.now() - this.t < 220 ? this.midi : null;
     },
   };
@@ -412,7 +422,7 @@
       if (this.el) this.el.style.display = "none";
     },
     tick() {
-      if (config.entrada !== "mic" || !Tono.activo) {
+      if ((config.entrada !== "mic" && config.entrada !== "todo") || !Tono.activo) {
         this.ocultar();
         return;
       }
@@ -494,7 +504,7 @@
     if (g) {
       g.actualizar(dt);
       g.dibujar(ctx2d);
-      if (config.entrada === "piano" && g.marcasPiano) Piano.marcar(g.marcasPiano());
+      if ((config.entrada === "piano" || config.entrada === "todo") && g.marcasPiano) Piano.marcar(g.marcasPiano());
     }
     if (juego && !g.terminado) rafId = requestAnimationFrame(bucle);
     else rafId = null;
@@ -503,7 +513,7 @@
   function arrancar(nuevo) {
     detener(false);
     juego = nuevo;
-    if (config.entrada === "piano" && Piano.activo) Piano.construir();
+    if ((config.entrada === "piano" || config.entrada === "todo") && Piano.activo) Piano.construir();
     Arte.particulas.length = 0;
     $("btnJugar").disabled = true;
     $("btnParar").disabled = false;
@@ -971,6 +981,16 @@
     return { lista, base };
   }
 
+  // paisajes de los mapas (sin amarillos ni dorados: mantienen la paleta de la marca)
+  const TEMAS = [
+    { cielo: ["#0a0716", "#2b1240", "#6e1d3f"], monts: ["#2a1648", "#1d0f35", "#150a29"], pasto: "#4f9a4b", pasto2: "#3a7a3a", tierra: ["#5a3a2a", "#664331"], arboles: "#0d061a", luna: "#f6ecff" },
+    { cielo: ["#050b1c", "#0f2a4d", "#2c5f8f"], monts: ["#17304f", "#10253f", "#0a1a2e"], pasto: "#cfe8ff", pasto2: "#9cc7ee", tierra: ["#3a4a63", "#445672"], arboles: "#06101f", luna: "#e8f4ff" },
+    { cielo: ["#04120f", "#0b3a33", "#1b6a5a"], monts: ["#12483f", "#0c3630", "#08241f"], pasto: "#59d68a", pasto2: "#2e9b61", tierra: ["#2e3b2a", "#37482f"], arboles: "#03100c", luna: "#d9ffe8" },
+    { cielo: ["#14040a", "#4a0e1e", "#a3262f"], monts: ["#5a1424", "#3f0d19", "#2a0710"], pasto: "#7a3a35", pasto2: "#5e2a2a", tierra: ["#3b1a1a", "#4a2020"], arboles: "#1c0508", luna: "#ffd0d6" },
+    { cielo: ["#0b0912", "#1d1a2e", "#3b3556"], monts: ["#2a2640", "#1d1a30", "#12101f"], pasto: "#8d86a8", pasto2: "#6a6486", tierra: ["#2f2b3f", "#37334a"], arboles: "#0a0814", luna: "#e0dcff" },
+    { cielo: ["#050615", "#14214a", "#3a2a7a"], monts: ["#1c2a5c", "#141d45", "#0d1330"], pasto: "#5ec8ff", pasto2: "#3a8fd0", tierra: ["#1f2c4d", "#27375f"], arboles: "#060a1c", luna: "#f0eaff" },
+  ];
+
   function crearPlataformas() {
     const LW = 160;
     const LH = 90;
@@ -1004,29 +1024,74 @@
       cristal: { w: 5, h: 30, req: tieneAccion("embestida") ? "embestida" : null },
     };
     const disponibles = Object.keys(TIPOS).filter((k) => TIPOS[k].req);
-    // introducción: cada acción se presenta con un obstáculo pensado para ella, en orden
+
+    // ---- mapas: cada uno es una SEMILLA fija (misma partida cada vez) con su paisaje y su estilo de obstáculos.
+    // «Aleatorio» (0) sortea una semilla nueva. Los obstáculos se reparten por igual entre las acciones del nivel.
+    const MAPAS = [
+      { nombre: "Atardecer", semilla: 11, prefiere: null },
+      { nombre: "Noche helada", semilla: 23, prefiere: "foso" },
+      { nombre: "Bosque encantado", semilla: 37, prefiere: "solido" },
+      { nombre: "Volcán", semilla: 41, prefiere: "foso" },
+      { nombre: "Cripta", semilla: 59, prefiere: "solido" },
+      { nombre: "Aurora", semilla: 73, prefiere: null },
+    ];
+    let mapaIdx = Number(config.plataformaMapa) || 0;
+    let semilla;
+    if (mapaIdx >= 1 && mapaIdx <= MAPAS.length) {
+      semilla = MAPAS[mapaIdx - 1].semilla + plan.lista.length * 1000;
+    } else {
+      semilla = Math.floor(Math.random() * 2 ** 31);
+      mapaIdx = (semilla % MAPAS.length) + 1;
+    }
+    const mapa = MAPAS[mapaIdx - 1];
+    let _s = semilla >>> 0;
+    const rnd = () => {
+      _s = (_s + 0x6d2b79f5) >>> 0;
+      let z = Math.imul(_s ^ (_s >>> 15), 1 | _s);
+      z = (z + Math.imul(z ^ (z >>> 7), 61 | z)) ^ z;
+      return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+    };
+    const elegirDe = (arr) => arr[Math.floor(rnd() * arr.length)];
+
+    // reparto equitativo: K obstáculos por cada acción (42 en total con 7 acciones y K = 6)
+    const K = { basico: 10, medio: 7, completo: 6 }[config.plataformaNivel] || 7;
+    const accionesNivel = plan.lista.map((a) => a.clave);
+    const resto = [];
+    for (const a of accionesNivel) for (let k = 1; k < K; k++) resto.push(a); // la primera de cada una va en la introducción
+    for (let i = resto.length - 1; i > 0; i--) {
+      const j2 = Math.floor(rnd() * (i + 1));
+      [resto[i], resto[j2]] = [resto[j2], resto[i]];
+    }
+    // sin la misma acción dos veces seguidas (semialeatorio)
+    let previa = accionesNivel[accionesNivel.length - 1];
+    for (let i = 0; i < resto.length; i++) {
+      if (resto[i] === previa) {
+        const sw = resto.findIndex((a, q) => q > i && a !== previa && (i + 1 >= resto.length || a !== resto[i + 1] || true));
+        if (sw > -1) [resto[i], resto[sw]] = [resto[sw], resto[i]];
+      }
+      previa = resto[i];
+    }
+    const secuenciaAcciones = [...accionesNivel, ...resto];
+    // introducción: cada acción se presenta con el obstáculo más claro para ella
     const INTRO = { agacharse: "murcielago", saltoBajo: "fosoCorto", saltoMedio: "tronco", atacar: "slime", saltoAlto: "muro", escudo: "flecha", embestida: "cristal" };
-    const secuencia = [];
-    for (const a of plan.lista) {
-      const t = INTRO[a.clave];
-      if (t && TIPOS[t].req && !secuencia.includes(t)) secuencia.push(t);
-    }
-    let ultimoT = null;
-    while (secuencia.length < 22) {
-      let t;
-      do {
-        t = disponibles[Math.floor(Math.random() * disponibles.length)];
-      } while (t === ultimoT && disponibles.length > 1);
-      ultimoT = t;
-      secuencia.push(t);
-    }
+    const esFoso = (tt) => tt.startsWith("foso");
+    const tipoParaAccion = (a, primera) => {
+      const cands = disponibles.filter((tt) => TIPOS[tt].req === a);
+      if (primera && INTRO[a] && cands.includes(INTRO[a])) return INTRO[a];
+      if (mapa.prefiere && cands.length > 1 && rnd() < 0.7) {
+        const pref = cands.filter((tt) => (mapa.prefiere === "foso" ? esFoso(tt) : !esFoso(tt)));
+        if (pref.length) return elegirDe(pref);
+      }
+      return elegirDe(cands);
+    };
+    const secuencia = secuenciaAcciones.map((a, i) => tipoParaAccion(a, i < accionesNivel.length));
     const obstaculos = [];
     let x = 120;
     for (const t of secuencia) {
       const d = TIPOS[t];
-      const o = { tipo: t, x, w: d.w, h: d.h, req: d.req, vivo: true, resuelto: false, golpeado: false, nuevo: obstaculos.every((q) => q.tipo !== t), fase: Math.random() * 6 };
+      const o = { tipo: t, x, w: d.w, h: d.h, req: d.req, vivo: true, resuelto: false, golpeado: false, nuevo: obstaculos.every((q) => q.tipo !== t), fase: rnd() * 6 };
       obstaculos.push(o);
-      x += 62 + Math.floor(Math.random() * 26);
+      x += 62 + Math.floor(rnd() * 26) + (t === "fosoLargo" || t === "muro" ? 16 : 0);
     }
     LARGO = obstaculos[obstaculos.length - 1].x + 70;
     // Checkpoints: un lugar SEGURO (a medio camino entre dos obstáculos) cada 5-6 obstáculos. Al perder una vida se
@@ -1039,6 +1104,7 @@
     }
     let ultimoCheckpoint = checkpoints[0];
     let pausaRespawn = 0; // segundos de calma tras reaparecer
+    let pendienteSalto = null; // salto «guardado» si cantas la nota un instante antes de aterrizar
 
     const heroe = {
       y: SUELO,
@@ -1068,6 +1134,7 @@
     let anuncio = null; // {texto, color, t}
     const popups = []; // textos flotantes en coordenadas del mundo
     let introMostrada = new Set();
+    anuncio = { texto: `Mapa ${mapaIdx}: ${mapa.nombre}${config.plataformaMapa === "0" ? " (aleatorio)" : ""} · ${secuencia.length} obstáculos`, color: "#efe6e0", t: 3.2 };
 
     function activa(a, m) {
       if (Tono.teclas[a.tecla]) return true;
@@ -1144,6 +1211,7 @@
       obstaculos,
       jug: heroe,
       plan,
+      mapa: { idx: mapaIdx, nombre: mapa.nombre, semilla, secuencia },
       get cam() {
         return cam;
       },
@@ -1175,13 +1243,22 @@
           armado[c] = true;
           return true;
         };
+        const despegar = (c) => {
+          heroe.vy = SALTOS[c];
+          heroe.suelo = false;
+          pendienteSalto = null;
+          Arte.emitir(JUGADOR_X * ESC + 14, SUELO * ESC, 8, "#d8c9a8", 70, 0.4);
+          tocarNota(acciones[c].midi, 0.18);
+        };
         for (const c of ["saltoBajo", "saltoMedio", "saltoAlto"]) {
-          if (dispara(c) && heroe.suelo) {
-            heroe.vy = SALTOS[c];
-            heroe.suelo = false;
-            Arte.emitir(JUGADOR_X * ESC + 14, SUELO * ESC, 8, "#d8c9a8", 70, 0.4);
-            tocarNota(acciones[c].midi, 0.18);
+          if (dispara(c)) {
+            if (heroe.suelo) despegar(c);
+            else pendienteSalto = { c, t: 0.4 }; // la nota se cantó con el héroe aún en el aire: salta al aterrizar
           }
+        }
+        if (pendienteSalto) {
+          pendienteSalto.t -= dt;
+          if (pendienteSalto.t <= 0) pendienteSalto = null;
         }
         if (dispara("atacar") && heroe.ataque <= 0) {
           heroe.ataque = 0.32;
@@ -1219,6 +1296,7 @@
             caida = true;
           }
         }
+        if (pendienteSalto && heroe.suelo && !caida) despegar(pendienteSalto.c);
         if (caida && heroe.y > LH + 24) {
           heroe.parpadeo = 0; // la caída siempre cuenta
           heroe.embestida = 0;
@@ -1331,10 +1409,11 @@
         const sy = sacudida > 0 ? (Math.random() - 0.5) * 6 * (sacudida / 0.35) : 0;
         ctx.translate(sx, sy);
         // ---- cielo de atardecer morado → carmesí en el horizonte
+        const TEMA = TEMAS[(mapaIdx - 1) % TEMAS.length];
         const cielo = ctx.createLinearGradient(0, 0, 0, SUELO * ESC);
-        cielo.addColorStop(0, "#0a0716");
-        cielo.addColorStop(0.55, "#2b1240");
-        cielo.addColorStop(1, "#6e1d3f");
+        cielo.addColorStop(0, TEMA.cielo[0]);
+        cielo.addColorStop(0.55, TEMA.cielo[1]);
+        cielo.addColorStop(1, TEMA.cielo[2]);
         ctx.fillStyle = cielo;
         ctx.fillRect(-10, -10, W + 20, H + 20);
         // estrellas
@@ -1347,7 +1426,7 @@
         // luna con halo
         const lx = 520 - (cam * 0.5) % 1400;
         Arte.brillo(ctx, lx, 70, 70, "255,220,255", 0.25);
-        ctx.fillStyle = "#f6ecff";
+        ctx.fillStyle = TEMA.luna;
         ctx.beginPath();
         ctx.arc(lx, 70, 20, 0, Math.PI * 2);
         ctx.fill();
@@ -1358,9 +1437,9 @@
         ctx.fill();
         // montañas en 3 capas con parallax
         const capas = [
-          ["#2a1648", 130, 54, 0.15, 90, 1.3],
-          ["#1d0f35", 105, 44, 0.32, 70, 3.1],
-          ["#150a29", 88, 30, 0.55, 52, 5.2],
+          [TEMA.monts[0], 130, 54, 0.15, 90, 1.3],
+          [TEMA.monts[1], 105, 44, 0.32, 70, 3.1],
+          [TEMA.monts[2], 88, 30, 0.55, 52, 5.2],
         ];
         for (const [color, base, alto, par, paso, sem] of capas) {
           ctx.fillStyle = color;
@@ -1376,7 +1455,7 @@
           ctx.fill();
         }
         // árboles / pinos en silueta (cerca)
-        ctx.fillStyle = "#0d061a";
+        ctx.fillStyle = TEMA.arboles;
         for (let i = 0; i < 9; i++) {
           const tx = ((((i * 90 - cam * 0.8 * ESC) % (W + 120)) + W + 120) % (W + 120)) - 60;
           const th = 40 + (i % 3) * 14;
@@ -1396,11 +1475,11 @@
           const wx = px + wx0;
           const foso = obstaculos.some((o) => o.h === 0 && o.tipo.startsWith("foso") && wx >= o.x && wx < o.x + o.w);
           if (foso) continue;
-          ctx.fillStyle = "#4f9a4b";
+          ctx.fillStyle = TEMA.pasto;
           ctx.fillRect(px, SUELO, 1.05, 2.2);
-          ctx.fillStyle = "#3a7a3a";
+          ctx.fillStyle = TEMA.pasto2;
           ctx.fillRect(px, SUELO + 1.6, 1.05, 1);
-          ctx.fillStyle = Math.floor(wx / 6) % 2 ? "#5a3a2a" : "#664331";
+          ctx.fillStyle = Math.floor(wx / 6) % 2 ? TEMA.tierra[0] : TEMA.tierra[1];
           ctx.fillRect(px, SUELO + 2.6, 1.05, LH - SUELO);
         }
         // fosos: oscuridad con lava carmesí al fondo
@@ -1831,10 +1910,10 @@
           estado("Prepárate: cuenta de 4…");
         } else if (fase === "cuenta2" && tFase >= cuatro) {
           empezarFase("tu-turno");
-          estado(config.entrada === "teclado" ? "¡Tu turno! Toca con la barra espaciadora o haciendo clic." : config.entrada === "piano" ? "¡Tu turno! Toca cualquier tecla del piano al ritmo." : "¡Tu turno! Di «ta», da palmas o toca la pantalla.");
+          estado(config.entrada === "teclado" ? "¡Tu turno! Toca con la barra espaciadora o haciendo clic." : config.entrada === "piano" ? "¡Tu turno! Toca cualquier tecla del piano al ritmo." : config.entrada === "todo" ? "¡Tu turno! Di «ta», da palmas, toca una tecla o la barra espaciadora." : "¡Tu turno! Di «ta», da palmas o toca la pantalla.");
         } else if (fase === "tu-turno") {
           // detección de golpes con el micrófono (palmas o sílaba)
-          if (config.entrada === "mic" && window.MicrofonoEngine && window.MicrofonoEngine.obtenerAnalizador) {
+          if ((config.entrada === "mic" || config.entrada === "todo") && window.MicrofonoEngine && window.MicrofonoEngine.obtenerAnalizador) {
             const an = window.MicrofonoEngine.obtenerAnalizador();
             if (an) {
               if (!buf || buf.length !== an.fftSize) buf = new Float32Array(an.fftSize);
@@ -2102,7 +2181,7 @@
     const cont = $("opcionesJuego");
     cont.innerHTML = "";
     const tonicas = Array.from({ length: 12 }, (_, i) => [i, nombreTonica(i)]);
-    const entrada = grupo("Entrada", "entrada", [["mic", "🎤 Micrófono"], ["piano", "🎹 Piano"], ["teclado", "⌨️ Teclado"]]);
+    const entrada = grupo("Entrada", "entrada", [["todo", "✨ Todo"], ["mic", "🎤 Micrófono"], ["piano", "🎹 Piano"], ["teclado", "⌨️ Teclado"]]);
     if (config.juego === "pasillo") {
       cont.append(
         grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
@@ -2116,6 +2195,7 @@
     } else if (config.juego === "plataforma") {
       cont.append(
         grupo("Notas en juego", "plataformaNivel", [["basico", "Básico · 3"], ["medio", "Medio · 5"], ["completo", "Escala completa · 7"]]),
+        grupo("Mapa", "plataformaMapa", [["0", "🎲 Aleatorio"], ["1", "1 · Atardecer"], ["2", "2 · Noche helada"], ["3", "3 · Bosque"], ["4", "4 · Volcán"], ["5", "5 · Cripta"], ["6", "6 · Aurora"]]),
         grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
         grupo("Escala", "escala", [["mayor", "Mayor"], ["menor", "Menor"], ["pentatonica", "Pentatónica"]]),
         grupo("Notas", "notacion", [["ambas", "Las dos (Re#/Mib)"], ["sostenidos", "Solo sostenidos"], ["teorica", "Teórica (bemoles)"]]),
@@ -2128,7 +2208,7 @@
       cont.append(
         grupo("Tempo", "ritmoBpm", [[60, "60"], [70, "70"], [85, "85"], [100, "100"]]),
         grupo("Nivel", "ritmoNivel", [[1, "1 · negras"], [2, "2 · corcheas"], [3, "3 · síncopas"]]),
-        grupo("Entrada", "entrada", [["mic", "🎤 Voz o palmas"], ["piano", "🎹 Piano"], ["teclado", "⌨️ Tocar / espacio"]])
+        grupo("Entrada", "entrada", [["todo", "✨ Todo"], ["mic", "🎤 Voz o palmas"], ["piano", "🎹 Piano"], ["teclado", "⌨️ Tocar / espacio"]])
       );
     }
   }
@@ -2163,7 +2243,7 @@
     estado("");
     fondo(ctx2d);
     pintarPortada();
-    if (config.entrada === "piano") Piano.construir();
+    if (config.entrada === "piano" || config.entrada === "todo") Piano.construir();
   }
 
   function pintarPortada() {
@@ -2199,7 +2279,7 @@
 
   // teclado
   document.addEventListener("keydown", (e) => {
-    if (juego && config.entrada === "piano" && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (juego && (config.entrada === "piano" || config.entrada === "todo") && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const semi = MAPA_TECLAS_PIANO[e.key.toLowerCase()];
       if (semi !== undefined) {
         e.preventDefault();
@@ -2224,7 +2304,7 @@
     }
   });
   document.addEventListener("keyup", (e) => {
-    if (config.entrada === "piano") {
+    if (config.entrada === "piano" || config.entrada === "todo") {
       const semi = MAPA_TECLAS_PIANO[e.key.toLowerCase()];
       if (semi !== undefined) Piano.soltar(baseTeclasPiano() + semi);
     }
@@ -2249,8 +2329,8 @@
       b.textContent = "🎤 Probar micrófono";
       b.addEventListener("click", async () => {
         if (juego) return;
-        if (config.entrada !== "mic") {
-          estado("La prueba es para el micrófono: pon «Entrada → Micrófono» abajo.", "mal");
+        if (config.entrada !== "mic" && config.entrada !== "todo") {
+          estado("La prueba es para el micrófono: pon «Entrada → Micrófono» (o «Todo») abajo.", "mal");
           return;
         }
         if (Tono.activo) {
@@ -2282,7 +2362,7 @@
     fondo(ctx2d);
     pintarPortada();
     $("btnParar").disabled = true;
-    if (config.entrada === "piano") Piano.construir();
+    if (config.entrada === "piano" || config.entrada === "todo") Piano.construir();
   }
 
   // ganchos para pruebas automáticas
