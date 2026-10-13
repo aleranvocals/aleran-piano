@@ -36,7 +36,13 @@
   "clases": "<rect x=\"6\" y=\"3\" width=\"13\" height=\"18\" rx=\"1.5\"/><path d=\"M3 8h4M3 12h4M3 16h4\"/><path d=\"M10 8h6\"/>",
   "voz": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0 0 14 0\"/><path d=\"M12 18v3\"/>",
   "practicar": "<rect x=\"3\" y=\"6\" width=\"18\" height=\"12\" rx=\"1\"/><path d=\"M8 6v12M12 6v12M16 6v12\"/>",
-  "cuenta": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/>"
+  "cuenta": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/>",
+  "oido": "<path d=\"M6 10a6 6 0 0 1 12 0c0 3-3 3.5-3 6.5a3 3 0 0 1-6 0\"/><path d=\"M9.5 10a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 4\"/>",
+  "glosario": "<path d=\"M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z\"/><path d=\"M4 5v16\"/><path d=\"M9 7h6\"/>",
+  "guia": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M15.5 8.5l-2 5-5 2 2-5z\"/>",
+  "soporte": "<path d=\"M4 5h16v11H9l-5 4z\"/>",
+  "sol": "<circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4\"/>",
+  "luna": "<path d=\"M20 14a8 8 0 1 1-10-10 6.5 6.5 0 0 0 10 10z\"/>"
 };
   var MAPA = {
   "🎵": "nota",
