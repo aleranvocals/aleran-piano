@@ -9,7 +9,7 @@
  *  🥁 Eco de ritmo — suena un patrón y lo repites (con la voz «ta», palmas o tocando); mide cuántos ms te desvías.
  *
  * Usa el micrófono y el rango vocal ya elegidos en la barra de arriba (audio.js / app-shell.js).
- * Sin micrófono se puede jugar con el teclado (↑↓ para la altura, 1 a 7 para las acciones, Espacio para el ritmo).
+ * Sin micrófono se puede jugar con un piano MIDI (o el de pantalla / teclado del ordenador) o con el teclado (↑↓ para la altura, 1 a 7 para las acciones, Espacio para el ritmo).
  */
 (function () {
   "use strict";
@@ -119,7 +119,178 @@
     return [min, max];
   }
 
-  // ---------------------------------------------------------------- entrada de tono (micrófono o teclado)
+  // ---------------------------------------------------------------- piano (MIDI, teclado de pantalla y teclado del ordenador)
+  const Piano = {
+    notas: [], // notas sostenidas, la última pulsada manda
+    activo: false,
+    midiNombre: "",
+    entradasMidi: [],
+    teclasPc: {},
+    pulsadasPantalla: new Set(),
+    marcas: {},
+    nota() {
+      return this.notas.length ? this.notas[this.notas.length - 1] : null;
+    },
+    tocar(m) {
+      if (!this.notas.includes(m)) this.notas.push(m);
+      tocarNota(m, 0.6);
+      this.refrescar();
+      if (config.juego === "ritmo" && juego && j_registrar) j_registrar(performance.now());
+    },
+    soltar(m) {
+      this.notas = this.notas.filter((x) => x !== m);
+      this.refrescar();
+    },
+    soltarTodas() {
+      this.notas = [];
+      this.refrescar();
+    },
+    refrescar() {
+      const cont = $("pianoJuego");
+      if (!cont) return;
+      cont.querySelectorAll("[data-midi]").forEach((k) => {
+        const m = Number(k.dataset.midi);
+        k.classList.toggle("pulsada", this.notas.includes(m));
+        const marca = this.marcas[m];
+        k.style.setProperty("--marca", marca || "transparent");
+        k.classList.toggle("marcada", Boolean(marca));
+      });
+    },
+    marcar(mapa) {
+      const firma = JSON.stringify(mapa || {});
+      if (firma === this._firma) return;
+      this._firma = firma;
+      this.marcas = mapa || {};
+      this.refrescar();
+    },
+    construir() {
+      let cont = $("pianoJuego");
+      if (!cont) {
+        cont = document.createElement("div");
+        cont.id = "pianoJuego";
+        const lienzoCont = document.querySelector(".lienzo-juego");
+        lienzoCont.parentNode.insertBefore(cont, lienzoCont.nextSibling);
+        const css = document.createElement("style");
+        css.textContent = `
+          #pianoJuego{position:relative;margin:10px 0 2px;overflow-x:auto;padding-bottom:6px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;contain:inline-size}
+          #pianoJuego .teclas{position:relative;display:flex;height:96px;width:max-content;min-width:100%}
+          #pianoJuego .blanca{position:relative;width:34px;flex:0 0 34px;height:96px;background:#efe6e0;border:1px solid #20161a;border-radius:0 0 6px 6px;
+            color:#3a2a30;font:600 9px/1 'Work Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;cursor:pointer;user-select:none;touch-action:none}
+          #pianoJuego .negra{position:absolute;top:0;width:22px;height:58px;margin-left:-11px;background:#1a1216;border:1px solid #000;border-radius:0 0 4px 4px;z-index:2;cursor:pointer;
+            color:#d8c9d0;font:600 8px/1 'Work Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;user-select:none;touch-action:none}
+          #pianoJuego .marcada{box-shadow:inset 0 -5px 0 var(--marca)}
+          #pianoJuego .blanca.pulsada{background:#ff8fa3}
+          #pianoJuego .negra.pulsada{background:#c02241}
+          #pianoJuego .estado-midi{font-size:12px;color:#a8998f;margin-top:4px}
+        `;
+        document.head.appendChild(css);
+      }
+      const [lo, hi] = rangoActual();
+      const desde = Math.floor((lo - 2) / 12) * 12; // empieza en un Do
+      let hasta = hi + 3;
+      if (hasta - desde > 40) hasta = desde + 40;
+      const blancas = [];
+      for (let m = desde; m <= hasta; m++) if (![1, 3, 6, 8, 10].includes(mod12(m))) blancas.push(m);
+      cont.innerHTML = '<div class="teclas"></div><div class="estado-midi" id="pianoEstado"></div>';
+      const fila = cont.firstChild;
+      blancas.forEach((m) => {
+        const k = document.createElement("div");
+        k.className = "blanca";
+        k.dataset.midi = String(m);
+        k.textContent = mod12(m) === 0 ? nombreNota(m) : nombreClase(m);
+        fila.appendChild(k);
+        const negra = [1, 3, 6, 8, 10].includes(mod12(m + 1)) && m + 1 <= hasta;
+        if (negra) {
+          const n = document.createElement("div");
+          n.className = "negra";
+          n.dataset.midi = String(m + 1);
+          n.textContent = nombreClase(m + 1);
+          n.style.left = `${fila.children.length * 34}px`;
+          fila.appendChild(n);
+        }
+      });
+      // las negras se colocan con posición absoluta respecto a la fila (después de crear las blancas)
+      let x = 0;
+      Array.from(fila.children).forEach((k) => {
+        if (k.classList.contains("blanca")) x += 34;
+        else k.style.left = `${x}px`;
+      });
+      const alPulsar = (e) => {
+        const k = e.target.closest("[data-midi]");
+        if (!k) return;
+        e.preventDefault();
+        const m = Number(k.dataset.midi);
+        this.pulsadasPantalla.add(m);
+        this.tocar(m);
+      };
+      const alSoltar = () => {
+        this.pulsadasPantalla.forEach((m) => this.soltar(m));
+        this.pulsadasPantalla.clear();
+      };
+      fila.onpointerdown = alPulsar;
+      window.addEventListener("pointerup", alSoltar);
+      window.addEventListener("pointercancel", alSoltar);
+      cont.style.display = "block";
+      this.refrescar();
+    },
+    ocultar() {
+      const cont = $("pianoJuego");
+      if (cont) cont.style.display = "none";
+    },
+    async iniciar() {
+      this.activo = true;
+      this.construir();
+      const info = $("pianoEstado");
+      const pon = (txt) => {
+        if (info) info.textContent = txt;
+      };
+      pon("Toca las teclas de pantalla o del ordenador (A S D F G H J K · W E T Y U). Buscando un piano MIDI…");
+      if (!navigator.requestMIDIAccess) {
+        pon("Este navegador no tiene MIDI: usa el piano de pantalla o el teclado del ordenador (A S D F G H J K · W E T Y U).");
+        return;
+      }
+      try {
+        const acceso = await navigator.requestMIDIAccess();
+        const conectar = () => {
+          const entradas = Array.from(acceso.inputs.values());
+          entradas.forEach((e) => {
+            e.onmidimessage = (ev) => {
+              if (document.hidden) return;
+              const [estado, nota, vel] = ev.data;
+              const tipo = estado & 0xf0;
+              if (tipo === 0x90 && vel > 0) this.tocar(nota);
+              else if (tipo === 0x80 || (tipo === 0x90 && vel === 0)) this.soltar(nota);
+            };
+          });
+          this.entradasMidi = entradas;
+          pon(
+            entradas.length
+              ? `🎹 MIDI conectado: ${entradas.map((e) => e.name).join(", ")}. También puedes usar el piano de pantalla o el teclado del ordenador.`
+              : "No veo ningún piano MIDI conectado: usa el piano de pantalla o el teclado del ordenador (A S D F G H J K · W E T Y U)."
+          );
+        };
+        conectar();
+        acceso.onstatechange = conectar;
+      } catch (err) {
+        pon("No pude abrir el MIDI (" + (err && err.name ? err.name : "permiso") + "): usa el piano de pantalla o el teclado del ordenador.");
+      }
+    },
+    detener() {
+      this.entradasMidi.forEach((e) => (e.onmidimessage = null));
+      this.entradasMidi = [];
+      this.soltarTodas();
+      this.activo = false;
+    },
+  };
+  // teclado del ordenador como piano (A S D F G H J K = Do Re Mi Fa Sol La Si Do; W E T Y U = sostenidos)
+  const MAPA_TECLAS_PIANO = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15 };
+  function baseTeclasPiano() {
+    const [lo, hi] = rangoActual();
+    const centro = (lo + hi) / 2;
+    return Math.round((centro - 6) / 12) * 12; // el Do que deja el centro de tu rango a media escala
+  }
+
+  // ---------------------------------------------------------------- entrada de tono (micrófono, teclado o piano)
   const Tono = {
     activo: false,
     midi: null,
@@ -127,6 +298,11 @@
     simulado: null, // altura virtual (teclado o pruebas)
     teclas: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     async iniciar() {
+      if (config.entrada === "piano") {
+        Piano.iniciar(); // sin esperar: el aviso de permiso MIDI no debe retrasar el juego
+        return true;
+      }
+      Piano.ocultar();
       if (config.entrada === "teclado") {
         if (this.simulado === null) this.simulado = (rangoActual()[0] + rangoActual()[1]) / 2;
         return true;
@@ -147,9 +323,11 @@
       if (this.activo && window.MicrofonoEngine) window.MicrofonoEngine.detenerContinuo();
       this.activo = false;
       this.midi = null;
+      Piano.detener();
     },
     /** Altura actual en semitonos (decimal), o null si no hay voz. */
     leer() {
+      if (config.entrada === "piano") return Piano.nota();
       if (config.entrada === "teclado" || this.simulado !== null) return this.simulado;
       return this.midi !== null && performance.now() - this.t < 220 ? this.midi : null;
     },
@@ -196,6 +374,7 @@
     if (g) {
       g.actualizar(dt);
       g.dibujar(ctx2d);
+      if (config.entrada === "piano" && g.marcasPiano) Piano.marcar(g.marcasPiano());
     }
     if (juego && !g.terminado) rafId = requestAnimationFrame(bucle);
     else rafId = null;
@@ -398,6 +577,10 @@
 
     const j = {
       terminado: false,
+      marcasPiano() {
+        const sig = puertas.find((q) => !q.hecho && q.x + ANCHO_PUERTA > BOLA_X - 10);
+        return sig ? { [sig.nota]: "#ff3b6e" } : {};
+      },
       puertas,
       resultados,
       actualizar(dt) {
@@ -667,7 +850,9 @@
     const SALTOS = { saltoBajo: -80, saltoMedio: -105, saltoAlto: -135 };
     const G = 260;
     const JUGADOR_X = 30;
-    const LARGO = 130 + 26 * 66; // ~26 obstáculos
+    // El juego va en «cámara lenta» respecto a la primera versión: mismas distancias y alturas, más segundos para reaccionar.
+    const TS = { lento: 0.6, normal: 0.78, rapido: 1 }[config.velocidad] || 0.6;
+    let LARGO = 0;
 
     // ---------------------------------------------------------------- nivel
     // tipos: qué acción mínima los resuelve (la más baja disponible que sirva)
@@ -693,7 +878,7 @@
       if (t && TIPOS[t].req && !secuencia.includes(t)) secuencia.push(t);
     }
     let ultimoT = null;
-    while (secuencia.length < 26) {
+    while (secuencia.length < 22) {
       let t;
       do {
         t = disponibles[Math.floor(Math.random() * disponibles.length)];
@@ -709,6 +894,17 @@
       obstaculos.push(o);
       x += 62 + Math.floor(Math.random() * 26);
     }
+    LARGO = obstaculos[obstaculos.length - 1].x + 70;
+    // Checkpoints: un lugar SEGURO (a medio camino entre dos obstáculos) cada 5-6 obstáculos. Al perder una vida se
+    // reaparece en el último checkpoint alcanzado (o en el inicio), nunca justo antes del peligro.
+    const checkpoints = [{ x: JUGADOR_X, activo: true }];
+    for (let i = 5; i + 1 < obstaculos.length - 1; i += 6) {
+      const a = obstaculos[i];
+      const b = obstaculos[i + 1];
+      checkpoints.push({ x: Math.round((a.x + a.w + b.x) / 2), activo: false });
+    }
+    let ultimoCheckpoint = checkpoints[0];
+    let pausaRespawn = 0; // segundos de calma tras reaparecer
 
     const heroe = {
       y: SUELO,
@@ -759,12 +955,44 @@
       sacudida = 0.35;
       flash = 0.25;
       Arte.emitir(JUGADOR_X * ESC + 20, (heroe.y - 8) * ESC, 22, "#ff3b4e", 160, 0.7);
-      estado(msg, "mal");
       if (heroe.vidas <= 0) {
+        estado(msg, "mal");
         j.terminado = true;
         estado(`Sin vidas. Llegaste al ${Math.round((100 * cam) / LARGO)} % del nivel con ${puntos} puntos. ¡Otra vez!`, "mal");
         detener(false);
+        return;
       }
+      reaparecer(msg);
+    }
+
+    /** Vuelve al último checkpoint (o al principio) con unos segundos de calma y los obstáculos de ahí en adelante restaurados. */
+    function reaparecer(msg) {
+      const dondeX = ultimoCheckpoint.x;
+      cam = Math.max(0, dondeX - JUGADOR_X);
+      caida = false;
+      heroe.y = SUELO;
+      heroe.vy = 0;
+      heroe.suelo = true;
+      heroe.agachado = false;
+      heroe.escudo = false;
+      heroe.ataque = 0;
+      heroe.embestida = 0;
+      heroe.parpadeo = 2.2;
+      pausaRespawn = 1.4;
+      for (const a of plan.lista) {
+        sost[a.clave] = 0;
+        armado[a.clave] = true; // no dispara hasta soltar la nota
+      }
+      for (const o of obstaculos) {
+        if (o.x + o.w > cam + JUGADOR_X + 4) {
+          o.golpeado = false;
+          o.vivo = true;
+          o.resuelto = false;
+        }
+      }
+      const donde = ultimoCheckpoint === checkpoints[0] ? "el inicio" : "el checkpoint";
+      anuncio = { texto: `Vuelves a ${donde} · te quedan ${heroe.vidas} vida${heroe.vidas === 1 ? "" : "s"}`, color: "#efe6e0", t: 2.4 };
+      estado(`${msg} Vuelves a ${donde}.`, "mal");
     }
 
     function resolver(o, texto) {
@@ -785,16 +1013,23 @@
       get cam() {
         return cam;
       },
-      actualizar(dt) {
-        t += dt;
-        Arte.actualizar(dt);
+      marcasPiano() {
+        const mapa = {};
+        plan.lista.forEach((a) => (mapa[a.midi] = a.color));
+        return mapa;
+      },
+      actualizar(dtReal) {
+        const dt = dtReal * TS; // tiempo del juego (más lento); el tiempo real se usa para tu voz y las animaciones
+        t += dtReal;
+        Arte.actualizar(dtReal);
         const m = Tono.leer();
         // ---- tu voz: sostener cada nota
         for (const a of plan.lista) {
           const on = activa(a, m);
-          sost[a.clave] = on ? sost[a.clave] + dt : 0;
+          sost[a.clave] = on ? sost[a.clave] + dtReal : 0;
           if (!on) armado[a.clave] = false;
         }
+        pausaRespawn = Math.max(0, pausaRespawn - dtReal);
         const listo = (c) => tieneAccion(c) && sost[c] > 0.07;
         heroe.agachado = listo("agacharse") && heroe.suelo;
         heroe.escudo = listo("escudo");
@@ -825,7 +1060,7 @@
         heroe.alto = heroe.agachado ? 9 : 18;
 
         // ---- el héroe corre solo
-        cam += VEL * (heroe.embestida > 0 ? 1.7 : 1) * dt;
+        if (pausaRespawn <= 0) cam += VEL * (heroe.embestida > 0 ? 1.7 : 1) * dt;
         // ---- física vertical
         const enFoso = obstaculos.find((o) => o.h === 0 && o.tipo.startsWith("foso") && JUGADOR_X + 4 + cam > o.x + 1 && JUGADOR_X + 4 + cam < o.x + o.w - 1);
         if (!heroe.suelo || caida) {
@@ -848,16 +1083,21 @@
           }
         }
         if (caida && heroe.y > LH + 24) {
-          const pos = enFoso || obstaculos.find((o) => o.h === 0 && o.tipo.startsWith("foso") && o.x + o.w > cam && o.x < cam + 70);
+          heroe.parpadeo = 0; // la caída siempre cuenta
+          heroe.embestida = 0;
           perderVida("¡Al foso! Salta antes de llegar (la nota del foso está encima).");
-          cam = Math.max(0, pos ? pos.x - 36 : cam - 30);
-          caida = false;
-          heroe.y = SUELO;
-          heroe.vy = 0;
-          heroe.suelo = true;
-          obstaculos.forEach((o) => {
-            if (o.x > cam + 40) o.resuelto = false;
-          });
+          if (j.terminado) return;
+        }
+        // ---- checkpoints
+        for (const cp of checkpoints) {
+          if (!cp.activo && JUGADOR_X + cam >= cp.x) {
+            cp.activo = true;
+            ultimoCheckpoint = cp;
+            puntos += 5;
+            popup("¡Checkpoint!", cp.x, "#7fd4ff");
+            anuncio = { texto: "Checkpoint guardado: si pierdes una vida, vuelves aquí", color: "#7fd4ff", t: 2.2 };
+            Arte.emitir((cp.x - cam) * ESC + 10, (SUELO - 14) * ESC, 24, "#7fd4ff", 140, 0.7);
+          }
         }
         // ---- obstáculos
         const hx = JUGADOR_X + cam; // x del héroe en el mundo
@@ -880,14 +1120,12 @@
             if (solapaX && heroe.y > SUELO - o.h + 0.5) {
               o.golpeado = true;
               perderVida(`Chocaste: aquí hacía falta ${INFO_ACCION[o.req].etq.toLowerCase()} (${nombreNota(acciones[o.req].midi)}).`);
-              cam = Math.max(0, cam - 22);
             } else if (!o.resuelto && o.x + o.w < hx) resolver(o, "¡Salto!");
           } else if (o.tipo === "murcielago") {
             const arriba = heroe.y - heroe.alto;
             if (solapaX && arriba < SUELO - 13 && heroe.y > SUELO - 26) {
               o.golpeado = true;
               perderVida(`El murciélago te dio: agáchate cantando ${nombreNota(acciones.agacharse.midi)}.`);
-              cam = Math.max(0, cam - 18);
             } else if (!o.resuelto && o.x + o.w < hx) resolver(o, "¡Esquivado!");
           } else if (o.tipo === "slime") {
             const delante = o.x - hx;
@@ -903,7 +1141,6 @@
             } else if (solapaX && heroe.y > SUELO - 8) {
               o.golpeado = true;
               perderVida(`El slime te tocó: ataca cantando ${nombreNota(acciones.atacar.midi)} cuando esté cerca.`);
-              cam = Math.max(0, cam - 20);
             } else if (!o.resuelto && o.x + o.w < hx) resolver(o, "¡Saltado!");
           } else if (o.tipo === "flecha") {
             if (solapaX && heroe.y > SUELO - 12) {
@@ -914,7 +1151,6 @@
               } else {
                 o.golpeado = true;
                 perderVida(`Te alcanzó la bola de fuego: levanta el escudo cantando ${nombreNota(acciones.escudo.midi)}.`);
-                cam = Math.max(0, cam - 16);
               }
             }
           } else if (o.tipo === "cristal") {
@@ -926,7 +1162,6 @@
             } else if (solapaX) {
               o.golpeado = true;
               perderVida(`Pared de cristal: embiste cantando ${nombreNota(acciones.embestida.midi)}.`);
-              cam = Math.max(0, cam - 22);
             }
           }
         }
@@ -1140,6 +1375,26 @@
             ctx.globalCompositeOperation = "source-over";
           }
         }
+        // checkpoints: poste con banderín y un halo en el suelo (zona segura)
+        for (const cp of checkpoints) {
+          if (cp === checkpoints[0]) continue;
+          const cx = cp.x - cam;
+          if (cx < -20 || cx > LW + 20) continue;
+          const col = cp.activo ? "#5ec8ff" : "#8d86a8";
+          ctx.fillStyle = "rgba(94,200,255," + (cp.activo ? 0.14 : 0.06) + ")";
+          ctx.beginPath();
+          ctx.ellipse(cx, SUELO + 0.5, 16, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#cfc6e6";
+          ctx.fillRect(cx, SUELO - 22, 1.2, 22);
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(cx + 1.2, SUELO - 22);
+          ctx.lineTo(cx + 12, SUELO - 18 + Math.sin(t * 5 + cp.x) * 0.8);
+          ctx.lineTo(cx + 1.2, SUELO - 14);
+          ctx.closePath();
+          ctx.fill();
+        }
         // meta: pórtico con bandera
         const metaX = LARGO + 40 - cam;
         if (metaX < LW + 12) {
@@ -1307,6 +1562,9 @@
         const prog = Math.min(1, cam / LARGO);
         Arte.pastilla(ctx, W - 214, 14, 200, 10, "rgba(255,255,255,0.15)");
         Arte.pastilla(ctx, W - 214, 14, Math.max(8, 200 * prog), 10, "#c02241");
+        if (pausaRespawn > 0) {
+          Arte.texto(ctx, pausaRespawn > 0.6 ? "¿Listo?" : "¡Ya!", W / 2, 150, 34, "#fff", "center");
+        }
         if (anuncio && anuncio.t > 0) {
           ctx.globalAlpha = Math.min(1, anuncio.t);
           Arte.texto(ctx, anuncio.texto, W / 2, 62, 17, anuncio.color, "center");
@@ -1436,10 +1694,10 @@
           estado("Prepárate: cuenta de 4…");
         } else if (fase === "cuenta2" && tFase >= cuatro) {
           empezarFase("tu-turno");
-          estado(config.entrada === "teclado" ? "¡Tu turno! Toca con la barra espaciadora o haciendo clic." : "¡Tu turno! Di «ta», da palmas o toca la pantalla.");
+          estado(config.entrada === "teclado" ? "¡Tu turno! Toca con la barra espaciadora o haciendo clic." : config.entrada === "piano" ? "¡Tu turno! Toca cualquier tecla del piano al ritmo." : "¡Tu turno! Di «ta», da palmas o toca la pantalla.");
         } else if (fase === "tu-turno") {
           // detección de golpes con el micrófono (palmas o sílaba)
-          if (config.entrada !== "teclado" && window.MicrofonoEngine && window.MicrofonoEngine.obtenerAnalizador) {
+          if (config.entrada === "mic" && window.MicrofonoEngine && window.MicrofonoEngine.obtenerAnalizador) {
             const an = window.MicrofonoEngine.obtenerAnalizador();
             if (an) {
               if (!buf || buf.length !== an.fftSize) buf = new Float32Array(an.fftSize);
@@ -1707,7 +1965,7 @@
     const cont = $("opcionesJuego");
     cont.innerHTML = "";
     const tonicas = Array.from({ length: 12 }, (_, i) => [i, nombreTonica(i)]);
-    const entrada = grupo("Entrada", "entrada", [["mic", "🎤 Micrófono"], ["teclado", "⌨️ Teclado"]]);
+    const entrada = grupo("Entrada", "entrada", [["mic", "🎤 Micrófono"], ["piano", "🎹 Piano"], ["teclado", "⌨️ Teclado"]]);
     if (config.juego === "pasillo") {
       cont.append(
         grupo("Velocidad", "velocidad", [["lento", "Lento"], ["normal", "Normal"], ["rapido", "Rápido"]]),
@@ -1733,7 +1991,7 @@
       cont.append(
         grupo("Tempo", "ritmoBpm", [[60, "60"], [70, "70"], [85, "85"], [100, "100"]]),
         grupo("Nivel", "ritmoNivel", [[1, "1 · negras"], [2, "2 · corcheas"], [3, "3 · síncopas"]]),
-        grupo("Entrada", "entrada", [["mic", "🎤 Voz o palmas"], ["teclado", "⌨️ Tocar / espacio"]])
+        grupo("Entrada", "entrada", [["mic", "🎤 Voz o palmas"], ["piano", "🎹 Piano"], ["teclado", "⌨️ Tocar / espacio"]])
       );
     }
   }
@@ -1768,6 +2026,7 @@
     estado("");
     fondo(ctx2d);
     pintarPortada();
+    if (config.entrada === "piano") Piano.construir();
   }
 
   function pintarPortada() {
@@ -1803,6 +2062,14 @@
 
   // teclado
   document.addEventListener("keydown", (e) => {
+    if (juego && config.entrada === "piano" && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const semi = MAPA_TECLAS_PIANO[e.key.toLowerCase()];
+      if (semi !== undefined) {
+        e.preventDefault();
+        Piano.tocar(baseTeclasPiano() + semi);
+        return;
+      }
+    }
     if (!juego) return;
     if (config.entrada === "teclado" || Tono.simulado !== null) {
       if (e.key === "ArrowUp") {
@@ -1820,6 +2087,10 @@
     }
   });
   document.addEventListener("keyup", (e) => {
+    if (config.entrada === "piano") {
+      const semi = MAPA_TECLAS_PIANO[e.key.toLowerCase()];
+      if (semi !== undefined) Piano.soltar(baseTeclasPiano() + semi);
+    }
     if (/^[1-7]$/.test(e.key)) Tono.teclas[e.key] = false;
   });
   lienzo.addEventListener("pointerdown", () => {
@@ -1845,11 +2116,13 @@
     fondo(ctx2d);
     pintarPortada();
     $("btnParar").disabled = true;
+    if (config.entrada === "piano") Piano.construir();
   }
 
   // ganchos para pruebas automáticas
   window.JuegosTest = {
     config,
+    Piano,
     nombreNota,
     nombreClase,
     nombreTonica,
