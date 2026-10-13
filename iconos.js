@@ -74,7 +74,15 @@
   "📓": "clases",
   "🎤": "voz",
   "🎹": "practicar",
-  "⚙": "cuenta"
+  "⚙": "cuenta",
+  "🎙": "voz",
+  "🧠": "oido",
+  "🎮": "plataformas",
+  "📖": "glosario",
+  "🧭": "guia",
+  "💬": "soporte",
+  "☀": "sol",
+  "🌙": "luna"
 };
   var claves = Object.keys(MAPA).map(function (k) { return k; });
   var re = new RegExp("^(\s*)(" + claves.join("|") + ")️?", "u");
