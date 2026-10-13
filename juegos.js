@@ -334,6 +334,7 @@
       if (this.activo) return true;
       if (!window.MicrofonoEngine || !window.MicrofonoEngine.disponible()) return false;
       await window.MicrofonoEngine.iniciar();
+      Medidor.reiniciar();
       window.MicrofonoEngine.escucharContinuo((l) => {
         if (l) {
           this.midi = l.midiExacto;
@@ -349,13 +350,108 @@
       this.midi = null;
       Piano.detener();
     },
+    /** Volumen instantáneo (RMS 0–1) de lo que llega por el micrófono elegido, o null si no hay micrófono abierto. */
+    nivel() {
+      const an = window.MicrofonoEngine && window.MicrofonoEngine.obtenerAnalizador && window.MicrofonoEngine.obtenerAnalizador();
+      if (!an) return null;
+      if (!this._bufNivel || this._bufNivel.length !== an.fftSize) this._bufNivel = new Float32Array(an.fftSize);
+      an.getFloatTimeDomainData(this._bufNivel);
+      let s = 0;
+      for (let i = 0; i < this._bufNivel.length; i++) s += this._bufNivel[i] * this._bufNivel[i];
+      return Math.sqrt(s / this._bufNivel.length);
+    },
     /** Altura actual en semitonos (decimal), o null si no hay voz. */
     leer() {
       if (config.entrada === "piano") return Piano.nota();
-      if (config.entrada === "teclado" || this.simulado !== null) return this.simulado;
+      if (config.entrada === "teclado") return this.simulado;
       return this.midi !== null && performance.now() - this.t < 220 ? this.midi : null;
     },
   };
+
+  // ---------------------------------------------------------------- medidor del micrófono (para saber QUÉ oye el juego)
+  const Medidor = {
+    el: null,
+    inicio: 0,
+    ultimoSonido: 0,
+    ultimaNota: 0,
+    nombreDispositivo() {
+      try {
+        const v = JSON.parse(localStorage.getItem("aleran-mic-dispositivo") || "null");
+        if (v && v.nombre) return v.nombre.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, "");
+      } catch {
+        /* sin nombre */
+      }
+      return "el micrófono predeterminado";
+    },
+    construir() {
+      if (this.el) return this.el;
+      const e = document.createElement("div");
+      e.id = "medidorMic";
+      e.innerHTML =
+        '<div class="mm-fila"><span class="mm-nombre" id="mmNombre"></span><div class="mm-barra"><i id="mmBarra"></i></div><span class="mm-nota" id="mmNota">—</span></div>' +
+        '<div class="mm-msg" id="mmMsg"></div>';
+      const ref = document.querySelector(".lienzo-juego");
+      ref.parentNode.insertBefore(e, ref.nextSibling);
+      const css = document.createElement("style");
+      css.textContent = `
+        #medidorMic{margin:8px 0 2px;padding:8px 10px;border:1px solid #322423;border-radius:10px;background:#151010}
+        #medidorMic .mm-fila{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+        #medidorMic .mm-nombre{font-size:12px;color:#a8998f;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        #medidorMic .mm-barra{flex:1;min-width:90px;height:10px;border-radius:6px;background:#2a1d1f;overflow:hidden}
+        #medidorMic .mm-barra i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3ecf6e,#c02241);transition:width .08s}
+        #medidorMic .mm-nota{font:700 15px Consolas,monospace;min-width:74px;text-align:right;color:#efe6e0}
+        #medidorMic .mm-msg{font-size:12.5px;margin-top:6px;color:#a8998f;min-height:1em}
+        #medidorMic .mm-msg.mal{color:#ff8d9a}
+        #medidorMic .mm-msg.ok{color:#7dffa8}
+      `;
+      document.head.appendChild(css);
+      this.el = e;
+      return e;
+    },
+    ocultar() {
+      if (this.el) this.el.style.display = "none";
+    },
+    tick() {
+      if (config.entrada !== "mic" || !Tono.activo) {
+        this.ocultar();
+        return;
+      }
+      const e = this.construir();
+      e.style.display = "block";
+      const ahora = performance.now();
+      if (!this.inicio) this.inicio = ahora;
+      const rms = Tono.nivel();
+      const nota = Tono.leer();
+      if (rms !== null && rms > 0.008) this.ultimoSonido = ahora;
+      if (nota !== null) this.ultimaNota = ahora;
+      $("mmNombre").textContent = "🎤 " + this.nombreDispositivo();
+      $("mmBarra").style.width = Math.min(100, Math.round((rms || 0) * 600)) + "%";
+      $("mmNota").textContent = nota !== null ? nombreNota(nota) : "—";
+      const msg = $("mmMsg");
+      let texto = "";
+      let tipo = "";
+      if (ahora - this.inicio > 2500 && ahora - this.ultimoSonido > 2500) {
+        texto = `⚠ No oigo ningún sonido por «${this.nombreDispositivo()}». Si cantas por otro micrófono, elígelo en el chip 🎤 de arriba (en Voicemeeter, «Out B1» suele llevar el audio del PC, no tu micro).`;
+        tipo = "mal";
+      } else if (ahora - this.inicio > 4000 && ahora - this.ultimaNota > 4000 && ahora - this.ultimoSonido < 1500) {
+        texto = "Oigo sonido pero no una nota clara: canta una vocal sostenida («aaa») o acércate un poco al micrófono.";
+        tipo = "mal";
+      } else if (nota !== null) {
+        texto = "✔ Te oigo bien.";
+        tipo = "ok";
+      } else {
+        texto = "Canta una nota para comprobarlo.";
+      }
+      msg.textContent = texto;
+      msg.className = "mm-msg " + tipo;
+    },
+    reiniciar() {
+      this.inicio = performance.now();
+      this.ultimoSonido = 0;
+      this.ultimaNota = 0;
+    },
+  };
+  setInterval(() => Medidor.tick(), 120);
 
   // ---------------------------------------------------------------- sonidos
   function contexto() {
@@ -2112,7 +2208,7 @@
       }
     }
     if (!juego) return;
-    if (config.entrada === "teclado" || Tono.simulado !== null) {
+    if (config.entrada === "teclado") {
       if (e.key === "ArrowUp") {
         Tono.simulado = (Tono.simulado ?? 60) + 0.5;
         e.preventDefault();
@@ -2144,6 +2240,35 @@
     if (pedido && DESCRIPCIONES[pedido]) config.juego = pedido;
     document.querySelectorAll("[data-juego]").forEach((b) => b.addEventListener("click", () => elegirJuego(b.dataset.juego)));
     $("btnJugar").addEventListener("click", jugar);
+    const acc = document.querySelector(".acciones");
+    if (acc && !$("btnProbarMic")) {
+      const b = document.createElement("button");
+      b.id = "btnProbarMic";
+      b.type = "button";
+      b.className = "boton";
+      b.textContent = "🎤 Probar micrófono";
+      b.addEventListener("click", async () => {
+        if (juego) return;
+        if (config.entrada !== "mic") {
+          estado("La prueba es para el micrófono: pon «Entrada → Micrófono» abajo.", "mal");
+          return;
+        }
+        if (Tono.activo) {
+          Tono.detener();
+          b.textContent = "🎤 Probar micrófono";
+          estado("");
+          return;
+        }
+        try {
+          await Tono.iniciar();
+          b.textContent = "■ Dejar de probar";
+          estado("Canta una nota: abajo ves el volumen y la nota que oigo.", "");
+        } catch (e) {
+          estado("No pude abrir el micrófono: " + e.message, "mal");
+        }
+      });
+      acc.insertBefore(b, $("btnJugar").nextSibling);
+    }
     $("btnParar").addEventListener("click", () => {
       detener(true);
       Tono.detener();
