@@ -2039,6 +2039,31 @@ input[type="checkbox"] {
   flex-shrink: 0;
 }
 
+.marcas-menu-casilla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+}
+
+.marcas-menu-casilla button {
+  padding: 0.35rem 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--bone);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.marcas-menu-casilla button:hover {
+  border-color: var(--crimson-bright);
+}
+
+.marcas-menu-casilla button.peligro {
+  grid-column: 1 / -1;
+  color: var(--crimson-bright);
+}
+
 .marcas-menu-cerrar {
   width: 100%;
   margin-top: 0.6rem;

@@ -631,6 +631,15 @@ function crearAccionesLinea(lineaObj, esPrimera) {
   fila.appendChild(btnPegar);
   lineaObj._btnPegar = btnPegar;
 
+  const btnMas = document.createElement("button");
+  btnMas.type = "button";
+  btnMas.className = esPrimera ? "boton" : "boton boton-icono";
+  btnMas.title = "Añadir una casilla (sílaba) al final de este verso. Para insertar en medio o quitar: el «+» de cada sílaba.";
+  btnMas.setAttribute("aria-label", "Añadir una casilla al final del verso");
+  btnMas.textContent = esPrimera ? "＋ Casilla" : "＋";
+  btnMas.addEventListener("click", () => anadirSilaba(lineaObj, lineaObj.silabas.length, { empiezaPalabra: true }));
+  fila.appendChild(btnMas);
+
   lineaObj._elAcciones = fila;
   return fila;
 }
@@ -649,7 +658,7 @@ function renderLinea(lineaObj) {
   fila.style.gridTemplateColumns = n <= 1 ? "auto" : `repeat(${n - 1}, auto ${anchoHueco}px) auto`;
 
   lineaObj.silabas.forEach((silaba, i) => {
-    fila.appendChild(crearCelda(silaba, i));
+    fila.appendChild(crearCelda(silaba, i, lineaObj));
     if (i < n - 1) fila.appendChild(crearEslabon(lineaObj, i));
   });
 
@@ -659,6 +668,80 @@ function renderLinea(lineaObj) {
 
   lineaObj._el = fila;
   return fila;
+}
+
+/* =========================================================
+   Añadir / quitar casillas (sílabas) de un verso
+   El detector a veces parte mal las sílabas: aquí se corrige sin volver a pegar la letra.
+   ========================================================= */
+
+function avisarRitmoReiniciado(lineaObj) {
+  if (!lineaObj.ritmo) return "";
+  lineaObj.ritmo = null; // las unidades del editor de ritmo ya no casan 1:1 con las casillas
+  return " (el ritmo del editor de este verso se quitó porque ya no coincidía: Ctrl+Z lo recupera)";
+}
+
+function enfocarSilaba(lineaObj, indice) {
+  const celdas = lineaObj._el ? lineaObj._el.querySelectorAll(".celda-texto") : [];
+  const el = celdas[indice];
+  if (!el) return;
+  el.focus();
+  const rango = document.createRange();
+  rango.selectNodeContents(el);
+  rango.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(rango);
+}
+
+/** Inserta una casilla vacía en la posición `pos` (0 = al principio, n = al final). */
+function anadirSilaba(lineaObj, pos, { empiezaPalabra = false } = {}) {
+  const n = lineaObj.silabas.length;
+  pos = Math.max(0, Math.min(pos, n));
+  const nueva = nuevaSilaba("", empiezaPalabra);
+  lineaObj.silabas.splice(pos, 0, nueva);
+  if (n === 0) {
+    lineaObj.enlaces = [];
+  } else if (pos === 0) {
+    lineaObj.enlaces.unshift(false);
+  } else if (pos === n) {
+    lineaObj.enlaces.push(false);
+  } else {
+    lineaObj.enlaces.splice(pos - 1, 1, false, false); // la nueva rompe la unión que había entre sus vecinas
+  }
+  const extra = avisarRitmoReiniciado(lineaObj);
+  cerrarMenuMarcas();
+  renderLineaEnSitio(lineaObj);
+  enfocarSilaba(lineaObj, pos);
+  programarCheckpoint();
+  elEstado.textContent = `Casilla añadida (ahora ${lineaObj.silabas.length}). Escribe la sílaba y su nota.${extra}`;
+}
+
+function quitarSilaba(lineaObj, i) {
+  const n = lineaObj.silabas.length;
+  if (n <= 1) {
+    elEstado.textContent = "Un verso necesita al menos una casilla.";
+    return;
+  }
+  // Si era la casilla «base» de una nota compartida (melisma), la nota pasa a la siguiente del grupo.
+  const grupo = gruposDeNotas(lineaObj).find((g) => g.inicio <= i && i <= g.fin);
+  if (grupo && grupo.inicio === i && grupo.fin > i && !lineaObj.silabas[i + 1].nota) {
+    lineaObj.silabas[i + 1].nota = lineaObj.silabas[i].nota;
+    lineaObj.silabas[i + 1].dudosa = lineaObj.silabas[i].dudosa;
+  }
+  const quitada = lineaObj.silabas[i];
+  // si la quitada abría palabra, la siguiente la hereda (para no pegar dos palabras)
+  if (quitada.inicioPalabra && i + 1 < n) lineaObj.silabas[i + 1].inicioPalabra = true;
+  lineaObj.silabas.splice(i, 1);
+  if (i === 0) lineaObj.enlaces.shift();
+  else if (i === n - 1) lineaObj.enlaces.pop();
+  else lineaObj.enlaces.splice(i - 1, 2, Boolean(lineaObj.enlaces[i - 1] && lineaObj.enlaces[i]));
+  const extra = avisarRitmoReiniciado(lineaObj);
+  cerrarMenuMarcas();
+  renderLineaEnSitio(lineaObj);
+  enfocarSilaba(lineaObj, Math.min(i, lineaObj.silabas.length - 1));
+  programarCheckpoint();
+  elEstado.textContent = `Casilla quitada (quedan ${lineaObj.silabas.length}). Ctrl+Z la devuelve.${extra}`;
 }
 
 function crearEslabon(lineaObj, i) {
@@ -713,7 +796,7 @@ function restaurarSeleccionEn(lineaObj, indiceSilaba) {
   }
 }
 
-function crearCelda(silaba, indiceCol) {
+function crearCelda(silaba, indiceCol, lineaObj) {
   const wrap = document.createElement("div");
   wrap.className = "cifrado-celda" + (silaba.inicioPalabra ? " inicio-palabra" : "");
   wrap.style.gridColumn = String(2 * indiceCol + 1);
@@ -742,7 +825,7 @@ function crearCelda(silaba, indiceCol) {
   btnMarca.textContent = "+";
   btnMarca.addEventListener("click", (e) => {
     e.stopPropagation();
-    abrirMenuMarcas(silaba, btnMarca, chips);
+    abrirMenuMarcas(silaba, btnMarca, chips, lineaObj, indiceCol);
   });
   wrap.appendChild(btnMarca);
 
@@ -873,7 +956,7 @@ function manejarClicFueraMenu(e) {
   if (menuMarcasActual && !menuMarcasActual.contains(e.target)) cerrarMenuMarcas();
 }
 
-function abrirMenuMarcas(silaba, btnAncla, elChips) {
+function abrirMenuMarcas(silaba, btnAncla, elChips, lineaObj, indiceSilaba) {
   const yaAbiertoParaEsta = menuMarcasActual && menuMarcasActual.dataset.silabaAbierta === "1";
   cerrarMenuMarcas();
   if (yaAbiertoParaEsta) return;
@@ -881,6 +964,42 @@ function abrirMenuMarcas(silaba, btnAncla, elChips) {
   const menu = document.createElement("div");
   menu.className = "marcas-menu";
   menu.dataset.silabaAbierta = "1";
+
+  if (lineaObj && Number.isInteger(indiceSilaba)) {
+    const h = document.createElement("p");
+    h.className = "marcas-menu-categoria";
+    h.style.color = "var(--crimson-bright)";
+    h.textContent = "Casilla";
+    menu.appendChild(h);
+    const acciones = document.createElement("div");
+    acciones.className = "marcas-menu-casilla";
+    const boton = (texto, titulo, fn, peligro = false) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = texto;
+      b.title = titulo;
+      if (peligro) b.className = "peligro";
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fn();
+      });
+      acciones.appendChild(b);
+    };
+    boton("＋ Antes", "Añadir una casilla vacía antes de esta", () => anadirSilaba(lineaObj, indiceSilaba));
+    boton("＋ Después", "Añadir una casilla vacía después de esta", () => anadirSilaba(lineaObj, indiceSilaba + 1));
+    boton(
+      silaba.inicioPalabra ? "Unir a la palabra anterior" : "Empezar palabra nueva",
+      "Cambia si esta sílaba va separada de la anterior (espacio) o pegada a ella",
+      () => {
+        silaba.inicioPalabra = !silaba.inicioPalabra;
+        cerrarMenuMarcas();
+        renderLineaEnSitio(lineaObj);
+        programarCheckpoint();
+      }
+    );
+    boton("✕ Quitar casilla", "Quitar esta sílaba y su nota del verso", () => quitarSilaba(lineaObj, indiceSilaba), true);
+    menu.appendChild(acciones);
+  }
 
   CATEGORIAS_TECNICAS.forEach((cat) => {
     const h = document.createElement("p");
