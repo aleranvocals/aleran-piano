@@ -86,6 +86,46 @@ function formatoFechaGrabacion(iso) {
   return `${fecha}, ${hora}`;
 }
 
+const GRABACIONES_API_URL = "https://maestro.aleranvocals.es/api/mi-clase/grabaciones";
+
+/** Manda una toma a la ficha del alumno (máx. 5 guardadas; al subir otra se borra la más antigua). Pide confirmación. */
+async function enviarTomaAAleran(toma, boton) {
+  let codigo = null;
+  try {
+    codigo = localStorage.getItem("aleran-piano-codigo-alumno");
+  } catch {
+    codigo = null;
+  }
+  const estado = el("estadoEntrenamiento");
+  if (!codigo) {
+    estado.textContent = "Para enviar grabaciones a Áleran, vincula antes tu identificador en la sección Progreso.";
+    return;
+  }
+  if (toma.blob.size > 1500000) {
+    estado.textContent = "Esta toma es demasiado larga para enviarla (máximo aproximadamente 1 minuto).";
+    return;
+  }
+  if (!confirm("Vas a enviar esta grabación a Áleran para que la escuche. Solo la verá él en tu ficha y tendrás como máximo 5 enviadas a la vez (al enviar otra se borra la más antigua). ¿Enviar?")) return;
+  boton.disabled = true;
+  boton.textContent = "Enviando…";
+  try {
+    const datos = new FormData();
+    datos.append("token", codigo);
+    datos.append("etiqueta", toma.etiqueta || "");
+    datos.append("duracion", String(toma.duracionSeg || 0));
+    datos.append("archivo", toma.blob, "toma.webm");
+    const r = await fetch(GRABACIONES_API_URL, { method: "POST", body: datos });
+    const cuerpo = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(cuerpo.error || "No se pudo enviar");
+    boton.textContent = "✔ Enviada";
+    estado.textContent = "Grabación enviada a Áleran.";
+  } catch (err) {
+    boton.disabled = false;
+    boton.textContent = "☁ Enviar a Áleran";
+    estado.textContent = `No se pudo enviar: ${err.message}`;
+  }
+}
+
 async function renderizarTomas() {
   const cont = el("listaGrabaciones");
   let tomas;
@@ -136,7 +176,13 @@ async function renderizarTomas() {
       renderizarTomas();
     });
 
-    fila.append(info, audio, btnBorrar);
+    const btnEnviar = document.createElement("button");
+    btnEnviar.className = "boton";
+    btnEnviar.textContent = "☁ Enviar a Áleran";
+    btnEnviar.title = "Manda esta toma a tu profe para que la escuche (solo la ve él)";
+    btnEnviar.addEventListener("click", () => enviarTomaAAleran(toma, btnEnviar));
+
+    fila.append(info, audio, btnEnviar, btnBorrar);
     cont.appendChild(fila);
   });
 }

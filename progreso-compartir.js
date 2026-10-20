@@ -33,10 +33,12 @@ function construirResumenProgreso() {
 async function sincronizarProgreso(codigo, { silencioso } = {}) {
   const aviso = el("vincularAviso");
   try {
+    // Primero se une lo de la ficha con lo de este dispositivo (así otro móvil u ordenador recupera sus récords).
+    if (window.ProgresoNube) await window.ProgresoNube.sincronizar(codigo);
     const respuesta = await fetch(PROGRESO_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: codigo, resumen: construirResumenProgreso() }),
+      body: JSON.stringify({ token: codigo, resumen: construirResumenProgreso(), datos: Progreso.cargar() }),
     });
     if (!respuesta.ok) {
       const cuerpo = await respuesta.json().catch(() => ({}));
