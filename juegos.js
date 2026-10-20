@@ -71,6 +71,8 @@
     return LETRAS[l] + sufijoAlt(a);
   }
   /** Nombre de la nota con octava (Do4 = Do central) escrito como corresponde a la tonalidad. */
+  /** Margen de afinación para dar una nota por buena (en cents; 100 = un semitono). */
+  const TOLERANCIA_CENTS = 20;
   const nombreNota = (m) => {
     const r = Math.round(m);
     if (config.notacion === "ambas" && NEGRAS_DOBLES[mod12(r)]) return NEGRAS_DOBLES[mod12(r)].join("/") + (Math.floor(r / 12) - 1);
@@ -744,7 +746,7 @@
             p.ventana += dt;
             if (hayVoz) {
               p.cantadas.push(m);
-              if (Math.abs(diferencia(m, p.nota)) <= 0.45) p.dentro += dt;
+              if (Math.abs(diferencia(m, p.nota)) <= TOLERANCIA_CENTS / 100) p.dentro += dt;
             }
           }
           if (!p.hecho && p.x + ANCHO_PUERTA < BOLA_X - 10) {
@@ -860,7 +862,7 @@
         // ---- el espíritu de la voz: orbe luminoso con alas y una estela en cinta
         const yb = yDe(Math.max(vmin, Math.min(vmax, midiSuave)));
         const objetivo = puertas.find((q) => !q.hecho && q.x + ANCHO_PUERTA > BOLA_X - 10);
-        const afinada = hayVoz && objetivo && Math.abs(diferencia(midiSuave, objetivo.nota)) <= 0.45;
+        const afinada = hayVoz && objetivo && Math.abs(diferencia(midiSuave, objetivo.nota)) <= TOLERANCIA_CENTS / 100;
         this.hist = this.hist || [];
         this.hist.unshift(yb);
         if (this.hist.length > 36) this.hist.pop();
@@ -1141,7 +1143,7 @@
       if (m === null) return false;
       let d = m - a.midi;
       if (config.octava !== "exacta") d = ((d + 6) % 12 + 12) % 12 - 6;
-      return Math.abs(d) <= 0.5;
+      return Math.abs(d) <= TOLERANCIA_CENTS / 100;
     }
 
     function popup(texto, wx, color) {
@@ -2139,7 +2141,7 @@
     pasillo: {
       titulo: "🎯 Pasillo",
       texto: "Tu voz mueve la bola. Pasa por el hueco de cada puerta cantando la nota que indica.",
-      ayuda: "Entrena afinar y sostener una nota concreta. Antes de cada puerta suena la nota guía (puedes quitarla). La puerta cuenta como pasada si estuviste dentro del hueco (±45 cents) al menos 0,45 s. Empieza en «Lento»: sube la velocidad cuando salgan 8 de 10.",
+      ayuda: "Entrena afinar y sostener una nota concreta. Antes de cada puerta suena la nota guía (puedes quitarla). La puerta cuenta como pasada si estuviste dentro del hueco (±20 cents) al menos 0,45 s. Empieza en «Lento»: sube la velocidad cuando salgan 8 de 10.",
     },
     plataforma: {
       titulo: "🕹️ Plataformas",
