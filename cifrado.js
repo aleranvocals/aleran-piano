@@ -1607,6 +1607,122 @@ document.getElementById("btnCifradoImprimir").addEventListener("click", () => {
   window.print();
 });
 
+// --- Impresión: los versos largos se parten en varias filas ------------------
+// En pantalla un verso largo se desliza en horizontal, pero en el papel se salía
+// de la hoja. Antes de imprimir, cada verso que no cabe se copia en trozos que sí
+// caben, cortando solo al empezar una palabra y nunca en medio de una nota unida
+// (sinalefa o melisma). Si aun así un trozo no cabe, ese trozo se encoge.
+const ANCHO_IMPRESION_PX = 650; // A4 vertical con márgenes de 1,5 cm, con holgura
+
+function columnasDe(el) {
+  const [a, b] = el.style.gridColumn.split("/").map((s) => parseInt(s, 10));
+  return { ini: a, fin: Number.isFinite(b) ? b : a + 1 };
+}
+
+// Ancho real del texto del verso (no el de la caja, que ocupa toda la página).
+// Las columnas «auto» se estiran para llenar la fila: hay que medir con ellas juntas.
+function anchoContenido(el) {
+  const antes = el.style.justifyContent;
+  el.style.justifyContent = "start";
+  const izq = el.getBoundingClientRect().left;
+  let der = izq;
+  el.querySelectorAll(":scope > .cifrado-celda, :scope > .celda-nota").forEach((c) => {
+    der = Math.max(der, c.getBoundingClientRect().right);
+  });
+  el.style.justifyContent = antes;
+  return der - izq + el.scrollLeft;
+}
+
+function trocearLineaParaImprimir(fila) {
+  const celdas = Array.from(fila.querySelectorAll(":scope > .cifrado-celda"));
+  const notas = Array.from(fila.querySelectorAll(":scope > .celda-nota"));
+  if (celdas.length < 2) return null;
+  const justificar = fila.style.justifyContent;
+  fila.style.justifyContent = "start";
+  const base = fila.getBoundingClientRect().left - fila.scrollLeft;
+  const izq = celdas.map((c) => c.getBoundingClientRect().left - base);
+  const der = celdas.map((c) => c.getBoundingClientRect().right - base);
+  // Sílabas por las que se puede empezar un trozo: inicio de palabra y sin una
+  // nota que venga unida desde la sílaba anterior.
+  const cortable = celdas.map((c, i) => {
+    if (i === 0) return false;
+    const col = 2 * i + 1;
+    if (notas.some((n) => { const { ini, fin } = columnasDe(n); return ini < col && fin > col; })) return false;
+    return c.classList.contains("inicio-palabra");
+  });
+  fila.style.justifyContent = justificar;
+  const cortes = [0];
+  let inicio = 0;
+  let ultimoCortable = -1;
+  for (let i = 1; i < celdas.length; i++) {
+    if (cortable[i]) ultimoCortable = i;
+    if (der[i] - izq[inicio] > ANCHO_IMPRESION_PX && ultimoCortable > inicio) {
+      cortes.push(ultimoCortable);
+      inicio = ultimoCortable;
+    }
+  }
+  if (cortes.length === 1) return null;
+  cortes.push(celdas.length);
+
+  const hueco = (fila.style.gridTemplateColumns.match(/auto (\d+)px/) || [])[1] || "11";
+  const trozos = [];
+  for (let t = 0; t + 1 < cortes.length; t++) {
+    const s = cortes[t];
+    const e = cortes[t + 1];
+    const n = e - s;
+    const trozo = document.createElement("div");
+    trozo.className = "cifrado-linea cifrado-linea-impresa";
+    trozo.style.justifyContent = "start";
+    trozo.style.gridTemplateColumns = n <= 1 ? "auto" : `repeat(${n - 1}, auto ${hueco}px) auto`;
+    const desplazar = 2 * s;
+    celdas.slice(s, e).forEach((c, k) => {
+      const copia = c.cloneNode(true);
+      copia.style.gridColumn = String(2 * k + 1);
+      trozo.appendChild(copia);
+    });
+    notas.forEach((nota) => {
+      const { ini, fin } = columnasDe(nota);
+      if (ini < 2 * s + 1 || ini > 2 * e - 1) return;
+      const copia = nota.cloneNode(true);
+      copia.removeAttribute("contenteditable");
+      copia.style.gridColumn = `${ini - desplazar} / ${fin - desplazar}`;
+      trozo.appendChild(copia);
+    });
+    trozos.push(trozo);
+  }
+  return trozos;
+}
+
+function prepararImpresion() {
+  deshacerImpresion();
+  document.querySelectorAll(".cifrado-linea:not(.cifrado-linea-impresa)").forEach((fila) => {
+    if (anchoContenido(fila) <= ANCHO_IMPRESION_PX) return;
+    const trozos = trocearLineaParaImprimir(fila) || [];
+    let ultimo = fila;
+    trozos.forEach((trozo) => {
+      ultimo.after(trozo);
+      ultimo = trozo;
+    });
+    if (trozos.length) fila.classList.add("cifrado-linea-solo-pantalla");
+    // Lo que sigue sin caber (una palabra larguísima sin cortes posibles) se encoge.
+    (trozos.length ? trozos : [fila]).forEach((el) => {
+      el.style.display = "grid"; // las copias están ocultas en pantalla: se muestran un instante para medirlas
+      const ancho = anchoContenido(el);
+      el.style.display = "";
+      if (ancho > ANCHO_IMPRESION_PX) el.style.zoom = String(ANCHO_IMPRESION_PX / ancho);
+    });
+  });
+}
+
+function deshacerImpresion() {
+  document.querySelectorAll(".cifrado-linea-impresa").forEach((el) => el.remove());
+  document.querySelectorAll(".cifrado-linea-solo-pantalla").forEach((el) => el.classList.remove("cifrado-linea-solo-pantalla"));
+  document.querySelectorAll(".cifrado-linea").forEach((el) => { el.style.zoom = ""; });
+}
+
+window.addEventListener("beforeprint", prepararImpresion);
+window.addEventListener("afterprint", deshacerImpresion);
+
 document.getElementById("btnCifradoReproducirTodo").addEventListener("click", reproducirCancionCompleta);
 document.getElementById("btnCifradoDetenerTodo").addEventListener("click", detenerCancionCompleta);
 document.getElementById("btnCifradoMidi").addEventListener("click", descargarMidiCancion);

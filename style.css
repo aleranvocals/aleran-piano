@@ -1703,6 +1703,11 @@ input[type="checkbox"] {
   margin: 0 0 calc(1.1rem * var(--cifrado-escala, 1));
 }
 
+/* Copias para imprimir de los versos largos: solo existen mientras se imprime. */
+.cifrado-linea-impresa {
+  display: none;
+}
+
 .cifrado-linea {
   display: grid;
   align-items: end;
@@ -2184,6 +2189,15 @@ input[type="checkbox"] {
 
   .cifrado-linea {
     overflow: visible !important;
+  }
+
+  /* Versos largos: se imprime la copia en trozos (ver prepararImpresion en cifrado.js). */
+  .cifrado-linea-solo-pantalla {
+    display: none !important;
+  }
+
+  .cifrado-linea-impresa {
+    display: grid !important;
   }
 
   /* Sin fondo, sin borde, sin "pastilla" -- que se lea como texto
