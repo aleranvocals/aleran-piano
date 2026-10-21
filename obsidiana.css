@@ -1,0 +1,248 @@
+/* =====================================================================
+   Piel «Obsidiana carmesí» (22/10/2026) — la estética de la app del
+   Conversor a Guitar Pro aplicada a todas las herramientas:
+   metal cepillado, ruido fino, pozos hundidos con cápsulas, pantallas LCD,
+   botones con relieve y perillas (perillas.js). Carmesí = acción; verde =
+   afinado/bien. Nunca dorado ni amarillo.
+   Se carga DESPUÉS de style.css y rediseno.css y los sobrescribe a propósito.
+   El tema claro conserva la misma estructura con materiales claros.
+   ===================================================================== */
+:root {
+  --bg: #0e0909;
+  --panel: #1a1414;
+  --panel-2: #241b1b;
+  --line: #322423;
+  --bone: #f2e9e4;
+  --bone-dim: #a8968f;
+  --muted: #8f7d77;
+  --crimson: #93172c;
+  --crimson-bright: #c02241;
+  --font-display: "Cinzel", "Cormorant Garamond", serif;
+  --font-body: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --radio: 12px;
+
+  --o-metal: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px), linear-gradient(180deg, #241b1b, #1a1414);
+  --o-vidrio: rgba(30, 20, 22, 0.86);
+  --o-borde: rgba(255, 255, 255, 0.08);
+  --o-boton: linear-gradient(180deg, #2a1f1f, #1c1515);
+  --o-boton-luz: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --o-pozo: #0c0808;
+  --o-pozo-sombra: inset 0 2px 8px rgba(0, 0, 0, 0.7);
+  --o-lcd: #060404;
+  --o-lcd-borde: #2a1d1c;
+  --o-brillo: rgba(192, 34, 65, 0.45);
+  --o-activo: linear-gradient(180deg, #3a1418, #2a0f12);
+  --o-sombra: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --o-ruido: 0.045;
+}
+:root[data-tema="claro"] {
+  --bg: #f4eee9;
+  --panel: #ffffff;
+  --panel-2: #f7f1ec;
+  --line: #e1d3c8;
+  --bone: #241c1a;
+  --bone-dim: #5b4a42;
+  --muted: #6b5c50;
+  --o-metal: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.012) 0 1px, transparent 1px 3px), linear-gradient(180deg, #ffffff, #f3ece6);
+  --o-vidrio: rgba(255, 255, 255, 0.92);
+  --o-borde: rgba(60, 30, 25, 0.12);
+  --o-boton: linear-gradient(180deg, #ffffff, #f1e9e3);
+  --o-boton-luz: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(60, 30, 25, 0.12);
+  --o-pozo: #ece3dc;
+  --o-pozo-sombra: inset 0 2px 6px rgba(60, 30, 25, 0.14);
+  --o-lcd: #1a1414;
+  --o-lcd-borde: #3a2a29;
+  --o-brillo: rgba(192, 34, 65, 0.25);
+  --o-activo: linear-gradient(180deg, #fbe9ec, #f6dadf);
+  --o-sombra: 0 8px 22px rgba(90, 40, 30, 0.1);
+  --o-ruido: 0.025;
+}
+
+/* --- Fondo: resplandor carmesí arriba y grano fino ------------------------------------------- */
+html { background: var(--bg); }
+body {
+  font-family: var(--font-body);
+  background: radial-gradient(ellipse 90% 45% at 50% -8%, rgba(192, 34, 65, 0.16), transparent 70%), var(--bg);
+  background-attachment: fixed;
+  color: var(--bone);
+}
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 200; opacity: var(--o-ruido); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.app { max-width: 760px; }
+
+/* --- Cabecera: sello «Á» y nombre en Cinzel ------------------------------------------------- */
+.cabecera { display: grid; grid-template-columns: auto 1fr; column-gap: 0.75rem; align-items: center; }
+.cabecera::before {
+  content: "Á"; grid-row: 1 / span 2; width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center;
+  font: 700 25px "Cinzel", serif; color: var(--bone);
+  background: radial-gradient(circle at 35% 25%, #6a5a58, #2a2020 62%);
+  border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 3px 10px rgba(0, 0, 0, 0.6);
+}
+:root[data-tema="claro"] .cabecera::before { color: #f2e9e4; }
+.cabecera h1 {
+  font: 700 1.45rem var(--font-display); letter-spacing: 0.2em; text-transform: uppercase; margin: 0; line-height: 1.15;
+}
+.cabecera h1::first-letter { color: var(--crimson-bright); }
+.subtitulo { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-dim); margin-top: 0.2rem; }
+.cabecera .subtitulo { grid-column: 2; }
+
+/* --- Botones con relieve -------------------------------------------------------------------- */
+.boton, .nav-mas, .chip, .chip-dock, .paso, .rango-opcion, .opcion-juego, .boton-tema, .ayuda-btn {
+  background: var(--o-boton); border: 1px solid var(--o-borde); box-shadow: var(--o-boton-luz); color: var(--bone);
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.06s;
+}
+.boton { font: 600 0.88rem var(--font-body); border-radius: 9px; min-height: 40px; }
+.boton:hover:not(:disabled), .chip:hover, .chip-dock:hover, .paso:hover, .rango-opcion:hover, .opcion-juego:hover, .nav-mas:hover {
+  border-color: rgba(192, 34, 65, 0.6);
+}
+.boton:active:not(:disabled), .chip:active, .paso:active { transform: translateY(1px); }
+.boton.principal {
+  color: #fff; border-color: transparent;
+  background: linear-gradient(180deg, var(--crimson-bright), var(--crimson));
+  box-shadow: 0 0 16px rgba(192, 34, 65, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.boton.principal:hover:not(:disabled) { filter: brightness(1.08); }
+.boton:disabled { opacity: 0.42; }
+
+/* Elegido: hundido con brillo carmesí por dentro (como las pestañas del Conversor). */
+.chip.activo, .chip-dock.activo, .rango-opcion.activo, .opcion-juego.activo, .grupo-botones .activo, .grupo-botones [aria-checked="true"] {
+  background: var(--o-activo); border-color: var(--crimson-bright); color: var(--bone);
+  box-shadow: inset 0 0 14px var(--o-brillo), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Menú principal y pestañas: cápsulas dentro de un pozo hundido --------------------------- */
+.nav-lista, .tabs:not(.tabs-fichas), .grupo-botones, .stepper {
+  background: var(--o-pozo); border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: var(--o-pozo-sombra); border-radius: 12px; padding: 4px;
+}
+:root[data-tema="claro"] .nav-lista, :root[data-tema="claro"] .tabs:not(.tabs-fichas), :root[data-tema="claro"] .grupo-botones, :root[data-tema="claro"] .stepper {
+  border-color: var(--line);
+}
+.nav-compacto a {
+  background: transparent; border: 1px solid transparent; box-shadow: none; color: var(--bone-dim); border-radius: 8px; min-height: 36px;
+  font: 600 0.84rem var(--font-body);
+}
+.nav-compacto a:hover { color: var(--bone); border-color: transparent; background: rgba(255, 255, 255, 0.03); }
+.nav-compacto a.activo {
+  color: #fff; border-color: rgba(192, 34, 65, 0.7); background: var(--o-boton);
+  box-shadow: inset 0 0 12px var(--o-brillo), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+:root[data-tema="claro"] .nav-compacto a.activo { color: var(--bone); }
+.tab, .subtab { border-radius: 8px; color: var(--bone-dim); font: 600 0.84rem var(--font-body); }
+.tab.activo, .subtab.activo {
+  background: var(--o-boton); color: var(--bone); border: 1px solid rgba(192, 34, 65, 0.7);
+  box-shadow: inset 0 0 12px var(--o-brillo), 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.grupo-botones { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.grupo-botones > button, .grupo-botones .chip {
+  background: transparent; border: 1px solid transparent; box-shadow: none; color: var(--bone-dim); border-radius: 8px;
+}
+.grupo-botones > button:hover, .grupo-botones .chip:hover { color: var(--bone); }
+.grupo-botones > button.activo, .grupo-botones .chip.activo, .grupo-botones > [aria-checked="true"] {
+  background: var(--o-activo); border-color: var(--crimson-bright); color: var(--bone); box-shadow: inset 0 0 12px var(--o-brillo);
+}
+
+/* Fichas grandes (modos con icono): baldosas de metal. */
+.tabs-fichas .tab, .tabs-fichas .subtab {
+  background: var(--o-metal); border: 1px solid var(--o-borde); box-shadow: var(--o-boton-luz); border-radius: 12px; color: var(--bone-dim);
+}
+.tabs-fichas .tab.activo, .tabs-fichas .subtab.activo {
+  color: var(--bone); border-color: var(--crimson-bright);
+  box-shadow: inset 0 0 18px var(--o-brillo), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.tabs-fichas .tab.activo svg, .tabs-fichas .subtab.activo svg { color: var(--crimson-bright); }
+
+/* --- Paneles de vidrio oscuro --------------------------------------------------------------- */
+.panel, .resultado, .ajustes-plegables, .afinometro-grande, .hoja-caja, .cta-clases, .dock-panel {
+  background: var(--o-vidrio); border: 1px solid var(--o-borde); border-radius: var(--radio); box-shadow: var(--o-sombra);
+}
+.panel h2, .resultado h2, .panel h3 {
+  font: 700 0.72rem var(--font-body); letter-spacing: 0.2em; text-transform: uppercase; color: var(--bone-dim);
+}
+.campo > span, .hub-seccion { font: 700 0.68rem var(--font-body); letter-spacing: 0.2em; text-transform: uppercase; color: var(--bone-dim); }
+
+/* --- Portada: baldosas con icono en un disco carmesí ----------------------------------------- */
+.hub-tarjeta, .hub-tarjeta.destacada {
+  background: var(--o-metal); border: 1px solid var(--o-borde); border-radius: 14px; box-shadow: var(--o-boton-luz), var(--o-sombra);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.hub-tarjeta:hover { border-color: rgba(192, 34, 65, 0.65); box-shadow: inset 0 0 18px var(--o-brillo), var(--o-sombra); transform: translateY(-2px); }
+.hub-icono {
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 0.35rem;
+  background: radial-gradient(circle at 35% 30%, #d8394f, #93172c 70%); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+.hub-icono svg { width: 20px; height: 20px; color: #fff; stroke: #fff; }
+.hub-nombre { font: 700 1rem var(--font-body); letter-spacing: 0.01em; }
+
+/* --- Números como pantallas LCD ------------------------------------------------------------- */
+.paso-valor, .bpm-numero, output, .lcd, .twang-cifra, .simon-puntos {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+}
+.paso-valor, .bpm-numero {
+  background: var(--o-lcd); border: 1px solid var(--o-lcd-borde); color: #f2e9e4; border-radius: 7px; padding: 0.2rem 0.55rem;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+.campo output { color: var(--bone); }
+input[type="number"], input[type="text"], textarea, select {
+  background: var(--o-pozo); border: 1px solid var(--line); color: var(--bone); border-radius: 8px; box-shadow: var(--o-pozo-sombra);
+}
+textarea:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: var(--crimson-bright); outline: none; }
+
+/* --- Deslizadores: pista hundida y tirador de metal ------------------------------------------ */
+input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; height: 22px; accent-color: var(--crimson-bright); }
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px; background: var(--o-pozo); border: 1px solid rgba(0, 0, 0, 0.55); box-shadow: var(--o-pozo-sombra);
+}
+input[type="range"]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--o-pozo); border: 1px solid rgba(0, 0, 0, 0.55); }
+input[type="range"]::-moz-range-progress { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--crimson), var(--crimson-bright)); }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #7a6a68, #2a2020 65%); border: 2px solid var(--crimson-bright);
+  box-shadow: 0 0 10px rgba(192, 34, 65, 0.45), 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #7a6a68, #2a2020 65%);
+  border: 2px solid var(--crimson-bright); box-shadow: 0 0 10px rgba(192, 34, 65, 0.45);
+}
+
+/* --- Perillas (perillas.js) ----------------------------------------------------------------- */
+.campo.con-perilla { display: grid; grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 0.7rem; row-gap: 0.15rem; align-items: center; }
+.campo.con-perilla > :not(.perilla):not(input) { grid-column: 2; }
+.campo.con-perilla > .perilla { grid-column: 1; grid-row: 1 / span 2; }
+.perilla-oculta { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
+.perilla { position: relative; width: 64px; height: 64px; cursor: ns-resize; touch-action: none; border-radius: 50%; outline: none; flex: none; }
+.perilla svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.perilla:focus-visible { box-shadow: 0 0 0 3px rgba(192, 34, 65, 0.45); }
+.perilla .p-pista { fill: none; stroke: var(--o-pozo); stroke-width: 5; stroke-linecap: round; }
+.perilla .p-valor { fill: none; stroke: var(--crimson-bright); stroke-width: 5; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(192, 34, 65, 0.6)); }
+.perilla .p-cuerpo { stroke: rgba(255, 255, 255, 0.12); stroke-width: 1; }
+.perilla .p-marca { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
+:root[data-tema="claro"] .perilla .p-pista { stroke: #e2d6cc; }
+.perilla-lcd { grid-column: 2; justify-self: start; font: 600 0.82rem var(--font-mono); color: #f2e9e4; background: var(--o-lcd); border: 1px solid var(--o-lcd-borde);
+  border-radius: 6px; padding: 0.12rem 0.5rem; box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7); }
+
+/* --- Afinador visual y mensajes ------------------------------------------------------------- */
+.afinador-v2 { background: var(--o-metal); }
+.estado { font-size: 0.86rem; color: var(--bone-dim); }
+.acciones-voz { background: radial-gradient(ellipse at 0% 0%, rgba(192, 34, 65, 0.2), transparent 70%), var(--o-metal); }
+
+/* --- Pie y llamada a clases ----------------------------------------------------------------- */
+.cta-clases { padding: 0.9rem 1rem; }
+.cta-clases a { color: var(--crimson-bright); font-weight: 700; }
+.pie { color: var(--muted); }
+
+/* --- Barra fija de herramientas (rango, micro, MIDI) ----------------------------------------- */
+.dock { background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--o-borde); }
+.chip-dock { border-radius: 999px; font-weight: 600; }
+
+@media print {
+  body { background: #fff !important; }
+  body::before { display: none !important; }
+  .cabecera::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-tarjeta:hover { transform: none; }
+}
