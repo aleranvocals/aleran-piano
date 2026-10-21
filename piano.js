@@ -941,10 +941,11 @@ function calificarCents(cents) {
     const cuantas = Math.abs(octavas) === 1 ? "una octava" : `${Math.abs(octavas)} octavas`;
     return { emoji: "↕️", texto: `Nota correcta, pero ${cuantas} ${octavas > 0 ? "más arriba" : "más abajo"}`, puntos: 20 };
   }
+  // Tolerancia pedida por Áleran (22/10/2026): «afinado» = ±10 cents (la misma franja verde del afinador).
   const abs = Math.abs(cents);
-  if (abs <= 12) return { emoji: "✅", texto: "¡Perfecto!", puntos: 100 };
-  if (abs <= 30) return { emoji: "🙂", texto: cents > 0 ? "Un poco alto" : "Un poco bajo", puntos: 80 };
-  if (abs <= 60) return { emoji: "😐", texto: cents > 0 ? "Alto" : "Bajo", puntos: 50 };
+  if (abs <= AFINACION_TOLERANCIA_CENTS) return { emoji: "✅", texto: "¡Afinado!", puntos: 100 };
+  if (abs <= AFINACION_CASI_CENTS) return { emoji: "🙂", texto: cents > 0 ? "Un poco alto" : "Un poco bajo", puntos: 80 };
+  if (abs <= 50) return { emoji: "😐", texto: cents > 0 ? "Alto" : "Bajo", puntos: 50 };
   return { emoji: "❌", texto: cents > 0 ? "Muy alto" : "Muy bajo", puntos: 20 };
 }
 
@@ -1029,7 +1030,7 @@ async function cantarYCalificar() {
     }
 
     el("estado").textContent = `🎤 Ahora canta: ${etiquetaNota(evento.midi)}…`;
-    mostrarAfinometro(true);
+    mostrarAfinometro(true, evento.midi);
     const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(VENTANA_CANTO_MIN_S, evento.duracion), (cents) => actualizarAfinometro(cents), IGNORAR_INICIO_CANTO_S);
     mostrarAfinometro(false);
     marcarTeclaActiva(evento.midi, false);
@@ -1134,7 +1135,7 @@ async function escucharEImitar() {
       if (cantoCancelado) break;
 
       marcarTeclaActiva(evento.midi, true);
-      mostrarAfinometro(true);
+      mostrarAfinometro(true, evento.midi);
       const analisis = await window.MicrofonoEngine.escucharYPuntuar(evento.midi, Math.max(VENTANA_CANTO_MIN_S, evento.duracion), (cents) => actualizarAfinometro(cents), IGNORAR_INICIO_CANTO_S);
       mostrarAfinometro(false);
       marcarTeclaActiva(evento.midi, false);

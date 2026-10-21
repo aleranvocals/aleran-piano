@@ -771,12 +771,20 @@ async function escucharYPuntuar(midiObjetivo, segundos, onLectura, ignorarInicio
     await esperar(40); // ~25 lecturas/seg -- de sobra para el vibrato de una voz
   }
   if (centavos.length === 0) return { detectado: false };
-  // Mediana (no media): si el detector salta de octava en unas pocas lecturas, una media daría una nota
-  // inexistente a medio camino. El campo se sigue llamando centsPromedio por compatibilidad.
-  const ordenados = centavos.slice().sort((a, b) => a - b);
-  const mitad = Math.floor(ordenados.length / 2);
-  const centsPromedio = ordenados.length % 2 ? ordenados[mitad] : (ordenados[mitad - 1] + ordenados[mitad]) / 2;
-  return { detectado: true, centsPromedio, numLecturas: centavos.length };
+  // 1) Mediana: si el detector salta de octava en unas pocas lecturas, una media daría una nota inexistente
+  //    a medio camino. 2) Con la mediana como ancla, se promedian solo las lecturas del tramo estable (a menos
+  //    de 35 cents de ella): fuera quedan el ataque, los deslices y los saltos de octava, y el promedio del
+  //    tramo estable es más fino que la mediana sola (así ±10 cents de tolerancia es justo).
+  //    El campo se sigue llamando centsPromedio por compatibilidad.
+  const mediana = (lista) => {
+    const o = lista.slice().sort((a, b) => a - b);
+    const m = Math.floor(o.length / 2);
+    return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2;
+  };
+  const ancla = mediana(centavos);
+  const estables = centavos.filter((c) => Math.abs(c - ancla) <= 35);
+  const centsPromedio = estables.length >= 3 ? estables.reduce((a, b) => a + b, 0) / estables.length : ancla;
+  return { detectado: true, centsPromedio, numLecturas: centavos.length, lecturasEstables: estables.length };
 }
 
 function frecuenciaAMidi(freq) {

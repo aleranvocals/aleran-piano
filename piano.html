@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://smpldsnds.github.io" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css?v=34" />
-<link rel="stylesheet" href="rediseno.css?v=14" />
+<link rel="stylesheet" href="rediseno.css?v=15" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -296,8 +296,11 @@
     <button id="btnEscuchar" class="boton principal">▶ Escuchar</button>
     <button id="btnDetener" class="boton" disabled>⏹ Detener</button>
     <button id="btnDescargar" class="boton">⬇ Descargar MP3</button>
-    <button id="btnCantar" class="boton" hidden>🎤 Cantar y calificar</button>
-    <button id="btnImitar" class="boton" hidden title="Escucha la frase completa una vez y luego cántala de memoria, nota por nota">🎧 Escucha e imita</button>
+    <div class="acciones-voz" id="practicaVoz">
+      <span class="acciones-voz-titulo">🎤 Practica con tu voz</span>
+      <button id="btnCantar" class="boton boton-voz" hidden title="El piano toca cada nota y tú la repites: te califica nota a nota (afinado = ±10 cents)">🎤 Cantar y calificar</button>
+      <button id="btnImitar" class="boton boton-voz" hidden title="Escucha la frase completa una vez y luego cántala de memoria, nota por nota">🎧 Escucha e imita</button>
+    </div>
   </div>
 
   <p id="estado" class="estado" aria-live="polite"></p>
@@ -323,11 +326,11 @@
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=9"></script>
 <script src="app-shell.js?v=6"></script>
-<script src="audio.js?v=12"></script>
+<script src="audio.js?v=13"></script>
 <script src="progreso.js?v=1"></script>
 <script src="progreso-nube.js?v=1"></script>
-<script src="teclado.js?v=12"></script>
-<script src="piano.js?v=12"></script>
+<script src="teclado.js?v=13"></script>
+<script src="piano.js?v=13"></script>
 <script src="tema.js?v=1"></script>
 <script src="iconos.js?v=5"></script>
 <script src="pwa.js?v=1"></script>

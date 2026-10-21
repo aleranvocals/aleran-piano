@@ -401,61 +401,201 @@ function limpiarTeclasActivas() {
     .forEach((t) => t.classList.remove("activa"));
 }
 
-/** Afinómetro: un arco de bloques (rojo en los bordes, verde en el centro) que se enciende donde estás y te
- * dice «¡Bien!», «¡Casi! Sube un poquito» o «Baja…». Solo se muestra mientras el micrófono escucha con un objetivo
- * claro. Lo usan "Cantar y calificar", "Escucha e imita" (piano.js), "Nota sostenida" y "Sirena" (entrenamiento.js).
- * La lectura se suaviza (mediana + media) y el bloque solo cambia con histéresis: no «baila». */
-const AFI_SEGMENTOS = 11;
-const AFI_CENTRO = 5;
-const AFI_CENTS_POR_SEGMENTO = 9;
-let afiIdx = AFI_CENTRO;
+/** Afinador visual (22/10/2026, pedido de Áleran: «más gráfico, con afinador» y tolerancia de ±10 cents).
+ * Dial con aguja de −50 a +50 cents (franja verde = ±10, afinado), la nota objetivo en grande, cuánto te
+ * desvías y una línea que dibuja tu voz de los últimos segundos sobre la nota objetivo. Solo se muestra mientras
+ * el micrófono escucha con un objetivo claro. Lo usan "Cantar y calificar", "Escucha e imita" (piano.js),
+ * "Nota sostenida" y "Sirena" (entrenamiento.js).
+ * La lectura se suaviza (mediana de 5 + media móvil) y la aguja se desliza: no «baila». */
+const AFINACION_TOLERANCIA_CENTS = 10; // dentro de ±10 cents = afinado
+const AFINACION_CASI_CENTS = 25;
+const AFI_RANGO_DIAL = 50; // el dial va de −50 a +50 cents (medio semitono)
+const AFI_TRAZO_MS = 4000; // segundos de voz que dibuja la línea
 let afiSuave = null;
 let afiHistorial = [];
 let afiUltimaLecturaMs = 0;
+let afiTrazo = [];
+let afiMidiObjetivo = null;
+let afiDestino = null; // hacia dónde va la aguja (cents, sin octavas), o null sin voz
+let afiAguja = 0;
+let afiAnimacion = 0;
 
 function construirAfinometro() {
   const cont = el("afinometro");
-  if (!cont || cont.dataset.listo === "1") return;
-  cont.dataset.listo = "1";
-  cont.classList.add("afinometro-grande");
-  cont.innerHTML = "";
-  const arco = document.createElement("div");
-  arco.className = "afi-arco";
-  arco.setAttribute("aria-hidden", "true");
-  for (let i = 0; i < AFI_SEGMENTOS; i++) {
-    const s = document.createElement("span");
-    const d = Math.abs(i - AFI_CENTRO);
-    s.className = "afi-seg";
-    s.dataset.zona = d <= 1 ? "verde" : d <= 3 ? "ambar" : "rojo";
-    s.style.setProperty("--ang", `${-78 + (i / (AFI_SEGMENTOS - 1)) * 156}deg`);
-    arco.appendChild(s);
-  }
-  const bemol = document.createElement("span");
-  bemol.className = "afi-signo afi-bemol";
-  bemol.textContent = "♭";
-  const sost = document.createElement("span");
-  sost.className = "afi-signo afi-sost";
-  sost.textContent = "♯";
-  arco.append(bemol, sost);
-  const msg = document.createElement("div");
-  msg.className = "afi-mensaje";
-  msg.id = "afinometroMensaje";
-  msg.setAttribute("role", "status");
-  msg.setAttribute("aria-live", "polite");
-  const det = document.createElement("div");
-  det.className = "afinometro-texto";
-  det.id = "afinometroTexto";
-  cont.append(arco, msg, det);
+  if (!cont || cont.dataset.listo === "2") return;
+  cont.dataset.listo = "2";
+  cont.className = "afinometro afinometro-grande afinador-v2";
+  cont.innerHTML =
+    '<div class="afi-cab"><div class="afi-objetivo" id="afiObjetivoCaja"><small>Canta</small><b id="afiObjetivo">—</b></div>' +
+    '<div class="afi-lcd" id="afinometroTexto">—</div></div>' +
+    '<canvas class="afi-dial" id="afiDial" width="560" height="290" aria-hidden="true"></canvas>' +
+    '<div class="afi-mensaje" id="afinometroMensaje" role="status" aria-live="polite">Escuchando…</div>' +
+    '<canvas class="afi-trazo" id="afiTrazo" width="560" height="110" aria-hidden="true"></canvas>' +
+    `<div class="afi-ley"><i></i>±${AFINACION_TOLERANCIA_CENTS} cents = afinado</div>`;
 }
 
-function mostrarAfinometro(mostrar) {
+function nivelAfinacion(cents) {
+  const a = Math.abs(cents);
+  return a <= AFINACION_TOLERANCIA_CENTS ? "bien" : a <= AFINACION_CASI_CENTS ? "casi" : "lejos";
+}
+
+const AFI_COLORES = { bien: "#3ecf6e", casi: "#f08a24", lejos: "#ff3b4e" };
+
+function dibujarDial(cv, cents, conVoz) {
+  const g = cv.getContext("2d");
+  const W = cv.width;
+  const H = cv.height;
+  const cx = W / 2;
+  const cy = H - 26;
+  const R = 228;
+  const estilo = getComputedStyle(document.documentElement);
+  const tenue = estilo.getPropertyValue("--line").trim() || "#322423";
+  const texto = estilo.getPropertyValue("--bone-dim").trim() || "#a8968f";
+  const ang = (c) => ((Math.max(-AFI_RANGO_DIAL, Math.min(AFI_RANGO_DIAL, c)) / AFI_RANGO_DIAL) * 70 - 90) * (Math.PI / 180);
+  g.clearRect(0, 0, W, H);
+  g.lineCap = "butt";
+  // Pista de fondo y zonas: verde ±10, naranja hasta ±25, rojo hasta ±50. La zona donde estás se ilumina.
+  const nivel = conVoz ? nivelAfinacion(cents) : null;
+  const zonas = [
+    [-50, -25, "lejos"], [-25, -10, "casi"], [-10, 10, "bien"], [10, 25, "casi"], [25, 50, "lejos"],
+  ];
+  g.lineWidth = 26;
+  g.strokeStyle = tenue;
+  g.beginPath();
+  g.arc(cx, cy, R, ang(-50), ang(50));
+  g.stroke();
+  zonas.forEach(([a, b, z]) => {
+    const encendida = nivel === z && cents >= a - 0.01 && cents <= b + 0.01;
+    g.globalAlpha = encendida ? 1 : z === "bien" ? 0.5 : 0.28;
+    g.strokeStyle = AFI_COLORES[z];
+    g.lineWidth = encendida ? 30 : 22;
+    g.beginPath();
+    g.arc(cx, cy, R, ang(a) + 0.006, ang(b) - 0.006);
+    g.stroke();
+  });
+  g.globalAlpha = 1;
+  // Marcas cada 5 cents y números en 0, ±10, ±25, ±50.
+  g.strokeStyle = texto;
+  g.fillStyle = texto;
+  g.font = "600 17px Inter, 'Work Sans', system-ui, sans-serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  for (let c = -50; c <= 50; c += 5) {
+    const a = ang(c);
+    const grande = c === 0 || Math.abs(c) === 10 || Math.abs(c) === 25 || Math.abs(c) === 50;
+    const r1 = R - 22;
+    const r2 = r1 - (grande ? 16 : 8);
+    g.lineWidth = grande ? 2.5 : 1.2;
+    g.beginPath();
+    g.moveTo(cx + r1 * Math.cos(a), cy + r1 * Math.sin(a));
+    g.lineTo(cx + r2 * Math.cos(a), cy + r2 * Math.sin(a));
+    g.stroke();
+    if (grande) {
+      const rt = r2 - 16;
+      g.fillText(c > 0 ? `+${c}` : String(c), cx + rt * Math.cos(a), cy + rt * Math.sin(a));
+    }
+  }
+  g.font = "700 26px Inter, 'Work Sans', system-ui, sans-serif";
+  g.fillText("♭", cx - R - 6, cy - 4);
+  g.fillText("♯", cx + R + 6, cy - 4);
+  // Aguja.
+  const a = ang(cents);
+  const color = conVoz ? AFI_COLORES[nivel] : texto;
+  g.strokeStyle = color;
+  g.lineCap = "round";
+  g.lineWidth = 6;
+  g.globalAlpha = conVoz ? 1 : 0.35;
+  if (conVoz) {
+    g.shadowColor = color;
+    g.shadowBlur = 14;
+  }
+  g.beginPath();
+  g.moveTo(cx, cy);
+  g.lineTo(cx + (R - 6) * Math.cos(a), cy + (R - 6) * Math.sin(a));
+  g.stroke();
+  g.shadowBlur = 0;
+  g.globalAlpha = 1;
+  g.fillStyle = color;
+  g.beginPath();
+  g.arc(cx, cy, 13, 0, Math.PI * 2);
+  g.fill();
+}
+
+function dibujarTrazo(cv, ahora) {
+  const g = cv.getContext("2d");
+  const W = cv.width;
+  const H = cv.height;
+  const estilo = getComputedStyle(document.documentElement);
+  const tenue = estilo.getPropertyValue("--line").trim() || "#322423";
+  const y = (c) => H / 2 - (Math.max(-AFI_RANGO_DIAL, Math.min(AFI_RANGO_DIAL, c)) / AFI_RANGO_DIAL) * (H / 2 - 6);
+  g.clearRect(0, 0, W, H);
+  // Franja de «afinado» y línea de la nota objetivo.
+  g.fillStyle = "rgba(62, 207, 110, 0.16)";
+  g.fillRect(0, y(AFINACION_TOLERANCIA_CENTS), W, y(-AFINACION_TOLERANCIA_CENTS) - y(AFINACION_TOLERANCIA_CENTS));
+  g.strokeStyle = tenue;
+  g.lineWidth = 1;
+  [-25, 25].forEach((c) => {
+    g.beginPath();
+    g.moveTo(0, y(c));
+    g.lineTo(W, y(c));
+    g.stroke();
+  });
+  g.strokeStyle = "rgba(62, 207, 110, 0.85)";
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(0, H / 2);
+  g.lineTo(W, H / 2);
+  g.stroke();
+  // La voz: cada tramo con el color de lo afinado que estaba.
+  g.lineWidth = 3.5;
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  let prev = null;
+  afiTrazo.forEach((p) => {
+    if (p.c === null) {
+      prev = null;
+      return;
+    }
+    const x = W - ((ahora - p.t) / AFI_TRAZO_MS) * W;
+    if (prev) {
+      g.strokeStyle = AFI_COLORES[nivelAfinacion(p.c)];
+      g.beginPath();
+      g.moveTo(prev.x, prev.y);
+      g.lineTo(x, y(p.c));
+      g.stroke();
+    }
+    prev = { x, y: y(p.c) };
+  });
+}
+
+function animarAfinometro() {
+  const dial = el("afiDial");
+  const trazo = el("afiTrazo");
+  if (!dial || !trazo) return;
+  const ahora = performance.now();
+  if (afiDestino !== null) afiAguja += (afiDestino - afiAguja) * 0.25;
+  else afiAguja += (0 - afiAguja) * 0.15;
+  afiTrazo = afiTrazo.filter((p) => ahora - p.t <= AFI_TRAZO_MS);
+  dibujarDial(dial, afiAguja, afiDestino !== null);
+  dibujarTrazo(trazo, ahora);
+  afiAnimacion = requestAnimationFrame(animarAfinometro);
+}
+
+/** `midiObjetivo` (opcional): la nota que hay que cantar, para mostrarla en grande. */
+function mostrarAfinometro(mostrar, midiObjetivo) {
   construirAfinometro();
   const cont = el("afinometro");
   if (!cont) return;
   cont.hidden = !mostrar;
   afiUltimaLecturaMs = 0; // empieza de cero: sin arrastrar la lectura anterior
-  if (!mostrar) actualizarAfinometro(null);
-  else actualizarAfinometro(null);
+  afiTrazo = [];
+  afiMidiObjetivo = Number.isFinite(midiObjetivo) ? midiObjetivo : null;
+  const nombre = (m) => (typeof etiquetaNota === "function" ? etiquetaNota(m) : midiANombre(m));
+  el("afiObjetivoCaja").hidden = afiMidiObjetivo === null;
+  el("afiObjetivo").textContent = afiMidiObjetivo === null ? "—" : nombre(afiMidiObjetivo);
+  actualizarAfinometro(null);
+  cancelAnimationFrame(afiAnimacion);
+  if (mostrar) afiAnimacion = requestAnimationFrame(animarAfinometro);
 }
 
 /** `cents`: cuánto te desvías del objetivo (negativo = grave, positivo = agudo), o null si no hay voz. */
@@ -463,7 +603,6 @@ function actualizarAfinometro(cents) {
   construirAfinometro();
   const cont = el("afinometro");
   if (!cont) return;
-  const segs = cont.querySelectorAll(".afi-seg");
   const msg = el("afinometroMensaje");
   const det = el("afinometroTexto");
   const ahora = performance.now();
@@ -472,8 +611,8 @@ function actualizarAfinometro(cents) {
     if (afiSuave !== null && afiUltimaLecturaMs && ahora - afiUltimaLecturaMs < 350) return;
     afiSuave = null;
     afiHistorial = [];
-    afiIdx = AFI_CENTRO;
-    segs.forEach((s) => s.classList.remove("activo"));
+    afiDestino = null;
+    if (afiTrazo.length && afiTrazo[afiTrazo.length - 1].c !== null) afiTrazo.push({ t: ahora, c: null });
     cont.dataset.nivel = "";
     msg.textContent = "Escuchando…";
     det.textContent = "—";
@@ -484,33 +623,29 @@ function actualizarAfinometro(cents) {
   if (afiHistorial.length > 5) afiHistorial.shift();
   const orden = afiHistorial.slice().sort((a, b) => a - b);
   const mediana = orden[Math.floor(orden.length / 2)];
-  afiSuave = afiSuave === null ? mediana : afiSuave + 0.3 * (mediana - afiSuave);
+  afiSuave = afiSuave === null ? mediana : afiSuave + 0.35 * (mediana - afiSuave);
   const c = afiSuave;
-  // Otra octava: se avisa aparte y el arco muestra solo el resto.
+  // Otra octava: se avisa aparte y el dial muestra solo el resto.
   const octavas = Math.abs(c) > 600 ? Math.round(c / 1200) : 0;
   const resto = c - 1200 * octavas;
-  const crudo = AFI_CENTRO + resto / AFI_CENTS_POR_SEGMENTO;
-  if (Math.abs(crudo - afiIdx) > 0.65) afiIdx = Math.max(0, Math.min(AFI_SEGMENTOS - 1, Math.round(crudo)));
-  segs.forEach((s, i) => s.classList.toggle("activo", i === afiIdx));
-  const d = Math.abs(afiIdx - AFI_CENTRO);
-  let nivel;
+  afiDestino = resto;
+  afiTrazo.push({ t: ahora, c: resto });
+  let nivel = nivelAfinacion(resto);
   let texto;
   if (octavas !== 0) {
     nivel = "lejos";
     texto = `Estás ${Math.abs(octavas) === 1 ? "una octava" : Math.abs(octavas) + " octavas"} ${octavas > 0 ? "más arriba" : "más abajo"}`;
-  } else if (d <= 1) {
-    nivel = "bien";
-    texto = "¡Bien!";
-  } else if (d <= 3) {
-    nivel = "casi";
-    texto = resto < 0 ? "¡Casi! Sube un poquito ↑" : "¡Casi! Baja un poquito ↓";
+  } else if (nivel === "bien") {
+    texto = "¡Afinado!";
+  } else if (nivel === "casi") {
+    texto = resto < 0 ? "Casi: sube un poquito ↑" : "Casi: baja un poquito ↓";
   } else {
-    nivel = "lejos";
     texto = Math.abs(resto) > 70 ? (resto < 0 ? "Sube más ↑↑" : "Baja más ↓↓") : resto < 0 ? "Sube ↑" : "Baja ↓";
   }
   cont.dataset.nivel = nivel;
   msg.textContent = texto;
-  det.textContent = `${resto > 0 ? "+" : ""}${Math.round(resto)} cents`;
+  const cantada = afiMidiObjetivo === null ? "" : `${midiANombre(Math.round(afiMidiObjetivo + c / 100))} · `;
+  det.textContent = `${cantada}${resto > 0 ? "+" : ""}${Math.round(resto)} ¢`;
 }
 
 
