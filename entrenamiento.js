@@ -762,11 +762,15 @@ let espectroDatos = null;
 let espectroFloat = null;
 let detectorTwang = null;
 let calibracionTwangFin = 0;
+let calibracionTwangFase = null;
+let twangUmbralActual = 4; // último umbral medido (cambia con el registro y la calibración) // "normal" → "pausa" → "twang"
+const NOMBRES_REGISTRO_TWANG = { grave: "grave", medio: "medio", agudo: "agudo" };
 
 // --- Medidor de twang (la lógica pura está en twang.js) ---
 const TWANG_CLAVE_PERFIL = "aleran-twang-perfil";
 const TWANG_CLAVE_SENS = "aleran-twang-sensibilidad";
-const twangClaveBase = (perfil) => `aleran-twang-bases-v2-${perfil}`;
+// v3 (22/10/2026): medida nueva y calibración en dos pasos (normal + twang); las referencias de v2 ya no valen.
+const twangClaveBase = (perfil) => `aleran-twang-bases-v3-${perfil}`;
 
 function twangLeer(clave) {
   try {
@@ -824,16 +828,17 @@ function actualizarTextosTwang() {
   const perfil = twangPerfilActual();
   el("twangAyuda").textContent = window.Twang.PERFILES[perfil].ayuda;
   const bases = twangBaseGuardada(perfil);
-  const nombres = { grave: "grave", medio: "medio", agudo: "agudo" };
+  const nombres = NOMBRES_REGISTRO_TWANG;
   const hechos = bases ? window.Twang.REGISTROS.filter((r) => bases[r]) : [];
+  const conTwang = hechos.filter((r) => typeof bases[r].twang === "number");
   el("twangCalibEstado").textContent = hechos.length === 0
-    ? "Sin calibrar: usa un valor medio. Calibra con una vocal normal (sin twang)."
-    : `Calibrado ✓ en: ${hechos.map((r) => nombres[r]).join(", ")}.` +
-      (hechos.length < 3 ? ` Calibra también en ${window.Twang.REGISTROS.filter((r) => !bases[r]).map((r) => nombres[r]).join(" y ")} (cantando esas notas) para que no marque falsos twang.` : "");
+    ? "Sin calibrar. Pulsa «Calibrar»: 4 s con tu voz normal y 4 s con twang, con la vocal que vas a practicar."
+    : `Calibrado ✓ en: ${hechos.map((r) => nombres[r] + (conTwang.includes(r) ? " (normal + twang)" : " (solo normal)")).join(", ")}.` +
+      (hechos.length < 3 ? ` Si practicas en ${window.Twang.REGISTROS.filter((r) => !bases[r]).map((r) => nombres[r]).join(" o ")}, calibra también cantando esas notas.` : "");
   const sens = twangSensibilidadActual();
   el("twangSensValor").textContent = textoSensibilidad(sens);
-  const umbral = Math.max(1.5, window.Twang.UMBRAL_DELTA_DB - sens);
-  el("twangUmbral").style.left = `${window.Twang.porcentajeMedidor(umbral, umbral)}%`;
+  // La barra siempre pone el umbral (el de tu registro, ver twang.js) en el mismo punto.
+  el("twangUmbral").style.left = `${window.Twang.PORCENTAJE_UMBRAL}%`;
 }
 
 function pintarTwang(r) {
@@ -953,7 +958,7 @@ function dibujarHistorialTwang(ahora) {
   const DB_MAX = 14;
   const y = (db) => h - ((Math.max(DB_MIN, Math.min(DB_MAX, db)) - DB_MIN) / (DB_MAX - DB_MIN)) * h;
   ctx.clearRect(0, 0, w, h);
-  const umbral = detectorTwang ? detectorTwang.umbralDb : window.Twang ? window.Twang.UMBRAL_DELTA_DB : 5;
+  const umbral = twangUmbralActual; // el de tu registro (ver twang.js)
   // zona de twang (por encima del umbral)
   ctx.fillStyle = "rgba(62, 207, 110, 0.10)";
   ctx.fillRect(0, 0, w, y(umbral));
@@ -1227,37 +1232,79 @@ function botonesEspectro(enCurso) {
   });
 }
 
+// Calibración en dos pasos (22/10/2026): 4 s de voz normal y 4 s de twang, con la misma vocal y moviendo un poco
+// la nota (así se recoge cuánto varía tu voz de una nota a otra). El umbral queda entre las dos (ver twang.js).
+const TEXTO_FASE_TWANG = {
+  normal: "🎤 1/2 · Tu voz NORMAL, sin twang: canta la vocal que vas a practicar subiendo y bajando unas notas…",
+  twang: "🎤 2/2 · Ahora CON twang, la misma vocal y las mismas notas…",
+};
+
 function iniciarCalibracionTwang() {
   if (!detectorTwang || !entrenEnCurso) {
     el("twangCalibEstado").textContent = "Pulsa «Empezar» primero y vuelve a calibrar.";
     return;
   }
-  detectorTwang.iniciarCalibracion();
-  calibracionTwangFin = performance.now() + 4000;
   el("btnTwangCalibrar").disabled = true;
-  el("twangCalibEstado").textContent = "🎤 Canta una vocal normal y sostenida, sin twang…";
+  empezarFaseTwang("normal", performance.now());
+}
+
+function empezarFaseTwang(fase, ahora) {
+  calibracionTwangFase = fase;
+  if (fase === "pausa") {
+    calibracionTwangFin = ahora + 1800;
+    el("twangCalibEstado").textContent = "✓ Voz normal guardada. Prepárate para el twang…";
+    return;
+  }
+  detectorTwang.iniciarCalibracion(fase);
+  calibracionTwangFin = ahora + 4000;
+  el("twangCalibEstado").textContent = TEXTO_FASE_TWANG[fase];
+}
+
+function terminarCalibracionTwangConError(texto) {
+  calibracionTwangFin = 0;
+  calibracionTwangFase = null;
+  el("btnTwangCalibrar").disabled = false;
+  el("twangCalibEstado").textContent = texto;
 }
 
 function revisarCalibracionTwang(ahora) {
   if (!calibracionTwangFin) return;
   const restante = Math.ceil((calibracionTwangFin - ahora) / 1000);
   if (ahora < calibracionTwangFin) {
-    el("twangCalibEstado").textContent = `🎤 Canta una vocal normal y sostenida, sin twang… ${restante}`;
+    if (calibracionTwangFase !== "pausa") el("twangCalibEstado").textContent = `${TEXTO_FASE_TWANG[calibracionTwangFase]} ${restante}`;
+    return;
+  }
+  if (calibracionTwangFase === "pausa") {
+    empezarFaseTwang("twang", ahora);
+    return;
+  }
+  const fase = calibracionTwangFase;
+  const res = detectorTwang.terminarCalibracion(15);
+  if (res === null) {
+    const n = detectorTwang.ultimasMuestras || 0;
+    terminarCalibracionTwangConError(
+      n === 0
+        ? "No oí ninguna nota durante los 4 s. Revisa que tu micrófono (chip 🎤 de arriba) sea el bueno y vuelve a calibrar."
+        : `Solo pude medir ${n} lecturas de tu voz. Canta seguido durante los 4 s; si estás pegado al micro, aléjate unos 10-15 cm (se satura) y repite.`
+    );
+    return;
+  }
+  twangGuardar(twangClaveBase(detectorTwang.perfil), JSON.stringify(res.bases));
+  if (fase === "normal") {
+    empezarFaseTwang("pausa", ahora);
     return;
   }
   calibracionTwangFin = 0;
+  calibracionTwangFase = null;
   el("btnTwangCalibrar").disabled = false;
-  const base = detectorTwang.terminarCalibracion(15);
-  if (base === null) {
-    const n = detectorTwang.ultimasMuestras || 0;
-    el("twangCalibEstado").textContent =
-      n === 0
-        ? "No oí voz durante los 4 s. Revisa que tu micrófono (chip 🎤 de arriba) sea el bueno y canta una vocal sostenida."
-        : `Solo pude medir ${n} lecturas de tu voz. Canta una vocal sostenida durante los 4 s; si estás pegado al micro, aléjate unos 10-15 cm (se satura) y repite.`;
-  } else {
-    twangGuardar(twangClaveBase(detectorTwang.perfil), JSON.stringify(base));
-    actualizarTextosTwang();
-  }
+  actualizarTextosTwang();
+  const pocos = Object.entries(res.separacion).filter(([, s]) => s < window.Twang.SEPARACION_MINIMA_DB);
+  const buenos = Object.entries(res.separacion).filter(([, s]) => s >= window.Twang.SEPARACION_MINIMA_DB);
+  let texto = el("twangCalibEstado").textContent;
+  if (buenos.length) texto += ` Tu twang sube ${buenos.map(([r, s]) => `${s.toFixed(1)} dB en ${NOMBRES_REGISTRO_TWANG[r]}`).join(", ")}.`;
+  if (pocos.length) texto += ` En ${pocos.map(([r]) => NOMBRES_REGISTRO_TWANG[r]).join(" y ")} casi no noté diferencia: repite exagerando el twang (como un «ñe» nasal y brillante).`;
+  if (!buenos.length && !pocos.length) texto += " No oí el twang en el mismo registro que la voz normal: repite con las mismas notas.";
+  el("twangCalibEstado").textContent = texto;
 }
 
 function inicializarTwang() {
@@ -1384,6 +1431,7 @@ function bucleEspectro(analizador, canvas) {
     analizador.getFloatFrequencyData(espectroFloat);
     const ahora = performance.now();
     const r = detectorTwang.actualizar(espectroFloat, sampleRate, !!lecturaTwang, ahora, lecturaAltura ? lecturaAltura.frecuencia : null);
+    if (r && typeof r.umbralDb === "number") twangUmbralActual = r.umbralDb;
     pintarTwang(r);
     twangRegistrar(r, ahora);
     dibujarHistorialTwang(ahora);
@@ -1437,6 +1485,7 @@ function finalizarEspectro() {
   if (twangSesion.mejor > twangMejorGuardada()) twangGuardar(TWANG_CLAVE_MEJOR, String(Math.round(twangSesion.mejor)));
   detectorTwang = null;
   calibracionTwangFin = 0;
+  calibracionTwangFase = null;
   if (el("btnTwangCalibrar")) {
     el("btnTwangCalibrar").disabled = false;
     actualizarTextosTwang();

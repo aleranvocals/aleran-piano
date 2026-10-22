@@ -343,12 +343,18 @@
         throw err;
       }
       Medidor.reiniciar();
+      // Claridad 0,8 (no 0,9): con 0,9 se perdían voces con aire, rasgadas o con distorsión y la bola no se movía.
+      // Mediana de las 3 últimas lecturas: un salto de octava suelto del detector no hace saltar la bola.
+      const ultimas = [];
       window.MicrofonoEngine.escucharContinuo((l) => {
-        if (l) {
-          this.midi = l.midiExacto;
-          this.t = performance.now();
-        }
-      });
+        if (!l) return;
+        if (performance.now() - this.t > 320) ultimas.length = 0; // tras un silencio, no arrastrar la nota anterior
+        ultimas.push(l.midiExacto);
+        if (ultimas.length > 3) ultimas.shift();
+        const orden = ultimas.slice().sort((a, b) => a - b);
+        this.midi = orden[Math.floor(orden.length / 2)];
+        this.t = performance.now();
+      }, 0.8);
       this.activo = true;
       return true;
     },
@@ -376,7 +382,8 @@
         const pn = Piano.nota(); // si hay una tecla pulsada manda; si no, la voz
         if (pn !== null) return pn;
       }
-      return this.midi !== null && performance.now() - this.t < 220 ? this.midi : null;
+      // 320 ms de margen: los huecos entre sílabas o una lectura dudosa no dejan la bola «sin voz».
+      return this.midi !== null && performance.now() - this.t < 320 ? this.midi : null;
     },
   };
 

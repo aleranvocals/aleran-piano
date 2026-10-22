@@ -810,14 +810,33 @@ let escuchaContinuaToken = 0;
 /** Escucha el micrófono de forma continua (sin nota objetivo ni límite de
  * tiempo) hasta que se llame a detenerEscuchaContinua(). La usan el medidor
  * de rango vocal y el cronómetro de nota sostenida. `onLectura` recibe
- * `{ frecuencia, midiExacto, claridad }` o `null` cuando no hay voz clara. */
-async function escucharContinuo(onLectura) {
+ * `{ frecuencia, midiExacto, claridad }` o `null` cuando no hay voz clara.
+ * `claridadMinima` (opcional): los juegos piden menos que 0,9 para no perder voces con aire o rasgadas.
+ * Se recupera sola (22/10/2026): si el micrófono se cierra (al elegir otro en el chip 🎤), se desconecta o
+ * el navegador suspende el audio, lo vuelve a abrir en vez de quedarse leyendo silencio para siempre. */
+async function escucharContinuo(onLectura, claridadMinima = PITCH_CLARIDAD_MINIMA) {
   const miToken = ++escuchaContinuaToken;
-  escuchaMicrofonoCancelada = false;
-  while (escuchaContinuaToken === miToken && !escuchaMicrofonoCancelada) {
-    const lectura = leerPitchInstantaneo();
+  let reabriendo = false;
+  let ultimoIntento = 0;
+  while (escuchaContinuaToken === miToken) {
+    const pista = streamMicrofono && streamMicrofono.getAudioTracks()[0];
+    const caido = !analizadorMicrofono || !pista || pista.readyState === "ended";
+    if (caido && !reabriendo && performance.now() - ultimoIntento > 1000) {
+      reabriendo = true;
+      ultimoIntento = performance.now();
+      if (streamMicrofono) detenerMicrofono();
+      iniciarMicrofono()
+        .catch(() => {
+          /* se reintenta en un segundo */
+        })
+        .finally(() => {
+          reabriendo = false;
+        });
+    }
+    if (contextoAudio && contextoAudio.state === "suspended") contextoAudio.resume().catch(() => {});
+    const lectura = caido ? null : leerPitchInstantaneo(claridadMinima);
     onLectura(lectura ? { ...lectura, midiExacto: frecuenciaAMidi(lectura.frecuencia) } : null);
-    await esperar(40); // ~25 lecturas/seg
+    await esperar(30); // ~33 lecturas/seg
   }
 }
 

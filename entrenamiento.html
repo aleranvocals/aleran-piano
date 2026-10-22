@@ -148,7 +148,7 @@
   </section>
 
   <section id="panel-espectro" class="panel" hidden>
-    <p class="descripcion">Tu voz en vivo: qué nota cantas, cuánto twang tiene y qué frecuencias suenan. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Arriba, la nota que cantas (con cuántos cents te desvías) y el twang: cuántos dB brilla tu voz sobre tu voz normal. Calibra una vez con una vocal normal (4 s) y al pasar la marca blanca cuenta como twang; mantén la racha lo más larga que puedas. Debajo, el espectrograma (0 a 4000 Hz) y la curva de este instante: guarda una toma y compárala con otra. El twang es el «ping» que concentra energía entre 2.500 y 4.000 Hz. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes. Es una ayuda, no un diagnóstico; desactiva la «mejora de voz» del sistema si la tienes.">?</button></p>
+    <p class="descripcion">Tu voz en vivo: qué nota cantas, cuánto twang tiene y qué frecuencias suenan. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Arriba, la nota que cantas (con cuántos cents te desvías) y el twang: cuántos dB brilla tu voz sobre tu voz normal. Calibra una vez: 4 s con tu voz normal y 4 s con twang, con la vocal que vas a practicar y moviendo un poco la nota. La marca blanca queda entre las dos y al pasarla cuenta como twang; mantén la racha lo más larga que puedas. Debajo, el espectrograma (0 a 4000 Hz) y la curva de este instante: guarda una toma y compárala con otra. El twang es el «ping» que concentra energía entre 2.500 y 4.000 Hz. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes. Es una ayuda, no un diagnóstico; desactiva la «mejora de voz» del sistema si la tienes.">?</button></p>
 
     <div class="lecturas-espectro">
       <div class="lectura-nota">
@@ -225,7 +225,7 @@
     <div class="acciones">
       <button id="btnEspectroIniciar" class="boton principal">🎤 Empezar</button>
       <button id="btnEspectroDetener" class="boton" disabled>⏹ Detener</button>
-      <button id="btnTwangCalibrar" class="boton" type="button">🎚️ Calibrar (4 s)</button>
+      <button id="btnTwangCalibrar" class="boton" type="button">🎚️ Calibrar (normal + twang)</button>
     </div>
     <p class="twang-calib-estado" id="twangCalibEstado">Sin calibrar: usa un valor medio.</p>
 
@@ -275,12 +275,12 @@
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=9"></script>
 <script src="app-shell.js?v=6"></script>
-<script src="audio.js?v=13"></script>
+<script src="audio.js?v=14"></script>
 <script src="progreso.js?v=1"></script>
 <script src="progreso-nube.js?v=1"></script>
 <script src="teclado.js?v=13"></script>
-<script src="twang.js?v=4"></script>
-<script src="entrenamiento.js?v=15"></script>
+<script src="twang.js?v=5"></script>
+<script src="entrenamiento.js?v=16"></script>
 <script src="grabadora.js?v=4"></script>
 <script src="tema.js?v=1"></script>
 <script src="iconos.js?v=5"></script>

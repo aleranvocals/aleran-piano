@@ -1,21 +1,16 @@
 /*
  * Medidor de twang — lógica pura (sin DOM), para poder probarla fuera del navegador.
  *
- * Qué mide: el twang (estrechamiento del epilarinx / esfínter ariepiglótico) no es «más energía en 3 kHz»:
- * es una RELACIÓN dentro del espectro. Una nota aguda o cantada fuerte también sube esa banda; lo que
- * distingue al twang es que (1) el grupo de formantes F3-F5 (~2,5–4 kHz) destaca sobre los medios, (2) los
- * medios (1–2 kHz) suben respecto a los graves (F0 y F1), y (3) hay un pico definido en esa zona y no un
- * aumento general de todo lo agudo (que sería simplemente cantar más fuerte, o ruido).
+ * Qué mide (v3, 22/10/2026): el twang (estrechamiento del epilarinx) concentra energía en el grupo de formantes
+ * F3-F5 (~2,4–4,2 kHz): ese «ping». Se mide como el SINGING POWER RATIO (Omori y cols., 1996), la medida estándar
+ * del «anillo» de la voz cantada: el PICO más alto entre 2,4 y 4,2 kHz menos el PICO más alto entre 80 Hz y 2 kHz,
+ * en dB, combinado con la relación entre bandas de la v2 (ver indiceTwang). Con la v2 sola, un twang claro subía
+ * unos 3 dB y el umbral fijo pedía 4,5: por eso no detectaba twangs evidentes y a veces marcaba todo.
  *
- * Por eso se miden tres bandas —graves (100–1000 Hz), medios (1–2 kHz) y agudos (2,5–4 kHz)— más dos
- * bandas de comparación (el flanco 2–2,45 kHz y el «aire» 5–8 kHz), y se combinan en un índice en dB:
- *     índice = 0,60·residuo + 0,20·(medios − graves) + 0,20·(agudos − promedio(flanco, aire))
- * donde «residuo» es cuánto SOBRESALE la banda de agudos por encima de la línea (en escala logarítmica)
- * que une medios y aire: cantar más fuerte aplana toda la inclinación del espectro y sube todo lo agudo
- * a la vez (sin pico), mientras que el clúster F3-F5 del twang sobresale de esa línea.
- * Ese índice se compara con TU voz normal, y la referencia se guarda POR REGISTRO (grave, medio, agudo)
- * porque la relación cambia con la altura de la nota (la literatura lo señala: el ajuste del tracto
- * necesario para el twang es distinto en cada altura). El aire y las consonantes (s, t) se descartan.
+ * Calibración en dos pasos POR REGISTRO (grave, medio, agudo): tu voz normal y tu voz con twang. El umbral se pone
+ * a medio camino entre las dos, así que se adapta a tu voz y a tu micrófono (antes era un margen fijo de 4,5 dB para
+ * todo el mundo: de ahí las «tolerancias raras»). Si solo calibras la voz normal, se usa un margen genérico.
+ * Solo se calibra con cuadros con nota reconocible: el aire, las consonantes y el ruido ya no ensucian la referencia.
  *
  * Límites honestos: no existe una definición cuantitativa única del twang; los pesos y umbrales son
  * decisiones de diseño razonadas con lo que se sabe (clúster F3-F5, pico cerca de 3 kHz, cambios por debajo
@@ -34,14 +29,15 @@
     altos: [2500, 4000],
     aire: [5000, 8000],
   };
-  const PESOS = { residuo: 0.6, medioBajo: 0.2, prominencia: 0.2 };
-// Posición (en escala log de frecuencia) del centro de agudos entre el centro de medios y el de aire.
-const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Math.log(Math.sqrt(5000 * 8000) / Math.sqrt(1000 * 2000));
-  const BASE_DEFECTO_DB = -4; // índice típico de una voz sin twang (sin calibrar)
+  const BANDA_PICO_ALTO = [2400, 4200]; // Hz: dónde suena el «ping» del twang (F3-F5)
+  const BANDA_PICO_BAJO = [80, 2000]; // Hz: fundamental y primeros formantes
+  const BASE_DEFECTO_DB = -16; // índice típico de una voz cantada sin twang (sin calibrar)
+  // Posición (en escala log de frecuencia) del centro de agudos entre el centro de medios y el de aire.
+  const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Math.log(Math.sqrt(5000 * 8000) / Math.sqrt(1000 * 2000));
+  const SEPARACION_MINIMA_DB = 2.5; // si tu twang y tu voz normal se separan menos, la calibración de twang no sirve
   const REL_MEDIOS_DEFECTO = -22; // dB de los medios respecto a los graves en una voz normal (solo para dibujar)
   const REL_ALTOS_DEFECTO = -36; // idem para los agudos
-  const UMBRAL_DELTA_DB = 4.5; // cuántos dB por encima de tu voz normal (del mismo registro) cuenta como «posible twang»
-  const ENERGIA_VOZ_DB = -78; // al calibrar, un cuerpo de voz por encima de esto cuenta como voz aunque la nota no sea limpia
+  const UMBRAL_DELTA_DB = 4; // sin calibrar el twang: cuántos dB sobre tu voz normal cuentan como «posible twang»
   const PISO_BASE_DB = -100; // por debajo no hay voz suficiente (límite del analizador); la voz la confirma el detector de nota
   const SUAVIZADO = 0.2; // media móvil exponencial por cuadro
   const MS_PARA_ACTIVAR = 200;
@@ -84,6 +80,16 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
     },
   };
 
+  /** Pico (en dB) de la banda [f1, f2]: el armónico más fuerte que cae en ella. */
+  function picoDb(espectroDb, sampleRate, f1, f2) {
+    const n = espectroDb.length;
+    const nyquist = sampleRate / 2;
+    const bin = (f) => Math.min(n - 1, Math.max(0, Math.round((f / nyquist) * n)));
+    let max = -Infinity;
+    for (let i = bin(f1); i <= bin(f2); i++) if (Number.isFinite(espectroDb[i]) && espectroDb[i] > max) max = espectroDb[i];
+    return Number.isFinite(max) ? max : -200;
+  }
+
   /** Potencia media (en dB) de la banda [f1, f2] de un espectro en dB (como getFloatFrequencyData). */
   function potenciaMediaDb(espectroDb, sampleRate, f1, f2) {
     const n = espectroDb.length;
@@ -105,6 +111,16 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
     return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
   }
 
+  /** Media y dispersión del 80 % central: ni el arranque de la nota ni un cuadro raro mueven la referencia. */
+  function estadisticaRecortada(valores) {
+    const v = valores.slice().sort((a, b) => a - b);
+    const q = Math.floor(v.length / 10);
+    const centro = v.slice(q, v.length - q);
+    const media = centro.reduce((a, b) => a + b, 0) / Math.max(1, centro.length);
+    const sd = Math.sqrt(centro.reduce((a, b) => a + (b - media) ** 2, 0) / Math.max(1, centro.length));
+    return { media, sd };
+  }
+
   /** Nivel (dB) de cada banda del espectro. */
   function medirBandas(espectroDb, sampleRate) {
     const b = {};
@@ -112,13 +128,24 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
     return b;
   }
 
-  /** Índice de twang (dB) a partir de los niveles de las bandas: ver la explicación de arriba. */
-  function indiceTwang(b) {
-    const esperado = b.medios + T_AGUDOS * (b.aire - b.medios); // dónde estarían los agudos si el espectro fuese una recta
-    const residuo = b.altos - esperado;
-    const medioBajo = b.medios - b.bajos;
-    const prominencia = b.altos - (b.flanco + b.aire) / 2;
-    return PESOS.residuo * residuo + PESOS.medioBajo * medioBajo + PESOS.prominencia * prominencia;
+  /** Singing Power Ratio (dB): pico de 2,4–4,2 kHz menos pico de 80 Hz–2 kHz. */
+  function singingPowerRatio(espectroDb, sampleRate) {
+    return picoDb(espectroDb, sampleRate, BANDA_PICO_ALTO[0], BANDA_PICO_ALTO[1]) - picoDb(espectroDb, sampleRate, BANDA_PICO_BAJO[0], BANDA_PICO_BAJO[1]);
+  }
+
+  /** Relación entre bandas (la medida de v2): cuánto sobresalen los agudos de la recta medios-aire, más medios/graves. */
+  function relacionBandas(b) {
+    const esperado = b.medios + T_AGUDOS * (b.aire - b.medios);
+    return 0.6 * (b.altos - esperado) + 0.2 * (b.medios - b.bajos) + 0.2 * (b.altos - (b.flanco + b.aire) / 2);
+  }
+
+  /**
+   * Índice de twang (dB) = ½·Singing Power Ratio + relación entre bandas. Probado con voces sintéticas (5 vocales ×
+   * 6 notas): juntas separan twang / no twang mejor que cada una sola (razón salto/dispersión 1,58 frente a 1,31),
+   * porque fallan en casos distintos (la de picos con la nota, la de bandas con la vocal).
+   */
+  function indiceTwang(espectroDb, sampleRate) {
+    return 0.5 * singingPowerRatio(espectroDb, sampleRate) + relacionBandas(medirBandas(espectroDb, sampleRate));
   }
 
   /** Registro de la nota cantada (la referencia del twang se guarda por registro). */
@@ -133,10 +160,10 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
     constructor(opciones) {
       const o = opciones || {};
       this.perfil = PERFILES[o.perfil] ? o.perfil : "otro";
-      // Referencias de tu voz normal por registro: {grave|medio|agudo: {indice, medios, altos}} (o null).
+      // Referencias por registro: {grave|medio|agudo: {normal, twang (o null), medios, altos}} (o null).
       this.bases = { grave: null, medio: null, agudo: null };
       if (o.bases && typeof o.bases === "object") {
-        for (const r of REGISTROS) if (o.bases[r] && typeof o.bases[r].indice === "number") this.bases[r] = o.bases[r];
+        for (const r of REGISTROS) if (o.bases[r] && typeof o.bases[r].normal === "number") this.bases[r] = o.bases[r];
       }
       this.sensibilidadDb = typeof o.sensibilidadDb === "number" ? o.sensibilidadDb : 0; // + = más sensible
       this.ultimasMuestras = 0;
@@ -161,36 +188,71 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
       return REGISTROS.filter((r) => this.bases[r] !== null);
     }
 
+    /** Margen genérico (sin calibrar el twang), ajustado por la sensibilidad. */
     get umbralDb() {
       return Math.max(1.5, UMBRAL_DELTA_DB - this.sensibilidadDb);
     }
 
-    iniciarCalibracion() {
+    /**
+     * Cuántos dB sobre tu voz normal hacen falta en ese registro. Con el twang calibrado, el punto entre tu voz
+     * normal y tu twang donde las dos se confunden igual de poco: más lejos de la que más oscila (si tu voz normal
+     * varía mucho de una nota a otra, el umbral se aleja de ella). Sin el twang calibrado, un margen genérico que
+     * nunca queda dentro de lo que oscila tu voz normal.
+     */
+    umbralPara(ref) {
+      const sdN = typeof ref.sdNormal === "number" ? Math.max(0.5, ref.sdNormal) : 1.5;
+      const sep = typeof ref.twang === "number" ? ref.twang - ref.normal : null;
+      let base;
+      if (sep !== null && sep >= SEPARACION_MINIMA_DB) {
+        const sdT = typeof ref.sdTwang === "number" ? Math.max(0.5, ref.sdTwang) : sdN;
+        base = (sep * sdN) / (sdN + sdT);
+      } else {
+        base = Math.max(UMBRAL_DELTA_DB, 2 * sdN);
+      }
+      return Math.max(1.5, base - this.sensibilidadDb);
+    }
+
+    /** `tipo`: "normal" (tu voz sin twang) o "twang" (tu voz con twang). */
+    iniciarCalibracion(tipo) {
       this.calibrando = [];
+      this.tipoCalibracion = tipo === "twang" ? "twang" : "normal";
     }
 
     /**
-     * Termina la calibración: guarda la voz normal de cada registro en el que hubo suficiente voz y devuelve
-     * las referencias (todas), o null si no hubo suficiente voz en ninguno.
+     * Termina la calibración. Devuelve {bases, registros, separacion} (separacion: dB entre twang y normal por
+     * registro, solo al calibrar el twang), o null si no hubo suficiente voz en ningún registro.
      */
     terminarCalibracion(minimoMuestras) {
       const muestras = this.calibrando || [];
+      const tipo = this.tipoCalibracion || "normal";
       this.calibrando = null;
       this.ultimasMuestras = muestras.length;
       const minimo = minimoMuestras || 15;
-      let alguno = false;
+      const registros = [];
+      const separacion = {};
       for (const reg of REGISTROS) {
         const del = muestras.filter((m) => m.reg === reg);
         if (del.length < minimo) continue;
-        this.bases[reg] = {
-          indice: mediana(del.map((m) => m.indice)),
-          medios: mediana(del.map((m) => m.medios)),
-          altos: mediana(del.map((m) => m.altos)),
-        };
-        alguno = true;
+        const { media: valor, sd } = estadisticaRecortada(del.map((m) => m.indice));
+        if (tipo === "normal") {
+          const previa = this.bases[reg];
+          this.bases[reg] = {
+            normal: valor,
+            sdNormal: sd,
+            twang: previa && typeof previa.twang === "number" ? previa.twang : null,
+            sdTwang: previa && typeof previa.sdTwang === "number" ? previa.sdTwang : null,
+            medios: mediana(del.map((m) => m.medios)),
+            altos: mediana(del.map((m) => m.altos)),
+          };
+        } else {
+          if (!this.bases[reg]) continue; // el twang se compara con tu voz normal de ese registro
+          this.bases[reg] = { ...this.bases[reg], twang: valor, sdTwang: sd };
+          separacion[reg] = valor - this.bases[reg].normal;
+        }
+        registros.push(reg);
       }
       this.ema = null;
-      return alguno ? this.bases : null;
+      return registros.length ? { bases: this.bases, registros, separacion } : null;
     }
 
     /** Referencia de tu voz normal para ese registro: la suya, la del registro calibrado más cercano, o la genérica. */
@@ -208,7 +270,7 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
         }
       }
       if (mejor) return { r: mejor, exacta: false };
-      return { r: { indice: BASE_DEFECTO_DB, medios: REL_MEDIOS_DEFECTO, altos: REL_ALTOS_DEFECTO }, exacta: false };
+      return { r: { normal: BASE_DEFECTO_DB, twang: null, medios: REL_MEDIOS_DEFECTO, altos: REL_ALTOS_DEFECTO }, exacta: false };
     }
 
     /**
@@ -222,9 +284,10 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
       const cuerpoDb = potenciaMediaDb(espectroDb, sampleRate, BANDA_BASE[0], BANDA_BASE[1]);
       const reg = registroDe(f0);
 
-      // Calibrando: basta voz con energía real (muy pegado al micro la nota no siempre se reconoce).
-      const vozPorEnergia = this.calibrando !== null && cuerpoDb > ENERGIA_VOZ_DB;
-      if ((!vozActiva && !vozPorEnergia) || cuerpoDb < PISO_BASE_DB) {
+      // Solo cuenta la voz con nota reconocible (al calibrar se acepta una nota menos limpia, con su f0):
+      // así el aire, las consonantes y el ruido no entran ni en la medida ni en la referencia.
+      const hayVoz = vozActiva || (this.calibrando !== null && !!f0);
+      if (!hayVoz || cuerpoDb < PISO_BASE_DB) {
         if (ahoraMs - this.ultimoCuadroVozMs > 400) {
           this.ema = null;
           this.superaDesde = null;
@@ -241,19 +304,19 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
         return { estado: "sin-agudos", deltaDb: null, porcentaje: 0, detectado: false, sinAgudos: true, registro: reg };
       }
       // Más energía en el «aire» (5–8 kHz) que en la zona de twang: es una consonante o soplo, no una vocal con twang.
-      if (b.aire > b.altos + 2 && this.calibrando === null) {
+      if (b.aire > b.altos + 2) {
         return { estado: "ruido", deltaDb: null, porcentaje: 0, detectado: false, sinAgudos: false, registro: reg };
       }
 
-      const indice = indiceTwang(b) + perfil.ajusteDb;
+      const indice = indiceTwang(espectroDb, sampleRate) + perfil.ajusteDb;
       const relMedios = b.medios - b.bajos;
       const relAltos = b.altos - b.bajos;
       if (this.calibrando) this.calibrando.push({ reg, indice, medios: relMedios, altos: relAltos });
       this.ema = this.ema === null ? indice : this.ema + SUAVIZADO * (indice - this.ema);
 
       const ref = this.referencia(reg);
-      const delta = this.ema - ref.r.indice;
-      const umbral = this.umbralDb;
+      const delta = this.ema - ref.r.normal;
+      const umbral = this.umbralPara(ref.r);
 
       if (delta >= umbral) {
         this.bajaDesde = null;
@@ -283,6 +346,7 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
         sinAgudos: false,
         registro: reg,
         referenciaPropia: ref.exacta, // false = aún no calibrada en este registro
+        umbralDb: umbral,
         // Relación graves-medios-agudos de ahora (dB respecto a los graves) y la de tu voz normal, para dibujarla.
         bandasRel: { medios: relMedios, altos: relAltos },
         refRel: { medios: ref.r.medios, altos: ref.r.altos },
@@ -290,11 +354,14 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
     }
   }
 
-  /** De −4 dB a (umbral + 6) dB sobre tu voz normal → 0 a 100 %; el umbral cae siempre en el mismo punto de la barra. */
+  const PORCENTAJE_UMBRAL = 60; // el umbral (sea cual sea el de tu registro) cae siempre aquí en la barra
+
+  /** Barra en dos tramos: de −4 dB al umbral → 0 a 60 %; del umbral a umbral + 6 dB → 60 a 100 %. */
   function porcentajeMedidor(deltaDb, umbralDb) {
-    const min = -4;
-    const max = umbralDb + 6;
-    return Math.max(0, Math.min(100, Math.round(((deltaDb - min) / (max - min)) * 100)));
+    const t = deltaDb <= umbralDb
+      ? ((deltaDb + 4) / Math.max(0.1, umbralDb + 4)) * PORCENTAJE_UMBRAL
+      : PORCENTAJE_UMBRAL + ((deltaDb - umbralDb) / 6) * (100 - PORCENTAJE_UMBRAL);
+    return Math.max(0, Math.min(100, Math.round(t)));
   }
 
   const api = {
@@ -305,12 +372,15 @@ const T_AGUDOS = Math.log(Math.sqrt(2500 * 4000) / Math.sqrt(1000 * 2000)) / Mat
     REGISTROS,
     BASE_DEFECTO_DB,
     UMBRAL_DELTA_DB,
+    SEPARACION_MINIMA_DB,
     DetectorTwang,
+    picoDb,
     potenciaMediaDb,
     medirBandas,
     indiceTwang,
     registroDe,
     porcentajeMedidor,
+    PORCENTAJE_UMBRAL,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   raiz.Twang = api;
