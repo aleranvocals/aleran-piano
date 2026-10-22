@@ -85,7 +85,7 @@ body::before {
 .cabecera h1 {
   font: 700 1.45rem var(--font-display); letter-spacing: 0.2em; text-transform: uppercase; margin: 0; line-height: 1.15;
 }
-.cabecera h1::first-letter { color: var(--crimson-bright); }
+.cabecera h1 svg { color: var(--crimson-bright); }
 .subtitulo { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-dim); margin-top: 0.2rem; }
 .cabecera .subtitulo { grid-column: 2; }
 
@@ -153,6 +153,25 @@ body::before {
   box-shadow: inset 0 0 18px var(--o-brillo), 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 .tabs-fichas .tab.activo svg, .tabs-fichas .subtab.activo svg { color: var(--crimson-bright); }
+
+/* --- Menú de filas (se queda siempre visible, decisión de Áleran): panel hundido con teclas en relieve -- */
+.nav-principal:not(.nav-compacto) {
+  gap: 4px; padding: 5px; border-radius: 14px; background: var(--o-pozo); border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: var(--o-pozo-sombra);
+}
+:root[data-tema="claro"] .nav-principal:not(.nav-compacto) { border-color: var(--line); }
+.nav-principal:not(.nav-compacto) .nav-fila { gap: 4px; }
+.nav-principal:not(.nav-compacto) a {
+  border-radius: 9px; border: 1px solid var(--o-borde); background: var(--o-boton); box-shadow: var(--o-boton-luz);
+  color: var(--bone-dim); font: 600 0.82rem var(--font-body); padding: 0.5rem 0.35rem;
+}
+.nav-principal:not(.nav-compacto) a:hover { color: var(--bone); border-color: rgba(192, 34, 65, 0.55); background: var(--o-boton); }
+/* Solfeo, Entrena, Oído y Ritmo siguen destacadas (pedido explícito): texto fuerte y filo carmesí abajo. */
+.nav-principal:not(.nav-compacto) a.destacado { color: var(--bone); font-weight: 700; border-color: var(--o-borde); box-shadow: var(--o-boton-luz), inset 0 -2px 0 var(--crimson-bright); }
+.nav-principal:not(.nav-compacto) a.activo, .nav-principal:not(.nav-compacto) a.destacado.activo {
+  color: #fff; background: linear-gradient(180deg, var(--crimson-bright), var(--crimson)); border-color: transparent;
+  box-shadow: 0 0 14px rgba(192, 34, 65, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.nav-principal:not(.nav-compacto) a svg { color: currentColor; }
 
 /* --- Paneles de vidrio oscuro --------------------------------------------------------------- */
 .panel, .resultado, .ajustes-plegables, .afinometro-grande, .hoja-caja, .cta-clases, .dock-panel {
@@ -237,6 +256,12 @@ input[type="range"]::-moz-range-thumb {
 /* --- Barra fija de herramientas (rango, micro, MIDI) ----------------------------------------- */
 .dock { background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--o-borde); }
 .chip-dock { border-radius: 999px; font-weight: 600; }
+
+@media (max-width: 480px) {
+  .cabecera h1 { font-size: 1.12rem; letter-spacing: 0.12em; }
+  .cabecera::before { width: 40px; height: 40px; font-size: 22px; }
+  .subtitulo { font-size: 0.64rem; letter-spacing: 0.1em; }
+}
 
 @media print {
   body { background: #fff !important; }
