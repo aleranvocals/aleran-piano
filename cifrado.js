@@ -607,8 +607,10 @@ function crearAccionesLinea(lineaObj, esPrimera) {
   // negras parejas con las notas que ya haya en la línea (ver reproducirLinea).
   const btnReproducir = document.createElement("button");
   btnReproducir.type = "button";
-  btnReproducir.className = "boton principal";
-  btnReproducir.textContent = "▶ Reproducir";
+  btnReproducir.className = "boton principal boton-repro-linea";
+  btnReproducir.textContent = "▶";
+  btnReproducir.title = "Reproducir esta línea (desde la sílaba elegida, si hay una)";
+  btnReproducir.setAttribute("aria-label", "Reproducir esta línea");
   btnReproducir.addEventListener("click", () => reproducirLinea(lineaObj, btnReproducir));
   fila.appendChild(btnReproducir);
 
@@ -1295,7 +1297,19 @@ let repro = null;
 
 function textoBotonRepro(r) {
   if (!r || !r.boton) return;
-  r.boton.textContent = r.estado === "sonando" ? "⏸ Pausa" : r.estado === "pausa" ? "▶ Continuar" : r.etiqueta;
+  // El botón de cada línea es solo un icono (pedido de Áleran: «basta con el ▶»).
+  if (r.compacto) r.boton.textContent = r.estado === "sonando" ? "⏸" : "▶";
+  else r.boton.textContent = r.estado === "sonando" ? "⏸ Pausa" : r.estado === "pausa" ? "▶ Continuar" : r.etiqueta;
+}
+
+/** Evento desde el que empezar: el de la sílaba que está seleccionada (si es de lo que se va a tocar), o el primero. */
+function eventoDeSeleccion(resaltar) {
+  if (!celdaNotaSeleccionada) return 0;
+  let primero = -1;
+  resaltar.forEach((celdas, indice) => {
+    if (celdas.includes(celdaNotaSeleccionada) && (primero < 0 || indice < primero)) primero = indice;
+  });
+  return primero < 0 ? 0 : primero;
 }
 
 function limpiarResaltadoSonando() {
@@ -1311,7 +1325,6 @@ async function lanzarRepro(r, desde) {
   r.estado = "sonando";
   textoBotonRepro(r);
   actualizarBotonDetener();
-  elEstado.textContent = "";
   if (window.MetronomoEngine) window.MetronomoEngine.iniciar(r.bpm, r.metrica);
   try {
     await window.PianoEngine.reproducirSecuencia(r.eventos.slice(desde), 0.8, {
@@ -1367,15 +1380,18 @@ function alternarRepro(nueva) {
       return;
     }
     if (repro.estado === "pausa") {
+      elEstado.textContent = "";
       lanzarRepro(repro, repro.indice);
       return;
     }
   }
   detenerRepro(); // lo que estuviera sonando (u otra línea en pausa) se cierra
   nueva.estado = "nuevo";
-  nueva.indice = 0;
+  // Empieza donde tengas el cursor: la sílaba seleccionada (clic en su nota) si pertenece a lo que suena.
+  nueva.indice = eventoDeSeleccion(nueva.resaltar);
   repro = nueva;
-  lanzarRepro(nueva, 0);
+  if (nueva.indice > 0) elEstado.textContent = "Desde la sílaba seleccionada.";
+  lanzarRepro(nueva, nueva.indice);
 }
 
 async function reproducirLinea(lineaObj, boton) {
@@ -1397,7 +1413,7 @@ async function reproducirLinea(lineaObj, boton) {
     resaltar.get(evIdx).push(celda);
   });
   const metrica = parseInt(document.getElementById("cifradoMetrica").value, 10) || 4;
-  alternarRepro({ eventos, resaltar, bpm, metrica, boton, etiqueta: "▶ Reproducir" });
+  alternarRepro({ eventos, resaltar, bpm, metrica, boton, etiqueta: "▶", compacto: true });
 }
 
 // Junta las líneas de toda la canción en UNA sola llamada a

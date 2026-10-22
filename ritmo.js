@@ -385,17 +385,69 @@ function construirRuedaEnSvg(idSvg, celdas) {
   return puntos;
 }
 
+// -- Ruleta de patrones (22/10/2026, antes «rueda»: Áleran no entendía ni la lógica ni la dinámica) --------
+// Una fila de tarjetas con los patrones de UN pulso del nivel. «Girar» recorre las tarjetas cada vez más
+// despacio hasta parar en una. Luego, con el metrónomo sonando sin cortes y todo a tempo:
+//   CUENTA (4 pulsos: 1-2-3-4) → ESCUCHA (el patrón suena en cada uno de 4 pulsos) → TU TURNO (4 pulsos: aplaude).
+// Las palmadas del patrón se anclan al pulso fuerte del metrónomo (tiempoProximoPulsoFuerte en audio.js),
+// así que caen exactamente en el compás de «Escucha».
+const RULETA_FASES = [
+  { id: "cuenta", texto: "Cuenta" },
+  { id: "escucha", texto: "Escucha" },
+  { id: "turno", texto: "¡Tu turno!" },
+];
+let ruletaEnCurso = false;
+
+function iconosPatron(unidades, alto) {
+  const ancho = (alto * 24) / 34;
+  const svg = crearElementoSvg("svg", { viewBox: `0 0 ${unidades.length * 24} 34`, width: unidades.length * ancho, height: alto, class: "ruleta-notas", "aria-hidden": "true" });
+  unidades.forEach((u, i) => svg.appendChild(crearUsoNota(u.figura, u.silencio, i * 24, 0, 24, 34)));
+  return svg;
+}
+
 function renderRuedaSvg() {
-  if (!el("ruedaSvg")) return;
+  if (!el("ruleta")) return;
   if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  detenerRuleta();
   const nivel = parseInt(el("ritmoNivel").value, 10) || 1;
   ruedaCeldasActuales = celdasRuedaDesbloqueadas(nivel);
   ruedaIndiceActivo = -1;
   ruedaGirando = false;
-  ruedaPuntos = construirRuedaEnSvg("ruedaSvg", ruedaCeldasActuales);
+  asegurarSimbolosNota();
+  const cont = el("ruleta");
+  cont.textContent = "";
+  ruedaCeldasActuales.forEach((celda, i) => {
+    const tarjeta = document.createElement("div");
+    tarjeta.className = "ruleta-tarjeta";
+    tarjeta.dataset.indice = String(i);
+    tarjeta.appendChild(iconosPatron(celda.unidades, 46));
+    const nombre = document.createElement("span");
+    nombre.textContent = celda.nombreCorto;
+    tarjeta.appendChild(nombre);
+    cont.appendChild(tarjeta);
+  });
+  el("btnRuedaRepetir").disabled = true;
+  pintarFaseRuleta("espera", -1);
+}
 
-  if (el("btnRuedaRepetir")) el("btnRuedaRepetir").disabled = true;
-  if (el("ruedaEstado")) el("ruedaEstado").textContent = 'Dale a "Girar" para empezar.';
+function pintarFaseRuleta(fase, pulso) {
+  const esc = el("ruletaEscenario");
+  if (!esc) return;
+  esc.dataset.fase = fase;
+  const info = RULETA_FASES.find((f) => f.id === fase);
+  el("ruletaFase").textContent = info ? info.texto : fase === "fin" ? "¿Te salió? Repite o gira otra vez" : "Gira la ruleta para empezar";
+  el("ruletaPulsos").querySelectorAll("i").forEach((p, i) => {
+    p.classList.toggle("encendido", i === pulso);
+    p.classList.toggle("pasado", pulso >= 0 && i < pulso);
+  });
+  el("ruletaCuenta").textContent = fase === "cuenta" && pulso >= 0 ? String(pulso + 1) : "";
+}
+
+function detenerRuleta() {
+  if (!ruletaEnCurso) return;
+  ruletaEnCurso = false;
+  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
 }
 
 // -- Rueda sincronizada con la secuencia (tira larga) -------------------
@@ -480,42 +532,78 @@ function animarBolaRuedaHacia(idSvg, destino, duracionMs) {
   });
 }
 
-function limpiarActivaRueda() {
-  el("ruedaSvg").querySelectorAll(".activa").forEach((nodo) => nodo.classList.remove("activa"));
+function marcarTarjetaRuleta(indice, elegida) {
+  el("ruleta").querySelectorAll(".ruleta-tarjeta").forEach((t) => {
+    const es = Number(t.dataset.indice) === indice;
+    t.classList.toggle("paso", es && !elegida);
+    t.classList.toggle("elegida", es && elegida);
+  });
 }
 
-function marcarActivaRueda(indice) {
-  el("ruedaSvg").querySelectorAll(`[data-indice="${indice}"]`).forEach((nodo) => nodo.classList.add("activa"));
-}
-
-async function reproducirCeldaRueda(celda) {
-  if (!window.PianoEngine) return;
+/** Cuenta · Escucha · Tu turno, con el metrónomo sonando de corrido (12 pulsos). */
+function tocarPatronRuleta(celda) {
+  if (!window.MetronomoEngine || !window.PianoEngine) return Promise.resolve();
   const bpm = parseInt(el("metroFlotBpm").value, 10) || 100;
-  const eventos = unidadesRitmoAEventos(celda.unidades, bpm);
-  el("ruedaEstado").textContent = `Patrón: ${celda.nombre} — aplaude tú también.`;
-  await window.PianoEngine.reproducirRitmo(eventos, 0.75, {});
+  const patron = el("ruletaPatron");
+  patron.textContent = "";
+  patron.appendChild(iconosPatron(celda.unidades, 70));
+  el("ruletaNombre").textContent = celda.nombre;
+  ruletaEnCurso = true;
+  // Si el metrónomo de arriba estaba sonando, se para: la ruleta lleva su propio pulso.
+  if (el("metroFlotToggle") && el("metroFlotToggle").classList.contains("en-marcha")) el("metroFlotToggle").click();
+  if (window.MetronomoEngine.ajustarVolumen) window.MetronomoEngine.ajustarVolumen(parseFloat(el("metroFlotVolumen").value));
+  return new Promise((resolver) => {
+    let n = -1;
+    window.MetronomoEngine.iniciar(bpm, 4, () => {
+      if (!ruletaEnCurso) return;
+      n++;
+      if (n >= 12) {
+        detenerRuleta();
+        pintarFaseRuleta("fin", -1);
+        resolver();
+        return;
+      }
+      pintarFaseRuleta(RULETA_FASES[Math.floor(n / 4)].id, n % 4);
+      // En el primer pulso se programa el patrón: audio.js lo ancla al siguiente pulso fuerte (el 1 de «Escucha»).
+      if (n === 0) {
+        const unaVez = unidadesRitmoAEventos(celda.unidades, bpm);
+        window.PianoEngine.reproducirRitmo([...unaVez, ...unaVez, ...unaVez, ...unaVez], 0.8, {});
+      }
+    });
+  });
 }
 
 async function girarRueda() {
   if (ruedaGirando || ruedaCeldasActuales.length === 0) return;
+  detenerRuleta();
   ruedaGirando = true;
   el("btnRuedaGirar").disabled = true;
   el("btnRuedaRepetir").disabled = true;
-  limpiarActivaRueda();
-  el("ruedaEstado").textContent = "Girando…";
-  const indice = Math.floor(Math.random() * ruedaCeldasActuales.length);
-  await animarBolaRuedaHacia("ruedaSvg", ruedaPuntos[indice], 550);
-  ruedaIndiceActivo = indice;
-  marcarActivaRueda(indice);
-  await reproducirCeldaRueda(ruedaCeldasActuales[indice]);
+  pintarFaseRuleta("girando", -1);
+  el("ruletaFase").textContent = "Girando…";
+  const total = ruedaCeldasActuales.length;
+  const destino = Math.floor(Math.random() * total);
+  // Varias vueltas que se frenan, y se para en el elegido.
+  const pasos = total * 3 + destino;
+  for (let i = 0; i <= pasos; i++) {
+    marcarTarjetaRuleta(i % total, false);
+    const t = i / pasos;
+    await new Promise((r) => setTimeout(r, 45 + 260 * t * t));
+  }
+  ruedaIndiceActivo = destino;
+  marcarTarjetaRuleta(destino, true);
   ruedaGirando = false;
-  el("btnRuedaGirar").disabled = false;
   el("btnRuedaRepetir").disabled = false;
+  await tocarPatronRuleta(ruedaCeldasActuales[destino]);
+  el("btnRuedaGirar").disabled = false;
 }
 
-function repetirCeldaRueda() {
+async function repetirCeldaRueda() {
   if (ruedaGirando || ruedaIndiceActivo < 0) return;
-  reproducirCeldaRueda(ruedaCeldasActuales[ruedaIndiceActivo]);
+  detenerRuleta();
+  el("btnRuedaGirar").disabled = true;
+  await tocarPatronRuleta(ruedaCeldasActuales[ruedaIndiceActivo]);
+  el("btnRuedaGirar").disabled = false;
 }
 
 function cambiarVistaRitmo(vista) {
@@ -527,6 +615,7 @@ function cambiarVistaRitmo(vista) {
   el("btnRitmoVistaRueda").classList.toggle("activo", esRueda);
   el("btnRitmoVistaRueda").setAttribute("aria-selected", String(esRueda));
   if (ritmoReproduciendo) detenerRitmoUI();
+  detenerRuleta();
   if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
 }
 

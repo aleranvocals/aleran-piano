@@ -267,6 +267,7 @@ input[type="range"]::-moz-range-thumb {
 .fila-ajustes .campo-zoom { margin-left: auto; }
 .fila-ajustes .campo.con-perilla { grid-template-columns: 40px auto; }
 @media (max-width: 520px) {
+  #panel-aleatorio { grid-template-columns: 1fr; }
   #panelComunes { grid-template-columns: 1fr; }
   #panelComunes > .campo:has(#volumen) { grid-column: 1; grid-row: auto; }
   .fila-ajustes .campo-zoom { margin-left: 0; }
@@ -393,3 +394,33 @@ input[type="range"]::-moz-range-thumb {
 /* Mapa vocal: el dibujo ocupa todo el recuadro blanco y queda centrado (en móvil, con un ancho mínimo y desliza). */
 .mapa-vocal-contenedor { display: flex; justify-content: safe center; padding: 0.6rem; }
 .mapa-vocal-contenedor svg { width: 100%; min-width: 620px; max-width: 1100px; height: auto; margin: 0 auto; }
+
+/* --- Ruleta de patrones (Ritmo) ---------------------------------------------------------------------------- */
+.ruleta { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0.4rem 0 0.8rem; }
+.ruleta-tarjeta { flex: 0 1 120px; display: grid; justify-items: center; gap: 6px; padding: 10px 8px 8px; border-radius: 12px;
+  background: var(--o-boton); border: 1px solid var(--o-borde); box-shadow: var(--o-boton-luz); color: var(--bone); transition: transform 0.08s, border-color 0.08s; }
+.ruleta-tarjeta span { font-size: 0.78rem; color: var(--bone-dim); }
+.ruleta-tarjeta .ruleta-notas { color: var(--bone); }
+.ruleta-tarjeta.paso { border-color: var(--crimson-bright); box-shadow: inset 0 0 14px var(--o-brillo); transform: translateY(-2px); }
+.ruleta-tarjeta.elegida { border-color: var(--crimson-bright); background: var(--o-activo); box-shadow: 0 0 18px rgba(192, 34, 65, 0.45), inset 0 0 14px var(--o-brillo); transform: scale(1.06); }
+.ruleta-tarjeta.elegida .ruleta-notas, .ruleta-tarjeta.elegida span { color: #fff; }
+.ruleta-escenario { display: grid; justify-items: center; gap: 10px; padding: 14px; margin-bottom: 0.7rem; border-radius: 14px;
+  background: var(--o-pozo); border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: var(--o-pozo-sombra); }
+.ruleta-cabeza { display: flex; align-items: baseline; gap: 14px; }
+.ruleta-fase { font: 800 1.6rem var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--bone-dim); }
+.ruleta-cuenta { font: 800 2.4rem var(--font-mono); color: #fff; min-width: 1.2ch; }
+.ruleta-escenario[data-fase="cuenta"] .ruleta-fase { color: #f2e9e4; }
+.ruleta-escenario[data-fase="escucha"] .ruleta-fase { color: #3fb6c6; }
+.ruleta-escenario[data-fase="turno"] .ruleta-fase { color: #3ecf6e; text-shadow: 0 0 16px rgba(62, 207, 110, 0.6); }
+.ruleta-pulsos { display: flex; gap: 16px; }
+.ruleta-pulsos i { width: 30px; height: 30px; border-radius: 50%; background: #1a1212; border: 2px solid rgba(192, 34, 65, 0.45); box-shadow: var(--o-pozo-sombra); }
+.ruleta-pulsos i.pasado { background: rgba(192, 34, 65, 0.35); }
+.ruleta-pulsos i.encendido { background: var(--crimson-bright); border-color: #ff6b80; box-shadow: 0 0 16px rgba(255, 60, 90, 0.85); animation: pulsoDestello 0.25s ease-out; }
+.ruleta-escenario[data-fase="escucha"] .ruleta-pulsos i.encendido { background: #3fb6c6; border-color: #8fe3ee; box-shadow: 0 0 16px rgba(63, 182, 198, 0.85); }
+.ruleta-escenario[data-fase="turno"] .ruleta-pulsos i.encendido { background: #3ecf6e; border-color: #9af0b8; box-shadow: 0 0 16px rgba(62, 207, 110, 0.85); }
+.ruleta-patron { min-height: 74px; color: #f2e9e4; display: flex; align-items: center; }
+.ruleta-nombre { margin: 0; font-size: 0.86rem; color: var(--bone-dim); min-height: 1.2em; }
+:root[data-tema="claro"] .ruleta-patron, :root[data-tema="claro"] .ruleta-cuenta { color: var(--bone); }
+
+/* Cifrado: el botón de cada línea es solo ▶ / ⏸. */
+.boton-repro-linea { min-width: 44px; padding: 0 0.7rem; font-size: 1.05rem; justify-content: center; }

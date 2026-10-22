@@ -741,7 +741,9 @@
         Arte.actualizar(dt);
         const m = Tono.leer();
         hayVoz = m !== null;
+        // Con voz, la bola va a tu nota; sin voz, cae muy despacio (obliga a sostener la nota hasta pasar la puerta).
         if (hayVoz) midiSuave += 0.4 * (m - midiSuave);
+        else midiSuave = Math.max(vmin, midiSuave - 0.9 * dt);
         for (const p of puertas) {
           p.x -= v * dt;
           if (config.guia === "si" && !p.guiaTocada && p.x < W - 10) {
@@ -1034,8 +1036,9 @@
     };
     const disponibles = Object.keys(TIPOS).filter((k) => TIPOS[k].req);
 
-    // ---- mapas: cada uno es una SEMILLA fija (misma partida cada vez) con su paisaje y su estilo de obstáculos.
-    // «Aleatorio» (0) sortea una semilla nueva. Los obstáculos se reparten por igual entre las acciones del nivel.
+    // ---- mapas: cada uno es un paisaje con su estilo de obstáculos. La disposición se sortea en CADA partida
+    // (22/10/2026, pedido de Áleran: que no se lo memoricen); antes cada mapa era una semilla fija.
+    // Los obstáculos se reparten por igual entre las acciones del nivel.
     const MAPAS = [
       { nombre: "Atardecer", semilla: 11, prefiere: null },
       { nombre: "Noche helada", semilla: 23, prefiere: "foso" },
@@ -1046,12 +1049,8 @@
     ];
     let mapaIdx = Number(config.plataformaMapa) || 0;
     let semilla;
-    if (mapaIdx >= 1 && mapaIdx <= MAPAS.length) {
-      semilla = MAPAS[mapaIdx - 1].semilla + plan.lista.length * 1000;
-    } else {
-      semilla = Math.floor(Math.random() * 2 ** 31);
-      mapaIdx = (semilla % MAPAS.length) + 1;
-    }
+    semilla = Math.floor(Math.random() * 2 ** 31);
+    if (!(mapaIdx >= 1 && mapaIdx <= MAPAS.length)) mapaIdx = (semilla % MAPAS.length) + 1;
     const mapa = MAPAS[mapaIdx - 1];
     let _s = semilla >>> 0;
     const rnd = () => {
@@ -1829,7 +1828,7 @@
     const RONDAS = 6;
     const patrones = PATRONES[config.ritmoNivel];
     let ronda = 0;
-    let fase = "inicio"; // inicio → cuenta1 → escucha → cuenta2 → tu-turno → resultado
+    let fase = "inicio"; // inicio → cuenta1 → escucha → tu-turno → resultado → fin (16 pulsos por ronda)
     let tFase = 0; // segundos desde que empezó la fase
     let esperados = []; // tiempos (s, relativos al inicio de tu turno) de cada golpe esperado
     let golpes = []; // tus golpes {t, delta, cat}
@@ -1849,19 +1848,26 @@
       });
     }
 
-    function empezarFase(nueva) {
-      fase = nueva;
-      tFase = 0;
-      if (!ctxA) return;
-      const ahora = ctxA.currentTime + 0.08;
-      if (nueva === "cuenta1" || nueva === "cuenta2") programarClics(ahora, [0, 1, 2, 3], false);
-      if (nueva === "escucha") programarClics(ahora, patron, true);
-      if (nueva === "tu-turno") {
-        j._inicioTurnoPerf = performance.now() + 80;
-        golpes = [];
-        // un clic muy flojo marca los 4 pulsos para que no te pierdas
-        programarClics(ahora, [0, 1, 2, 3], false);
-      }
+    // Rejilla fija de pulsos (22/10/2026; antes cada fase arrancaba «4 pulsos + 0,2 s» después de la anterior y el
+    // resultado duraba 1,8 s: el pulso se perdía entre fases y entre rondas). Cada ronda son 16 pulsos exactos del reloj
+    // de audio: CUENTA 1-4 · ESCUCHA 5-8 · TU TURNO 9-12 · RESULTADO 13-16, y la siguiente empieza justo en el 17.
+    let t0Ronda = null; // tiempo (ctx) del pulso 1 de la ronda actual
+    let siguiente = null; // {t0, patron} de la ronda que ya está programada
+
+    function programarRonda(t0, pat) {
+      programarClics(t0, [0, 1, 2, 3], false); // cuenta
+      programarClics(t0 + 4 * beat, pat, true); // el patrón
+      programarClics(t0 + 8 * beat, [0, 1, 2, 3], false); // tu turno: el pulso sigue para que no te pierdas
+    }
+
+    function textoTurno() {
+      return config.entrada === "teclado"
+        ? "¡Tu turno! Toca con la barra espaciadora o haciendo clic."
+        : config.entrada === "piano"
+          ? "¡Tu turno! Toca cualquier tecla del piano al ritmo."
+          : config.entrada === "todo"
+            ? "¡Tu turno! Di «ta», da palmas, toca una tecla o la barra espaciadora."
+            : "¡Tu turno! Di «ta», da palmas o toca la pantalla.";
     }
 
     function registrarGolpe(tPerf) {
@@ -1904,23 +1910,62 @@
       actualizar(dt) {
         this.t = (this.t || 0) + dt;
         Arte.actualizar(dt);
-        tFase += dt;
-        const cuatro = 4 * beat + 0.2;
-        if (fase === "inicio") {
+        if (!ctxA) return;
+        if (t0Ronda === null) {
           patron = patrones[ronda % patrones.length];
           esperados = patron.map((b) => b * beat);
-          empezarFase("cuenta1");
-          estado(`Ronda ${ronda + 1} de ${RONDAS}: cuenta 4 pulsos…`);
-        } else if (fase === "cuenta1" && tFase >= cuatro) {
-          empezarFase("escucha");
-          estado("Escucha el patrón…");
-        } else if (fase === "escucha" && tFase >= cuatro) {
-          empezarFase("cuenta2");
-          estado("Prepárate: cuenta de 4…");
-        } else if (fase === "cuenta2" && tFase >= cuatro) {
-          empezarFase("tu-turno");
-          estado(config.entrada === "teclado" ? "¡Tu turno! Toca con la barra espaciadora o haciendo clic." : config.entrada === "piano" ? "¡Tu turno! Toca cualquier tecla del piano al ritmo." : config.entrada === "todo" ? "¡Tu turno! Di «ta», da palmas, toca una tecla o la barra espaciadora." : "¡Tu turno! Di «ta», da palmas o toca la pantalla.");
-        } else if (fase === "tu-turno") {
+          t0Ronda = ctxA.currentTime + 0.3;
+          programarRonda(t0Ronda, patron);
+        }
+        const b = (ctxA.currentTime - t0Ronda) / beat; // pulsos desde el 1 de esta ronda
+        const nueva = b < 0 ? "inicio" : b < 4 ? "cuenta1" : b < 8 ? "escucha" : b < 12 ? "tu-turno" : b < 16 ? "resultado" : "fin";
+        tFase = b < 0 ? 0 : (b % 4) * beat;
+        if (nueva !== fase) {
+          const anterior = fase;
+          fase = nueva;
+          if (fase === "cuenta1") {
+            estado(`Ronda ${ronda + 1} de ${RONDAS}: cuenta 1, 2, 3, 4…`);
+          } else if (fase === "escucha") {
+            estado("Escucha el patrón…");
+          } else if (fase === "tu-turno") {
+            golpes = [];
+            this._inicioTurnoPerf = performance.now() - (b - 8) * beat * 1000;
+            estado(textoTurno());
+          } else if (fase === "resultado" && anterior === "tu-turno") {
+            const r = evaluar();
+            resultadosRonda.push(r);
+            ronda += 1;
+            const perf = r.detalles.filter((d) => d.cat === "perfecto").length;
+            const sentido = r.tendencia > 25 ? "un poco tarde" : r.tendencia < -25 ? "un poco pronto" : "en el punto";
+            estado(`${perf} de ${esperados.length} perfectos · vas ${sentido} (${Math.round(r.tendencia)} ms)${r.extras ? ` · ${r.extras} golpe${r.extras > 1 ? "s" : ""} de más` : ""}`, perf === esperados.length ? "ok" : "");
+            this._ultimo = r;
+            // La ronda siguiente se programa ya, en su sitio exacto de la rejilla (pulso 17).
+            if (ronda < RONDAS) {
+              siguiente = { t0: t0Ronda + 16 * beat, patron: patrones[ronda % patrones.length] };
+              programarRonda(siguiente.t0, siguiente.patron);
+            }
+          } else if (fase === "fin") {
+            if (ronda >= RONDAS || !siguiente) {
+              this.terminado = true;
+              const media = resultadosRonda.reduce((s, r) => s + r.puntos, 0) / Math.max(1, resultadosRonda.length);
+              let record = false;
+              try {
+                if (window.Progreso) record = Progreso.actualizarRecord("juegoRitmoPuntos", Math.round(media), (n, a) => n > a);
+              } catch {
+                /* sin récord */
+              }
+              estado(`Terminado: precisión media ${Math.round(media)} / 100.${record ? " 🏆 ¡Nuevo récord!" : ""}`, media >= 70 ? "ok" : "");
+              detener(false);
+              return;
+            }
+            t0Ronda = siguiente.t0;
+            patron = siguiente.patron;
+            esperados = patron.map((x) => x * beat);
+            siguiente = null;
+            fase = "inicio";
+          }
+        }
+        if (fase === "tu-turno") {
           // detección de golpes con el micrófono (palmas o sílaba)
           if ((config.entrada === "mic" || config.entrada === "todo") && window.MicrofonoEngine && window.MicrofonoEngine.obtenerAnalizador) {
             const an = window.MicrofonoEngine.obtenerAnalizador();
@@ -1938,32 +1983,6 @@
               }
               rmsMedio = rmsMedio * 0.96 + rms * 0.04;
             }
-          }
-          if (tFase >= cuatro + 0.25) {
-            const r = evaluar();
-            resultadosRonda.push(r);
-            ronda += 1;
-            const perf = r.detalles.filter((d) => d.cat === "perfecto").length;
-            const sentido = r.tendencia > 25 ? "un poco tarde" : r.tendencia < -25 ? "un poco pronto" : "en el punto";
-            estado(`${perf} de ${esperados.length} perfectos · vas ${sentido} (${Math.round(r.tendencia)} ms)${r.extras ? ` · ${r.extras} golpe${r.extras > 1 ? "s" : ""} de más` : ""}`, perf === esperados.length ? "ok" : "");
-            fase = "resultado";
-            tFase = 0;
-            this._ultimo = r;
-          }
-        } else if (fase === "resultado" && tFase >= 1.8) {
-          if (ronda >= RONDAS) {
-            this.terminado = true;
-            const media = resultadosRonda.reduce((s, r) => s + r.puntos, 0) / resultadosRonda.length;
-            let record = false;
-            try {
-              if (window.Progreso) record = Progreso.actualizarRecord("juegoRitmoPuntos", Math.round(media), (n, a) => n > a);
-            } catch {
-              /* sin récord */
-            }
-            estado(`Terminado: precisión media ${Math.round(media)} / 100.${record ? " 🏆 ¡Nuevo récord!" : ""}`, media >= 70 ? "ok" : "");
-            detener(false);
-          } else {
-            fase = "inicio";
           }
         }
       },
@@ -2118,7 +2137,7 @@
         Arte.dibujar(ctx);
         Arte.vineta(ctx, 0.45);
         // ---- cabecera: fase, cuenta atrás y rondas
-        const titulo = { inicio: "…", cuenta1: "CUENTA", escucha: "ESCUCHA", cuenta2: "PREPÁRATE", "tu-turno": "¡TU TURNO!", resultado: "RESULTADO" }[fase];
+        const titulo = { inicio: "PREPÁRATE", cuenta1: "CUENTA (no toques)", escucha: "ESCUCHA (no toques)", "tu-turno": "¡TU TURNO! TOCA", resultado: "RESULTADO", fin: "" }[fase] || "";
         const colorFase = fase === "tu-turno" ? "#ff5c7a" : fase === "escucha" ? "#7fd4ff" : "#efe6e0";
         Arte.texto(ctx, titulo, 16, 34, 26 + (fase === "tu-turno" ? pulso * 3 : 0), colorFase);
         if (enCuenta) Arte.texto(ctx, String(Math.min(4, Math.floor(tFase / beat) + 1)), W / 2, 118, 64 + pulso * 10, "#fff", "center");

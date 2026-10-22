@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="style.css?v=34" />
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="obsidiana.css?v=9" />
+<link rel="stylesheet" href="obsidiana.css?v=12" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -91,7 +91,7 @@
 
     <div class="tabs" role="tablist">
       <button type="button" class="subtab activo" id="btnRitmoVistaTira" role="tab" aria-selected="true">🎼 Secuencia</button>
-      <button type="button" class="subtab" id="btnRitmoVistaRueda" role="tab" aria-selected="false">🎡 Rueda de patrones</button>
+      <button type="button" class="subtab" id="btnRitmoVistaRueda" role="tab" aria-selected="false">🎡 Ruleta de patrones</button>
     </div>
 
     <div id="panelRitmoTira">
@@ -115,13 +115,16 @@
     </div>
 
     <div id="panelRitmoRueda" hidden>
-      <p class="descripcion">Gira la rueda y aplaude el patrón que salga. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="La bolita elige uno de los patrones del nivel, lo resalta y lo aplaude ella sola un pulso completo, al tempo del metrónomo. Aplaude tú el mismo patrón después, o junto con ella.">?</button></p>
-      <div class="rueda-contenedor">
-        <svg id="ruedaSvg" viewBox="0 0 500 500" class="rueda-svg" role="img" aria-label="Rueda de patrones rítmicos"></svg>
+      <p class="descripcion">Gira la ruleta: sale un patrón de un pulso. Escúchalo y aplaúdelo a tempo. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Con el metrónomo sonando sin parar: primero CUENTA (1, 2, 3, 4), luego ESCUCHA (el patrón suena en cada uno de los 4 pulsos) y luego TU TURNO (4 pulsos para que lo aplaudas igual). Cada pulso es un círculo. El nivel decide qué patrones entran en la ruleta y el tempo es el del metrónomo de arriba.">?</button></p>
+      <div class="ruleta" id="ruleta" aria-label="Patrones de la ruleta"></div>
+      <div class="ruleta-escenario" id="ruletaEscenario" data-fase="espera">
+        <div class="ruleta-cabeza"><span class="ruleta-fase" id="ruletaFase" aria-live="polite">Gira la ruleta para empezar</span><span class="ruleta-cuenta" id="ruletaCuenta"></span></div>
+        <div class="ruleta-pulsos" id="ruletaPulsos" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="ruleta-patron" id="ruletaPatron"></div>
+        <p class="ruleta-nombre" id="ruletaNombre"></p>
       </div>
-      <p id="ruedaEstado" class="estado" aria-live="polite">Dale a "Girar" para empezar.</p>
       <div class="acciones">
-        <button id="btnRuedaGirar" class="boton principal" type="button">🎲 Girar</button>
+        <button id="btnRuedaGirar" class="boton principal" type="button">🎲 Girar la ruleta</button>
         <button id="btnRuedaRepetir" class="boton" type="button" disabled>🔁 Repetir patrón</button>
       </div>
     </div>
@@ -144,7 +147,7 @@
 <script src="audio.js?v=14"></script>
 <script src="progreso.js?v=1"></script>
 <script src="progreso-nube.js?v=1"></script>
-<script src="ritmo.js?v=9"></script>
+<script src="ritmo.js?v=10"></script>
 <script src="tema.js?v=1"></script>
 <script src="iconos.js?v=6"></script>
 <script src="pwa.js?v=1"></script>
