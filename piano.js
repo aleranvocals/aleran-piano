@@ -369,6 +369,7 @@ function cambiarModo(modo) {
   // "Escucha e imita" solo tiene sentido con una frase de varias notas
   // (con una sola nota es exactamente lo mismo que "Cantar y calificar").
   el("btnImitar").hidden = esMetronomo || modo === "individual";
+  el("practicaVoz").hidden = esMetronomo;
 
   // La barra compacta del metrónomo es redundante con el panel detallado
   // cuando ya se está en la pestaña Metrónomo -- se oculta solo ahí.

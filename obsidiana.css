@@ -228,11 +228,11 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* --- Perillas (perillas.js) ----------------------------------------------------------------- */
-.campo.con-perilla { display: grid; grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 0.7rem; row-gap: 0.15rem; align-items: center; }
+.campo.con-perilla { display: grid; grid-template-columns: 50px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 0.6rem; row-gap: 0.1rem; align-items: center; }
 .campo.con-perilla > :not(.perilla):not(input) { grid-column: 2; }
 .campo.con-perilla > .perilla { grid-column: 1; grid-row: 1 / span 2; }
 .perilla-oculta { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
-.perilla { position: relative; width: 64px; height: 64px; cursor: ns-resize; touch-action: none; border-radius: 50%; outline: none; flex: none; }
+.perilla { position: relative; width: 50px; height: 50px; cursor: ns-resize; touch-action: none; border-radius: 50%; outline: none; flex: none; }
 .perilla svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .perilla:focus-visible { box-shadow: 0 0 0 3px rgba(192, 34, 65, 0.45); }
 .perilla .p-pista { fill: none; stroke: var(--o-pozo); stroke-width: 5; stroke-linecap: round; }
@@ -242,6 +242,65 @@ input[type="range"]::-moz-range-thumb {
 :root[data-tema="claro"] .perilla .p-pista { stroke: #e2d6cc; }
 .perilla-lcd { grid-column: 2; justify-self: start; font: 600 0.82rem var(--font-mono); color: #f2e9e4; background: var(--o-lcd); border: 1px solid var(--o-lcd-borde);
   border-radius: 6px; padding: 0.12rem 0.5rem; box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7); }
+
+/* --- Disposición compacta (lista de Áleran, 22/10/2026): aprovechar el ancho, menos alto ---------- */
+/* Metrónomo de arriba: todo en una fila; el volumen al final, pequeño. */
+.metronomo-flotante { gap: 0.5rem 0.8rem; padding: 0.45rem 0.6rem; }
+.metronomo-flotante .campo-inline:last-child { margin-left: auto; display: inline-flex; flex-direction: row; align-items: center; gap: 0.4rem; }
+.metronomo-flotante .perilla, .dock .perilla, .fila-ajustes .perilla { width: 40px; height: 40px; }
+.metronomo-flotante .perilla-lcd, .dock .perilla-lcd { padding: 0.08rem 0.4rem; font-size: 0.78rem; }
+/* Volumen suelto (Entrena, Oído, Rutina): en la barra de arriba, a la derecha. */
+.dock .campo-volumen.en-dock { margin: 0 0 0 auto; display: inline-flex; flex-direction: row; align-items: center; gap: 0.4rem; }
+.dock .campo-volumen.en-dock > span { display: none; }
+.dock .campo-volumen.en-dock::before { content: "🔊"; font-size: 0.95rem; }
+/* Al azar: la rueda de «cantidad de notas» y la semilla, lado a lado. */
+#panel-aleatorio { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.6rem 1.2rem; align-items: end; }
+#panel-aleatorio > .campo { margin: 0; }
+/* Ajustes comunes de Solfeo: la figura ocupa el ancho y el volumen va a su derecha. */
+#panelComunes { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem 1rem; align-items: center; }
+#panelComunes > * { grid-column: 1; margin: 0; }
+#panelComunes > .campo:has(#volumen) { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+/* Cifrado: tempo, compás y tamaño en una fila. */
+.fila-ajustes { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem 1.2rem; margin-bottom: 0.6rem; }
+.fila-ajustes > .campo { margin: 0; }
+.fila-ajustes .campo-bpm input { width: 6.5rem; }
+.fila-ajustes .campo-zoom { margin-left: auto; }
+.fila-ajustes .campo.con-perilla { grid-template-columns: 40px auto; }
+@media (max-width: 520px) {
+  #panelComunes { grid-template-columns: 1fr; }
+  #panelComunes > .campo:has(#volumen) { grid-column: 1; grid-row: auto; }
+  .fila-ajustes .campo-zoom { margin-left: 0; }
+}
+@media print { .campo-zoom { display: none !important; } }
+
+/* --- Pulsos del metrónomo (pulsos.js): un círculo por pulso, el actual se enciende y destella ------------- */
+.punto-observado { display: none !important; }
+.pulsos { display: inline-flex; align-items: center; justify-content: center; gap: 12px; padding: 6px 0; }
+.metronomo-visual .pulsos { display: flex; gap: 18px; padding: 14px 0; }
+.pulsos i { width: 26px; height: 26px; border-radius: 50%; background: var(--o-pozo); border: 2px solid rgba(192, 34, 65, 0.45); box-shadow: var(--o-pozo-sombra); transition: background 0.08s, transform 0.08s; }
+.pulsos.mini { gap: 5px; padding: 0; }
+.pulsos.mini i { width: 10px; height: 10px; border-width: 1px; }
+.pulsos i.pasado { background: rgba(192, 34, 65, 0.35); }
+.pulsos i.encendido { background: var(--crimson-bright); border-color: #ff6b80; box-shadow: 0 0 14px rgba(255, 60, 90, 0.8); }
+.pulsos i.encendido.fuerte { background: #ff3b4e; transform: scale(1.25); box-shadow: 0 0 20px rgba(255, 60, 90, 0.95); }
+.pulsos i.destello { animation: pulsoDestello 0.28s ease-out; }
+@keyframes pulsoDestello { from { transform: scale(1.45); filter: brightness(1.6); } to { transform: scale(1); filter: none; } }
+.pulsos i.encendido.fuerte.destello { animation: pulsoDestelloFuerte 0.28s ease-out; }
+@keyframes pulsoDestelloFuerte { from { transform: scale(1.7); filter: brightness(1.8); } to { transform: scale(1.25); filter: none; } }
+@media (prefers-reduced-motion: reduce) { .pulsos i.destello { animation: none; } }
+
+/* --- Figuras con su símbolo musical --------------------------------------------------------------------- */
+.chip.chip-simbolo { font-family: "Noto Music", "Segoe UI Symbol", "Apple Symbols", serif; font-size: 1.55rem; line-height: 1; min-width: 3rem; padding: 0.25rem 0.7rem; }
+
+/* --- «Practica con tu voz»: los dos ejercicios destacan como lo que son, la acción principal -------------- */
+.acciones-voz { margin: 0 0 0.9rem; }
+.acciones-voz .boton-voz { display: grid; justify-items: center; gap: 2px; min-height: 58px; padding: 0.45rem 0.8rem; color: #fff;
+  background: linear-gradient(180deg, var(--crimson-bright), var(--crimson)); border-color: transparent;
+  box-shadow: 0 0 16px rgba(192, 34, 65, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+.acciones-voz .boton-voz + .boton-voz { background: linear-gradient(180deg, #3a1418, #2a0f12); border: 1px solid var(--crimson-bright); }
+.acciones-voz .boton-voz b { font-size: 0.98rem; }
+.acciones-voz .boton-voz small { font-size: 0.74rem; font-weight: 500; opacity: 0.85; }
+.acciones-voz .boton-voz:hover:not(:disabled) { filter: brightness(1.12); }
 
 /* --- Afinador visual y mensajes ------------------------------------------------------------- */
 .afinador-v2 { background: var(--o-metal); }
@@ -271,3 +330,66 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .hub-tarjeta:hover { transform: none; }
 }
+
+/* =====================================================================================================
+   Lista de Áleran (22/10/2026): menos espacio muerto, cada cosa en su sitio y que se vea lo que es.
+   ===================================================================================================== */
+/* Menos aire vertical en todos los paneles. */
+.panel { padding: 0.85rem 1rem; margin-bottom: 0.8rem; }
+.panel > * { margin-top: 0; }
+.panel > .campo, .panel > .acciones, .panel > .descripcion, .panel > .marcador { margin-bottom: 0.55rem; }
+.panel > :last-child { margin-bottom: 0; }
+.metronomo-flotante #metroFlotBpm { display: none; }
+.metronomo-flotante .bpm-numero { width: 4.2rem; }
+
+/* Botones de la lista de ejercicios (Escalas, Catálogo…): que parezcan botones y que los títulos destaquen. */
+.grupo-botones:has(.grupo-titulo) { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 10px; }
+.grupo-botones .grupo-titulo { flex: 1 1 100%; margin: 10px 0 2px; padding-left: 8px; border-left: 3px solid var(--crimson-bright);
+  font: 800 0.72rem var(--font-body); letter-spacing: 0.16em; text-transform: uppercase; color: #ff6b80; }
+:root[data-tema="claro"] .grupo-botones .grupo-titulo { color: var(--crimson); }
+.grupo-botones .grupo-titulo:first-child { margin-top: 2px; }
+.grupo-botones:has(.grupo-titulo) > .chip { background: var(--o-boton); border: 1px solid var(--o-borde); box-shadow: var(--o-boton-luz); color: var(--bone); border-radius: 9px; }
+.grupo-botones:has(.grupo-titulo) > .chip:hover { border-color: rgba(192, 34, 65, 0.6); }
+.grupo-botones:has(.grupo-titulo) > .chip.activo { background: var(--o-activo); border-color: var(--crimson-bright); box-shadow: inset 0 0 12px var(--o-brillo); }
+.titulo-seccion { color: #ff6b80; border-left: 3px solid var(--crimson-bright); padding-left: 10px; font: 800 0.95rem var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; }
+.catalogo-item { background: var(--o-boton); border: 1px solid var(--o-borde); border-radius: 12px; box-shadow: var(--o-boton-luz); }
+
+/* Portada: el contenido de cada tarjeta, centrado. */
+.hub-tarjeta, .hub-tarjeta.destacada { align-items: center; text-align: center; justify-content: center; }
+.hub-icono { margin-left: auto; margin-right: auto; }
+
+/* Glosario: cada término en su ficha, con el título bien visible. */
+.glosario-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.7rem; }
+.glosario-termino { margin: 0; padding: 0.85rem 1rem; border: 1px solid var(--o-borde); border-left: 3px solid var(--crimson-bright); border-radius: 12px;
+  background: var(--o-boton); box-shadow: var(--o-boton-luz); }
+.glosario-termino h3 { margin: 0 0 0.35rem; font: 700 1.05rem/1.2 var(--font-display); letter-spacing: 0.04em; text-transform: none; color: var(--bone); }
+.glosario-termino p { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--bone-dim); }
+
+/* Oído (intervalos y acordes): dos columnas en vez de una tira larga. */
+@media (min-width: 640px) {
+  #panel-intervalos, #panel-acordes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1.4rem; align-items: center; }
+  #panel-intervalos > *, #panel-acordes > * { grid-column: 1 / -1; }
+  #panel-intervalos > :nth-child(1), #panel-acordes > :nth-child(1) { grid-column: 1; grid-row: 1; }
+  #panel-intervalos > :nth-child(2), #panel-acordes > :nth-child(2) { grid-column: 2; grid-row: 1; justify-self: end; }
+  #panel-intervalos > :nth-child(3), #panel-acordes > :nth-child(3) { grid-column: 1; grid-row: 2; }
+  #panel-intervalos > :nth-child(5), #panel-acordes > :nth-child(5) { grid-column: 2; grid-row: 2 / span 2; }
+  #panel-intervalos > :nth-child(4), #panel-acordes > :nth-child(4) { grid-column: 1; grid-row: 3; font-size: 0.82rem; }
+  /* Simon: casilla y marcador en una fila; el botón y el mensaje, lado a lado. */
+  #panel-simon { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); column-gap: 1.2rem; align-items: center; }
+  #panel-simon > * { grid-column: 1 / -1; }
+  #panel-simon > .campo.checkbox { grid-column: 1; }
+  #panel-simon > .marcador { grid-column: 2; justify-self: end; }
+  #panel-simon > .acciones { grid-column: 1; margin: 0; }
+  #panel-simon > .simon-banner { grid-column: 2; margin: 0; }
+  #panel-simon > .acciones .boton { width: 100%; }
+  /* Mi melodía: el cuadro de notas y sus botones, juntos. */
+  #panel-personalizada { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.8rem; }
+  #panel-personalizada > * { grid-column: 1 / -1; }
+  #panel-personalizada > .campo:has(#notasPersonalizadas) { grid-column: 1; }
+  #panel-personalizada > .campo:has(#notasPersonalizadas) + .acciones { grid-column: 2; flex-direction: column; justify-content: flex-end; }
+}
+#panel-personalizada .acciones .boton { min-height: 36px; }
+
+/* Mapa vocal: el dibujo ocupa todo el recuadro blanco y queda centrado (en móvil, con un ancho mínimo y desliza). */
+.mapa-vocal-contenedor { display: flex; justify-content: safe center; padding: 0.6rem; }
+.mapa-vocal-contenedor svg { width: 100%; min-width: 620px; max-width: 1100px; height: auto; margin: 0 auto; }

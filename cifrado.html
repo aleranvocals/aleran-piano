@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="style.css?v=36" />
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="obsidiana.css?v=3" />
+<link rel="stylesheet" href="obsidiana.css?v=9" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -109,22 +109,23 @@
 
   <section class="panel cifrado-resultado">
     <p class="descripcion">Toca 🔗 para unir sílabas y + para marcar técnicas o añadir/quitar casillas. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Toca el icono de cadena entre dos sílabas para que compartan una sola nota (fraseo fonético). Toca el + de una sílaba para marcarla con una técnica (vibrato, twang, voz de cabeza...) o, arriba en ese mismo menú, para añadir una casilla antes o después, quitarla o separarla de la palabra anterior; el botón ＋ al final de cada verso añade una casilla vacía. Todo el texto y las notas son editables. Cada línea tiene su botón Reproducir; «Llevar al editor de ritmo» es opcional, para cuando quieras un ritmo real (silencios, corcheas, compases) en vez de negras parejas.">?</button></p>
-    <label class="campo">
-      <span>Tempo (BPM)</span>
-      <input type="number" id="cifradoBpm" min="30" max="300" value="100" />
-    </label>
-    <label class="campo">
-      <span>Compás <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Los tiempos del metrónomo que dura la pausa entre una frase y la siguiente.">?</button></span>
-      <select id="cifradoMetrica">
-        <option value="2">2/4</option>
-        <option value="3">3/4</option>
-        <option value="4" selected>4/4</option>
-      </select>
-    </label>
-    <div class="piano-zoom">
-      <span aria-hidden="true">🔍−</span>
-      <input type="range" id="cifradoZoom" min="0.8" max="1.6" step="0.1" value="1" aria-label="Tamaño y espacio del cifrado" />
-      <span aria-hidden="true">🔍+</span>
+    <div class="fila-ajustes">
+      <label class="campo campo-bpm">
+        <span>Tempo (BPM)</span>
+        <input type="number" id="cifradoBpm" min="30" max="300" value="100" />
+      </label>
+      <label class="campo">
+        <span>Compás <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Los tiempos del metrónomo que dura la pausa entre una frase y la siguiente.">?</button></span>
+        <select id="cifradoMetrica">
+          <option value="2">2/4</option>
+          <option value="3">3/4</option>
+          <option value="4" selected>4/4</option>
+        </select>
+      </label>
+      <label class="campo campo-zoom">
+        <span>Tamaño</span>
+        <input type="range" id="cifradoZoom" min="0.8" max="1.6" step="0.1" value="1" aria-label="Tamaño y espacio del cifrado" />
+      </label>
     </div>
     <div class="acciones" id="cifradoAccionesCancion" hidden>
       <button id="btnCifradoReproducirTodo" class="boton principal" type="button">▶ Reproducir toda la canción</button>
@@ -176,7 +177,7 @@
 
 <script src="smplr.iife.js"></script>
 <script src="escalas.js?v=9"></script>
-<script src="app-shell.js?v=6"></script>
+<script src="app-shell.js?v=7"></script>
 <script src="audio.js?v=14"></script>
 <script src="teclado.js?v=13"></script>
 <script src="cifrado.js?v=25"></script>
@@ -184,6 +185,6 @@
 <script src="tema.js?v=1"></script>
 <script src="iconos.js?v=6"></script>
 <script src="pwa.js?v=1"></script>
-<script src="perillas.js?v=1"></script>
+<script src="perillas.js?v=2"></script>
 </body>
 </html>

@@ -20,7 +20,8 @@
 <link rel="stylesheet" href="style.css?v=34" />
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="obsidiana.css?v=3" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Music&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="obsidiana.css?v=9" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -72,6 +73,17 @@
     <div class="afinometro-texto" id="afinometroTexto">—</div>
   </div>
 
+
+  <div class="tabs tabs-fichas tabs-3-4" role="tablist">
+    <button class="tab activo" data-modo="individual" role="tab" aria-selected="true"><span class="ficha-icono" aria-hidden="true">🎵</span><span>Nota</span></button>
+    <button class="tab" data-modo="aleatorio" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🎲</span><span>Al azar</span></button>
+    <button class="tab" data-modo="escala" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🪜</span><span>Escalas</span></button>
+    <button class="tab" data-modo="personalizada" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">✍️</span><span>Mi melodía</span></button>
+    <button class="tab" data-modo="solfeo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🔤</span><span>Do-Re-Mi</span></button>
+    <button class="tab" data-modo="giros" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🌀</span><span>Giros</span></button>
+    <button class="tab" data-modo="metronomo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">⏱</span><span>Metrónomo</span></button>
+  </div>
+
   <div class="metronomo-flotante" id="metronomoFlotante">
     <button id="metroFlotToggle" class="boton" title="Iniciar/detener metrónomo" aria-label="Iniciar/detener metrónomo">▶</button>
     <span class="metronomo-punto mini" id="metronomoPuntoMini" aria-hidden="true"></span>
@@ -94,14 +106,10 @@
     </label>
   </div>
 
-  <div class="tabs tabs-fichas tabs-3-4" role="tablist">
-    <button class="tab activo" data-modo="individual" role="tab" aria-selected="true"><span class="ficha-icono" aria-hidden="true">🎵</span><span>Nota</span></button>
-    <button class="tab" data-modo="aleatorio" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🎲</span><span>Al azar</span></button>
-    <button class="tab" data-modo="escala" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🪜</span><span>Escalas</span></button>
-    <button class="tab" data-modo="personalizada" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">✍️</span><span>Mi melodía</span></button>
-    <button class="tab" data-modo="solfeo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🔤</span><span>Do-Re-Mi</span></button>
-    <button class="tab" data-modo="giros" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🌀</span><span>Giros</span></button>
-    <button class="tab" data-modo="metronomo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">⏱</span><span>Metrónomo</span></button>
+  <div class="acciones-voz" id="practicaVoz">
+    <span class="acciones-voz-titulo">🎤 Practica con tu voz</span>
+    <button id="btnCantar" class="boton boton-voz" hidden title="El piano toca una nota, tú la repites y te califica; luego la siguiente (afinado = ±10 cents)">🎤 <b>Cantar y calificar</b><small>Suena cada nota y la repites</small></button>
+    <button id="btnImitar" class="boton boton-voz" hidden title="Escucha la frase completa una vez y luego cántala de memoria, nota por nota">🎧 <b>Escucha e imita</b><small>Oyes la frase entera y la cantas de memoria</small></button>
   </div>
 
   <section id="panel-individual" class="panel">
@@ -110,8 +118,8 @@
 
   <section id="panel-aleatorio" class="panel" hidden>
     <label class="campo">
-      <span>Cantidad de notas: <output id="numNotasValor">4</output></span>
-      <input type="range" id="numNotas" min="1" max="10" step="1" value="4" />
+      <span>Cantidad de notas: <output id="numNotasValor">1</output></span>
+      <input type="range" id="numNotas" min="1" max="10" step="1" value="1" />
     </label>
     <label class="campo">
       <span>Semilla <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Opcional. Con la misma semilla sale siempre la misma secuencia; vacío = distinta cada vez.">?</button></span>
@@ -273,12 +281,12 @@
     <label class="campo" id="campoFiguraRitmica">
       <span>Figura · a <output id="tempoSincronizadoBpm">70</output> BPM dura <output id="duracionCalculadaTexto">0.86s</output></span>
       <select id="figuraRitmica">
-        <option value="4">Redonda</option>
-        <option value="2">Blanca</option>
-        <option value="1" selected>Negra</option>
-        <option value="0.6667">Tresillo (de negra)</option>
-        <option value="0.5">Corchea</option>
-        <option value="0.25">Semicorchea</option>
+        <option value="4" data-simbolo="𝅝">Redonda</option>
+        <option value="2" data-simbolo="𝅗𝅥">Blanca</option>
+        <option value="1" selected data-simbolo="♩">Negra</option>
+        <option value="0.6667" data-simbolo="♩³">Tresillo (de negra)</option>
+        <option value="0.5" data-simbolo="♪">Corchea</option>
+        <option value="0.25" data-simbolo="𝅘𝅥𝅯">Semicorchea</option>
       </select>
     </label>
     <label class="campo" id="campoDuracionManual" hidden>
@@ -299,11 +307,6 @@
     <button id="btnEscuchar" class="boton principal">▶ Escuchar</button>
     <button id="btnDetener" class="boton" disabled>⏹ Detener</button>
     <button id="btnDescargar" class="boton">⬇ Descargar MP3</button>
-    <div class="acciones-voz" id="practicaVoz">
-      <span class="acciones-voz-titulo">🎤 Practica con tu voz</span>
-      <button id="btnCantar" class="boton boton-voz" hidden title="El piano toca cada nota y tú la repites: te califica nota a nota (afinado = ±10 cents)">🎤 Cantar y calificar</button>
-      <button id="btnImitar" class="boton boton-voz" hidden title="Escucha la frase completa una vez y luego cántala de memoria, nota por nota">🎧 Escucha e imita</button>
-    </div>
   </div>
 
   <p id="estado" class="estado" aria-live="polite"></p>
@@ -328,15 +331,16 @@
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=9"></script>
-<script src="app-shell.js?v=6"></script>
+<script src="app-shell.js?v=7"></script>
 <script src="audio.js?v=14"></script>
 <script src="progreso.js?v=1"></script>
 <script src="progreso-nube.js?v=1"></script>
 <script src="teclado.js?v=13"></script>
-<script src="piano.js?v=13"></script>
+<script src="piano.js?v=14"></script>
 <script src="tema.js?v=1"></script>
 <script src="iconos.js?v=6"></script>
 <script src="pwa.js?v=1"></script>
-<script src="perillas.js?v=1"></script>
+<script src="perillas.js?v=2"></script>
+<script src="pulsos.js?v=1"></script>
 </body>
 </html>

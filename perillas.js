@@ -10,6 +10,8 @@
     "volumen", "metroFlotVolumen", "numNotas", "bpmSlider", "duracionNota", "pausa",
     "twangSensibilidad", "intervalosNivel", "acordesNivel", "ritmoNivel", "cifradoZoom",
   ];
+  // Cómo se enseña el valor: volúmenes y tamaños en % (0,85 → 85 %), el resto tal cual.
+  const EN_PORCENTAJE = new Set(["volumen", "metroFlotVolumen", "cifradoZoom"]);
   const GIRO = 270; // grados de recorrido, de −135° a +135°
   const NS = "http://www.w3.org/2000/svg";
   const descriptorValor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
@@ -81,6 +83,12 @@
     input.insertAdjacentElement("beforebegin", perilla);
     if (lcd) input.insertAdjacentElement("afterend", lcd);
     if (label && label.classList.contains("campo")) label.classList.add("con-perilla");
+    // El volumen suelto (Entrena, Oído, Rutina) no merece una línea entera: va a la barra de arriba, junto al rango y el micro.
+    const dock = document.getElementById("dockHerramientas");
+    if (label && label.classList.contains("campo-volumen") && dock) {
+      label.classList.add("en-dock");
+      dock.appendChild(label);
+    }
 
     function pintar() {
       const v = parseFloat(descriptorValor.get.call(input));
@@ -89,7 +97,7 @@
       valor.setAttribute("d", t > 0.001 ? arco(32, 32, 27, -GIRO / 2, ang) : "");
       marca.setAttribute("transform", `rotate(${ang} 32 32)`);
       perilla.setAttribute("aria-valuenow", String(v));
-      if (lcd) lcd.textContent = v.toFixed(dec);
+      if (lcd) lcd.textContent = EN_PORCENTAJE.has(input.id) ? `${Math.round(v * 100)}%` : v.toFixed(dec);
     }
 
     function fijar(v, final) {

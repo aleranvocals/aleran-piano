@@ -449,6 +449,12 @@
           const b = crear("button", "chip");
           b.type = "button";
           b.textContent = sel.id === "girosPatron" ? opt.textContent.replace(/^Giro\s+/, "") : opt.textContent;
+          if (opt.dataset.simbolo) {
+            b.textContent = opt.dataset.simbolo;
+            b.classList.add("chip-simbolo");
+            b.title = opt.textContent;
+            b.setAttribute("aria-label", opt.textContent);
+          }
           b.dataset.valor = opt.value;
           b.setAttribute("role", "radio");
           b.addEventListener("click", () => elegir(opt.value));
