@@ -1,0 +1,173 @@
+/* codex.css — las láminas del Codex (22/10/2026). Tamaño real fijo (1080×1350, 1600×1000…), escaladas en pantalla.
+   Estética de las infografías de Áleran: fondo negro con rayos rojo/azul, títulos metálicos, cajas con borde de neón.
+   Nunca dorado ni amarillo. */
+
+.app-ancha { max-width: 1120px; }
+
+/* --- Mandos --------------------------------------------------------------------------------------------- */
+.codex-mandos { display: grid; gap: 0.7rem; }
+.codex-lista { display: flex; flex-wrap: wrap; }
+.codex-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.codex-aviso { margin: 0; font-size: 0.82rem; color: var(--bone-dim); }
+.codex-escenario { position: relative; width: 100%; margin: 0.8rem 0 1.4rem; border-radius: 14px; overflow: hidden; box-shadow: var(--o-sombra); }
+.codex-escenario > .cx-lamina { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.codex-taller { position: fixed; left: -99999px; top: 0; pointer-events: none; }
+.codex-ficha {
+  position: absolute; z-index: 60; padding: 1rem 1.1rem 1.1rem; border-radius: 14px; background: var(--o-metal);
+  border: 1px solid rgba(192, 34, 65, 0.6); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.codex-ficha h3 { margin: 0 1.6rem 0.4rem 0; font: 700 1.05rem var(--font-body); }
+.codex-ficha p { margin: 0 0 0.6rem; font-size: 0.9rem; line-height: 1.45; color: var(--bone-dim); }
+.codex-ficha .boton { width: 100%; justify-content: center; text-align: center; text-decoration: none; display: inline-flex; }
+.cx-ficha-glosario { display: block; margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--crimson-bright); }
+.cx-ficha-x { position: absolute; top: 0.5rem; right: 0.5rem; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--o-borde); background: var(--o-boton); color: var(--bone); cursor: pointer; }
+
+/* --- Lámina base ---------------------------------------------------------------------------------------- */
+.cx-lamina {
+  position: relative; overflow: hidden; background: #070505; color: #f2e9e4; font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; text-align: center;
+}
+.cx-lamina * { box-sizing: border-box; }
+.cx-fondo { position: absolute; inset: 0; pointer-events: none; }
+.cx-fondo.rayos {
+  background:
+    radial-gradient(ellipse 60% 40% at 8% 18%, rgba(220, 40, 50, 0.32), transparent 70%),
+    radial-gradient(ellipse 55% 40% at 95% 30%, rgba(40, 110, 220, 0.28), transparent 70%),
+    radial-gradient(ellipse 70% 35% at 50% 100%, rgba(200, 30, 40, 0.22), transparent 70%),
+    repeating-linear-gradient(115deg, transparent 0 46px, rgba(255, 60, 70, 0.025) 46px 47px),
+    #070505;
+}
+.cx-fondo.rayos::after {
+  content: ""; position: absolute; inset: 0; opacity: 0.08; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.cx-lamina .tocable { cursor: pointer; border-radius: 6px; transition: background 0.12s, box-shadow 0.12s; }
+.cx-lamina .tocable:hover { background: rgba(255, 255, 255, 0.08); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08); }
+.cx-lamina.editando [data-k] { outline: 1px dashed rgba(255, 255, 255, 0.35); outline-offset: 3px; cursor: text; border-radius: 4px; }
+.cx-lamina.editando [data-k]:focus { outline: 2px solid #c02241; background: rgba(192, 34, 65, 0.15); }
+.cx-lamina.exportando .tocable:hover { background: none; box-shadow: none; }
+
+/* Títulos metálicos (como el «Sonar como un profesional» de las infografías). */
+.cx-cabecera { position: absolute; left: 60px; right: 60px; top: 40px; display: flex; align-items: center; justify-content: space-between; gap: 30px; text-align: left; }
+.cx-cabecera.centrada { flex-direction: column; justify-content: center; text-align: center; gap: 8px; }
+.cx-cabecera h1 { margin: 0; line-height: 0.95; }
+.cx-titulo-metal {
+  white-space: pre-line;
+  font: 900 74px/1 "Cinzel", serif; text-transform: uppercase; letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #f4f1ee 0%, #b9c3cc 38%, #5c6670 52%, #d7dde2 64%, #8b949c 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 0 #1b1f24) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.8));
+}
+.tipo-tesituras .cx-titulo-metal { font-size: 84px; }
+.tipo-calentamiento .cx-titulo-metal { font-size: 66px; }
+.tipo-calentamiento .cx-cabecera { top: 34px; }
+.tipo-macros .cx-titulo-metal { font-size: 64px; }
+.tipo-macros .cx-emblema { width: 170px; }
+.cx-emblema { width: 200px; height: auto; filter: drop-shadow(0 0 22px rgba(220, 30, 40, 0.65)); }
+.cx-subtitulo {
+  position: absolute; left: 0; right: 0; top: 262px; margin: 0; font: 700 40px "Cinzel", serif; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #cfd6dc; text-shadow: 0 3px 0 #15181b, 0 0 18px rgba(0, 0, 0, 0.9);
+}
+.cx-cabecera.centrada .cx-subtitulo { position: static; font-size: 28px; white-space: nowrap; }
+
+/* Cajas con borde de neón. */
+.cx-caja {
+  position: absolute; display: flex; flex-direction: column; align-items: center; padding: 26px 20px 20px;
+  border: 3px solid var(--c); border-radius: 22px; background: linear-gradient(180deg, rgba(20, 10, 10, 0.86), rgba(8, 5, 5, 0.9));
+  box-shadow: 0 0 26px color-mix(in srgb, var(--c) 55%, transparent), inset 0 0 22px color-mix(in srgb, var(--c) 18%, transparent);
+}
+.cx-caja h3 { margin: 0 0 8px; font: 800 31px/1.05 "Cinzel", serif; text-transform: uppercase; text-shadow: 0 0 16px currentColor; }
+.cx-caja-ico { margin: 4px 0 12px; filter: drop-shadow(0 0 10px var(--c)); }
+.cx-caja ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cx-caja li { font: 700 24px/1.14 "Cinzel", serif; color: #f2e9e4; }
+.cx-caja small { margin-top: 6px; font: 600 15px "Inter", sans-serif; color: #c9bdb8; text-transform: uppercase; letter-spacing: 0.04em; }
+.cx-caja.grande { left: 90px; right: 90px; top: 150px; bottom: 210px; justify-content: center; padding: 50px; }
+.cx-caja.grande h3 { font-size: 78px; margin: 18px 0 30px; }
+.cx-caja.grande li { font-size: 58px; line-height: 1.25; }
+.cx-caja.grande small { font-size: 26px; }
+
+/* Rueda de la técnica. */
+.cx-rueda-pos { position: absolute; }
+.cx-rueda { display: block; overflow: visible; }
+.cx-sector { fill: rgba(30, 12, 12, 0.92); stroke: #f07a24; stroke-width: 3; filter: drop-shadow(0 0 8px rgba(240, 122, 36, 0.55)); }
+.cx-sector-txt { font: 700 17px/36px "Cinzel", serif; color: #f2e9e4; text-transform: uppercase; text-align: center; white-space: nowrap; }
+.cx-diapo .cx-sector-txt { font-size: 28px; }
+.cx-centro-txt { font: 900 40px/68px "Cinzel", serif; color: #f2e9e4; text-transform: uppercase; text-align: center;
+  background: linear-gradient(180deg, #f4f1ee, #9aa3ab); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cx-diapo .cx-centro-txt { font-size: 62px; }
+
+/* Imagen con zonas tocables. */
+.cx-imagen { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cx-zona { position: absolute; border: 0; padding: 0; background: transparent; }
+.tipo-imagen.editando .cx-zona { outline: none; }
+
+/* Tesituras. */
+.cx-teclado { position: absolute; left: 0; top: 0; overflow: visible; }
+.cx-blanca { fill: #d9d2c6; stroke: #2a2420; stroke-width: 1.5; }
+.cx-negra { fill: #121010; stroke: #000; }
+.cx-tecla-txt { fill: #e9e2da; font: 700 24px "Cinzel", serif; text-anchor: middle; }
+.cx-rayo { fill: url(#cxRayo); stroke: #2a0d0d; stroke-width: 1; filter: drop-shadow(0 0 6px rgba(255, 120, 60, 0.7)); }
+.cx-voz { cursor: pointer; }
+.cx-voz.sonando rect:not(.cx-voz-zona) { filter: brightness(1.45) drop-shadow(0 0 10px #fff); }
+.cx-voz-nombre { position: absolute; left: 40px; width: 330px; text-align: left; font: 800 33px/1 "Cinzel", serif; text-transform: uppercase; text-shadow: 0 0 16px currentColor; cursor: pointer; white-space: nowrap; }
+.cx-voz-nombre small { display: block; margin-top: 4px; font: 600 15px "JetBrains Mono", monospace; color: #c9bdb8; text-shadow: none; letter-spacing: 0.02em; }
+.cx-leyenda { position: absolute; left: 380px; right: 40px; bottom: 120px; display: flex; justify-content: space-between; gap: 20px; font: 700 22px "Cinzel", serif; text-transform: uppercase; color: #e9e2da; white-space: nowrap; }
+.cx-leyenda span { display: inline-flex; align-items: center; gap: 12px; }
+.cx-leyenda i { display: inline-block; width: 70px; height: 26px; border-radius: 3px; }
+.cx-leyenda i.pecho { background: linear-gradient(90deg, #e0303a 0 25%, #f07a24 25% 50%, #3fb6c6 50% 75%, #b04ad0 75%); }
+.cx-leyenda i.paso { background: linear-gradient(90deg, rgba(201, 196, 192, 0.25), rgba(201, 196, 192, 0.75)); }
+
+/* Calentamiento. */
+.cx-bloque {
+  position: absolute; left: 34px; right: 34px; display: flex; border: 3px solid var(--c); border-radius: 18px; overflow: hidden;
+  background: linear-gradient(180deg, rgba(18, 10, 10, 0.9), rgba(8, 5, 5, 0.94));
+  box-shadow: 0 0 20px color-mix(in srgb, var(--c) 50%, transparent), inset 0 0 16px color-mix(in srgb, var(--c) 14%, transparent);
+}
+.cx-bloque-lado { flex: 0 0 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 10px; filter: drop-shadow(0 0 8px var(--c)); }
+.cx-bloque-lado h3 { margin: 0; font: 800 26px/1.05 "Cinzel", serif; text-transform: uppercase; }
+.cx-bloque-cuerpo { flex: 1; padding: 14px 18px 12px 6px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cx-bloque-cuerpo h4 { margin: 0; font: 700 23px/1.15 "Cinzel", serif; color: #f2e9e4; }
+.cx-indicacion { margin: 0 0 6px; font: 600 14px/1.3 "Inter", sans-serif; color: #d6cbc6; }
+.cx-items { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 6px 10px; flex: 1; align-content: start; }
+.cx-item { padding: 2px 4px; border-left: 1px solid rgba(255, 255, 255, 0.14); }
+.cx-item:first-child { border-left: 0; }
+.cx-item b { display: block; font: 700 19px/1.1 "Cinzel", serif; color: #f2e9e4; margin-bottom: 4px; }
+.cx-item p { margin: 0; font: 500 14px/1.3 "Inter", sans-serif; color: #c9bdb8; }
+.cx-tabla { width: 100%; border-collapse: collapse; font-family: "Inter", sans-serif; text-align: left; }
+.cx-tabla th, .cx-tabla td { padding: 3px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); vertical-align: top; }
+.cx-tabla th { width: 210px; font: 700 15px/1.2 "Cinzel", serif; color: #f2e9e4; white-space: nowrap; }
+.cx-tabla td { font: 500 13px/1.25 "Inter", sans-serif; color: #d6cbc6; }
+.cx-cierre { position: absolute; left: 60px; right: 60px; margin: 0; font: 800 26px/1.25 "Cinzel", serif; text-transform: uppercase; color: #e9e2da; }
+.cx-cierre.grande { top: 420px; font-size: 64px; }
+
+/* Diapositivas del carrusel. */
+.cx-diapo { background: #070505; }
+.cx-encajada { position: absolute; left: 50%; top: 50%; transform-origin: 50% 50%; }
+.cx-cabecera.portada { top: 120px; }
+.cx-cabecera.portada .cx-titulo-metal { font-size: 108px; }
+.cx-indice { position: absolute; left: 140px; right: 140px; top: 470px; margin: 0; padding: 0; list-style: none; display: grid; gap: 22px; }
+.cx-indice li { display: flex; align-items: center; gap: 26px; padding: 12px 26px; border: 2px solid var(--c); border-radius: 16px; box-shadow: 0 0 16px color-mix(in srgb, var(--c) 45%, transparent);
+  font: 800 40px "Cinzel", serif; text-transform: uppercase; color: #f2e9e4; }
+.diapo-bloque .cx-bloque { flex-direction: column; }
+.diapo-bloque .cx-bloque-lado { flex: 0 0 auto; padding: 40px 10px 10px; }
+.diapo-bloque .cx-bloque-lado .cx-ico { width: 150px; height: 150px; }
+.diapo-bloque .cx-bloque-lado h3 { font-size: 64px; }
+.diapo-bloque .cx-bloque-cuerpo { padding: 16px 50px 40px; gap: 12px; }
+.diapo-bloque .cx-bloque-cuerpo h4 { font-size: 40px; }
+.diapo-bloque .cx-indicacion { font-size: 24px; }
+.diapo-bloque .cx-items { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 30px; }
+.diapo-bloque .cx-item { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 12px; }
+.diapo-bloque .cx-item b { font-size: 36px; }
+.diapo-bloque .cx-item p { font-size: 23px; }
+.diapo-bloque .cx-tabla th { font-size: 28px; width: 330px; white-space: normal; }
+.diapo-bloque .cx-tabla td { font-size: 24px; padding: 10px 8px; }
+
+/* Pie con logo y contacto. */
+.cx-pie { position: absolute; left: 50px; right: 50px; bottom: 26px; height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.cx-logo { height: 62px; width: auto; filter: drop-shadow(0 0 12px rgba(220, 40, 50, 0.55)); }
+.cx-contacto, .cx-usuario { display: inline-flex; align-items: center; gap: 10px; font: 800 30px "Cinzel", serif; color: #f2e9e4; letter-spacing: 0.02em; }
+.cx-usuario { color: #ff5a64; text-shadow: 0 0 12px rgba(255, 60, 70, 0.7); }
+.cx-pie.estrecho { bottom: 20px; }
+.tipo-macros .cx-pie { left: 60px; right: 60px; }
+.tipo-macros:not(.cx-diapo) .cx-pie .cx-contacto { display: none; }
+.tipo-macros .cx-caja[style*="left:390px"] ~ .cx-pie { justify-content: space-between; }

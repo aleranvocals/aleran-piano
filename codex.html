@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Láminas — Áleran Vocals</title>
+<meta name="description" content="Láminas de técnica vocal de Áleran: control total de la voz, colocaciones, tesituras y calentamiento. Interactivas, para estudiar, imprimir o compartir." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://aleran-piano.vercel.app/codex.html" />
+<meta property="og:title" content="Láminas — Áleran Vocals" />
+<meta property="og:description" content="Láminas de técnica vocal de Áleran: control total de la voz, colocaciones, tesituras y calentamiento." />
+<meta name="twitter:card" content="summary" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css?v=36" />
+<link rel="stylesheet" href="rediseno.css?v=15" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="obsidiana.css?v=3" />
+<link rel="stylesheet" href="codex.css?v=7" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#93172c" />
+<link rel="icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+</head>
+<body>
+<div class="app app-ancha">
+  <header class="cabecera">
+    <h1>🖼 Láminas</h1>
+    <p class="subtitulo">Mis infografías de técnica vocal, para estudiar y compartir.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <div class="nav-fila">
+      <a href="index.html">🏠 Inicio</a>
+      <a href="guia.html">🧭 Guía</a>
+    </div>
+    <div class="nav-fila">
+      <a href="piano.html" class="destacado">🎹 Solfeo</a>
+      <a href="entrenamiento.html" class="destacado">🎤 Entrena</a>
+      <a href="oido.html" class="destacado">🧠 Oído</a>
+      <a href="ritmo.html" class="destacado">🥁 Ritmo</a>
+    </div>
+    <div class="nav-fila">
+      <a href="rutina.html">📋 Rutina</a>
+      <a href="catalogo.html">🎼 Catálogo</a>
+      <a href="progreso.html">📈 Progreso</a>
+      <a href="juegos.html">🎮 Juegos</a>
+    </div>
+    <div class="nav-fila">
+      <a href="glosario.html">📖 Glosario</a>
+      <a href="codex.html" class="activo">🖼 Láminas</a>
+      <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+      <a href="cifrado.html">🎵 Cifrado</a>
+    </div>
+  </nav>
+
+  <section class="panel codex-mandos">
+    <div class="codex-lista grupo-botones" id="codexLista" role="tablist" aria-label="Láminas"></div>
+    <div class="codex-acciones">
+      <div class="grupo-botones" role="group" aria-label="Modo">
+        <button type="button" class="chip activo" data-modo-codex="ver" title="Toca un término para ver qué es y practicarlo">👁 Ver</button>
+        <button type="button" class="chip" data-modo-codex="editar" title="Cambia los textos directamente en la lámina">✍ Editar</button>
+      </div>
+      <button type="button" class="boton principal" id="codexPng" title="La lámina entera, a doble resolución (para imprimir o subir)">⬇ PNG</button>
+      <button type="button" class="boton" id="codexCarrusel" title="Diapositivas de 1080×1350 para Instagram, en un .zip">🎠 Carrusel</button>
+      <button type="button" class="boton" id="codexOriginal" title="Tu infografía original">Original</button>
+      <button type="button" class="boton" id="codexRestaurar" title="Deshacer tus cambios de texto en esta lámina">↺</button>
+    </div>
+    <p class="codex-aviso" id="codexAvisoTesituras" hidden>Toca una voz para oír su rango. Notas medidas sobre tu infografía: revísalas.</p>
+    <p class="codex-aviso" id="codexAvisoImagen" hidden>Esta lámina es tu ilustración original: sus textos no se editan aquí.</p>
+    <p class="estado" id="codexEstado" aria-live="polite"></p>
+  </section>
+
+  <div class="codex-escenario" id="codexEscenario">
+    <div id="codexLamina" class="cx-lamina"></div>
+  </div>
+  <div class="codex-ficha" id="codexFicha" hidden role="dialog" aria-label="Término"></div>
+  <div class="codex-taller" id="codexTaller" aria-hidden="true"></div>
+
+  <div class="cta-clases">
+    <p>¿Quieres pasar de practicar solo a progresar con feedback real de un vocal coach? <a href="https://agenda.aleranvocals.es/reservar" target="_blank" rel="noopener">Reserva tu primera clase →</a></p>
+  </div>
+
+  <footer class="pie">
+    <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
+    <p>Láminas de Áleran Vocals. Puedes descargarlas para estudiar; si las compartes, menciona @aleran_vocals.</p>
+    <p><a href="privacidad.html">Política de privacidad</a></p>
+  </footer>
+</div>
+
+<script src="smplr.iife.js"></script>
+<script src="escalas.js?v=9"></script>
+<script src="glosario.js?v=2"></script>
+<script src="app-shell.js?v=6"></script>
+<script src="audio.js?v=14"></script>
+<script src="html-to-image.js?v=1"></script>
+<script src="codex-datos.js?v=5"></script>
+<script src="codex.js?v=6"></script>
+<script src="tema.js?v=1"></script>
+<script src="iconos.js?v=6"></script>
+<script src="pwa.js?v=1"></script>
+</body>
+</html>

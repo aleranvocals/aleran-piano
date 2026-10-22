@@ -175,4 +175,7 @@ function inicializarGlosario() {
   el("glosarioFiltro").addEventListener("input", (e) => renderizarGlosario(e.target.value));
 }
 
-document.addEventListener("DOMContentLoaded", inicializarGlosario);
+// El Codex también carga este archivo (para las definiciones): solo se pinta en la página del Glosario.
+document.addEventListener("DOMContentLoaded", () => {
+  if (document.getElementById("glosarioLista")) inicializarGlosario();
+});
