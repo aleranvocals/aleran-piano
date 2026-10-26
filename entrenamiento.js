@@ -1344,15 +1344,26 @@ function colorParaIntensidad(valor) {
   return `rgb(${Math.round(190 + p * 60)}, ${Math.round(40 + p * 140)}, ${Math.round(60 + p * 140)})`;
 }
 
+let espectroUltimoT = 0;
+let espectroResto = 0;
+
 function dibujarColumnaEspectro(canvas, datos, sampleRate) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width;
   const h = canvas.height;
-  // Desplaza todo el contenido un píxel a la izquierda (efecto "scroll")...
-  const imagen = ctx.getImageData(1, 0, w - 1, h);
-  ctx.putImageData(imagen, 0, 0);
-  // ...y pinta la columna nueva a la derecha, solo hasta 4000 Hz (rango útil
-  // de voz: fundamentales + primeros armónicos) para aprovechar el alto.
+  // El avance depende del tiempo (no de los cuadros por segundo): el lienzo entero
+  // equivale a TWANG_VENTANA_MS, igual que la curva del medidor de twang de abajo.
+  const ahora = performance.now();
+  const dt = espectroUltimoT ? Math.min(250, ahora - espectroUltimoT) : 0;
+  espectroUltimoT = ahora;
+  espectroResto += (dt / TWANG_VENTANA_MS) * w;
+  const dx = Math.min(w, Math.floor(espectroResto));
+  if (dx < 1) return;
+  espectroResto -= dx;
+  ctx.globalCompositeOperation = "copy";
+  ctx.drawImage(canvas, -dx, 0);
+  ctx.globalCompositeOperation = "source-over";
+  // ...y pinta las columnas nuevas a la derecha, hasta la frecuencia elegida.
   const freqMax = espectroFmax;
   const nyquist = Math.max(sampleRate / 2, 1);
   const binCount = datos.length;
@@ -1360,7 +1371,7 @@ function dibujarColumnaEspectro(canvas, datos, sampleRate) {
     const freq = (1 - y / h) * freqMax;
     const bin = Math.min(binCount - 1, Math.round((freq / nyquist) * binCount));
     ctx.fillStyle = colorParaIntensidad(datos[bin]);
-    ctx.fillRect(w - 1, y, 1, 1);
+    ctx.fillRect(w - dx, y, dx, 1);
   }
 }
 
@@ -1447,6 +1458,8 @@ async function iniciarEspectro() {
   }
   const canvas = el("espectroGrafico");
   canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+  espectroUltimoT = 0;
+  espectroResto = 0;
   botonesEspectro(true);
   entrenEnCurso = true;
   twangReiniciarSesion();

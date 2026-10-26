@@ -60,7 +60,7 @@
         id: "adornos", titulo: "Adornos", color: "#f07a24", icono: "nota",
         items: [T("Vibrato", "Vibrato", H.sostener), T("Apoyatura", "Adornos vocales (ornamentos)", H.giros), T("Melisma", "Melisma / riff / run", H.cifrado),
           T("Trémolo", "Adornos vocales (ornamentos)", H.giros), T("Mordente", "Adornos vocales (ornamentos)", H.giros), T("Glissando", null, H.sirena),
-          T("Inflexión", "Adornos vocales (ornamentos)", H.giros)],
+          T("Grupetto", "Adornos vocales (ornamentos)", H.giros)],
       },
       {
         id: "efectos", titulo: "Efectos vocales", color: "#ff3b4e", icono: "rayo",

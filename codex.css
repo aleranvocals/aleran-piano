@@ -62,8 +62,8 @@
 .tipo-calentamiento .cx-titulo-metal { font-size: 66px; }
 .tipo-calentamiento .cx-cabecera { top: 34px; }
 .tipo-macros .cx-titulo-metal { font-size: 64px; }
-.tipo-macros .cx-emblema { width: 170px; }
-.cx-emblema { width: 200px; height: auto; filter: drop-shadow(0 0 22px rgba(220, 30, 40, 0.65)); }
+.tipo-macros .cx-emblema { width: 120px; }
+.cx-emblema { width: 140px; height: auto; opacity: 0.28; filter: grayscale(0.4); }
 .cx-subtitulo {
   position: absolute; left: 0; right: 0; top: 262px; margin: 0; font: 700 40px "Cinzel", serif; letter-spacing: 0.06em; text-transform: uppercase;
   color: #cfd6dc; text-shadow: 0 3px 0 #15181b, 0 0 18px rgba(0, 0, 0, 0.9);
@@ -109,7 +109,7 @@
 .cx-rayo { fill: url(#cxRayo); stroke: #2a0d0d; stroke-width: 1; filter: drop-shadow(0 0 6px rgba(255, 120, 60, 0.7)); }
 .cx-voz { cursor: pointer; }
 .cx-voz.sonando rect:not(.cx-voz-zona) { filter: brightness(1.45) drop-shadow(0 0 10px #fff); }
-.cx-voz-nombre { position: absolute; left: 40px; width: 330px; text-align: left; font: 800 33px/1 "Cinzel", serif; text-transform: uppercase; text-shadow: 0 0 16px currentColor; cursor: pointer; white-space: nowrap; }
+.cx-voz-nombre { position: absolute; left: 40px; width: 320px; text-align: left; font: 800 29px/0.95 "Cinzel", serif; text-transform: uppercase; text-shadow: 0 0 16px currentColor; cursor: pointer; white-space: normal; }
 .cx-voz-nombre small { display: block; margin-top: 4px; font: 600 15px "JetBrains Mono", monospace; color: #c9bdb8; text-shadow: none; letter-spacing: 0.02em; }
 .cx-leyenda { position: absolute; left: 380px; right: 40px; bottom: 120px; display: flex; justify-content: space-between; gap: 20px; font: 700 22px "Cinzel", serif; text-transform: uppercase; color: #e9e2da; white-space: nowrap; }
 .cx-leyenda span { display: inline-flex; align-items: center; gap: 12px; }

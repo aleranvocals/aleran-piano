@@ -92,7 +92,7 @@
   // ---------------------------------------------------------------- configuración que se recuerda
   const CLAVE_CONFIG = "aleran-juegos-config";
   const config = Object.assign(
-    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio", notacion: "ambas", plataformaMapa: "0", entrada: "todo" },
+    { velocidad: "lento", escala: "mayor", tonica: 0, octava: "exacta", guia: "si", orden: "azar", ritmoBpm: 70, ritmoNivel: 1, juego: "pasillo", plataformaNivel: "medio", notacion: "ambas", plataformaMapa: "0", entrada: "todo" },
     (() => {
       try {
         return JSON.parse(localStorage.getItem(CLAVE_CONFIG) || "{}");
@@ -703,15 +703,32 @@
     const ANCHO_PUERTA = 58;
     const yDe = (m) => H - 26 - ((m - vmin) / (vmax - vmin)) * (H - 52);
 
+    // La nota guía suena a tiempo fijo: GUIA_INICIO s antes de llegar la primera puerta y GUIA_TRAS s después de cruzar la anterior.
+    const GUIA_INICIO = 5;
+    const GUIA_TRAS = 0.5;
+    const x0 = BOLA_X + 10 + GUIA_INICIO * v;
+    // «Al azar»: cada partida es distinta. «Nivel N»: siempre el mismo recorrido (para aprenderlo), de saltos cortos a largos.
+    const PATRONES = [
+      [0, 2, 4, 2, 0, 2, 4, 2, 0, 0],
+      [0, 1, 2, 1, 0, 1, 2, 3, 2, 0],
+      [0, 2, 1, 3, 2, 4, 3, 2, 1, 0],
+      [0, 4, 2, 5, 3, 6, 4, 2, 5, 0],
+      [0, 3, 1, 4, 2, 5, 3, 6, 4, 0],
+    ];
+    const patron = PATRONES[Number(config.orden) - 1] || null;
+    const iTonica = Math.max(0, notas.findIndex((x) => mod12(x - config.tonica) === 0));
     const puertas = [];
     let ultimaNota = null;
     for (let i = 0; i < TOTAL; i++) {
       let n;
-      do {
-        n = i === 0 ? notas.find((x) => mod12(x - config.tonica) === 0) || notas[0] : notas[Math.floor(Math.random() * notas.length)];
-      } while (n === ultimaNota && notas.length > 1);
+      if (patron) n = notas[(iTonica + patron[i]) % notas.length];
+      else {
+        do {
+          n = i === 0 ? notas.find((x) => mod12(x - config.tonica) === 0) || notas[0] : notas[Math.floor(Math.random() * notas.length)];
+        } while (n === ultimaNota && notas.length > 1);
+      }
       ultimaNota = n;
-      puertas.push({ x: W + 60 + i * separacion, nota: n, dentro: 0, ventana: 0, hecho: false, ok: false, guiaTocada: false, cantadas: [] });
+      puertas.push({ x: x0 + i * separacion, guiaEn: i === 0 ? 0.2 : null, nota: n, dentro: 0, ventana: 0, hecho: false, ok: false, guiaTocada: false, cantadas: [] });
     }
     let midiSuave = (lo + hi) / 2;
     let hayVoz = false;
@@ -746,7 +763,7 @@
         else midiSuave = Math.max(vmin, midiSuave - 0.9 * dt);
         for (const p of puertas) {
           p.x -= v * dt;
-          if (config.guia === "si" && !p.guiaTocada && p.x < W - 10) {
+          if (config.guia === "si" && !p.guiaTocada && p.guiaEn !== null && this.t >= p.guiaEn) {
             p.guiaTocada = true;
             tocarNota(p.nota, 0.9);
           }
@@ -760,6 +777,8 @@
           }
           if (!p.hecho && p.x + ANCHO_PUERTA < BOLA_X - 10) {
             p.hecho = true;
+            const sigPuerta = puertas[puertas.indexOf(p) + 1];
+            if (sigPuerta) sigPuerta.guiaEn = this.t + GUIA_TRAS;
             p.ok = p.dentro >= Math.min(0.45, p.ventana * 0.4) && p.ventana > 0;
             const ord = p.cantadas.slice().sort((a, b) => a - b);
             const med = ord.length ? ord[Math.floor(ord.length / 2)] : null;
@@ -1144,13 +1163,17 @@
     let introMostrada = new Set();
     anuncio = { texto: `Mapa ${mapaIdx}: ${mapa.nombre}${config.plataformaMapa === "0" ? " (aleatorio)" : ""} · ${secuencia.length} obstáculos`, color: "#efe6e0", t: 3.2 };
 
+    // Entrar en la nota exige ±TOLERANCIA_CENTS; una vez dentro se aguanta hasta ±(TOLERANCIA + 12) cents
+    // (el vibrato y los micro-movimientos de la voz no deben cortar la nota).
     function activa(a, m) {
       if (Tono.teclas[a.tecla]) return true;
       if (m === null) return false;
       let d = m - a.midi;
       if (config.octava !== "exacta") d = ((d + 6) % 12 + 12) % 12 - 6;
-      return Math.abs(d) <= TOLERANCIA_CENTS / 100;
+      const tol = sost[a.clave] > 0 ? TOLERANCIA_CENTS + 12 : TOLERANCIA_CENTS;
+      return Math.abs(d) <= tol / 100;
     }
+    const fuera = {}; // segundos seguidos fuera de la nota; hasta 0,12 s no se corta (hipo del detector, consonantes)
 
     function popup(texto, wx, color) {
       popups.push({ texto, x: JUGADOR_X + cam + 4, y: SUELO - 30, t: 1.1, color }); // sale de encima del héroe
@@ -1239,8 +1262,10 @@
         // ---- tu voz: sostener cada nota
         for (const a of plan.lista) {
           const on = activa(a, m);
-          sost[a.clave] = on ? sost[a.clave] + dtReal : 0;
-          if (!on) armado[a.clave] = false;
+          fuera[a.clave] = on ? 0 : (fuera[a.clave] || 0) + dtReal;
+          if (on) sost[a.clave] += dtReal;
+          else if (fuera[a.clave] > 0.12) sost[a.clave] = 0;
+          if (!on && fuera[a.clave] > 0.12) armado[a.clave] = false;
         }
         pausaRespawn = Math.max(0, pausaRespawn - dtReal);
         const listo = (c) => tieneAccion(c) && sost[c] > 0.07;
@@ -2167,7 +2192,7 @@
     pasillo: {
       titulo: "🎯 Pasillo",
       texto: "Tu voz mueve la bola. Pasa por el hueco de cada puerta cantando la nota que indica.",
-      ayuda: "Entrena afinar y sostener una nota concreta. Antes de cada puerta suena la nota guía (puedes quitarla). La puerta cuenta como pasada si estuviste dentro del hueco (±20 cents) al menos 0,45 s. Empieza en «Lento»: sube la velocidad cuando salgan 8 de 10.",
+      ayuda: "Entrena afinar y sostener una nota concreta. La nota guía suena 0,5 s después de cruzar la puerta anterior (y 5 s antes de la primera); puedes quitarla. «Al azar» cambia el recorrido en cada partida; «Nivel 1-5» repite siempre el mismo, de saltos cortos a largos, para aprenderlo. La puerta cuenta como pasada si estuviste dentro del hueco (±20 cents) al menos 0,45 s. Empieza en «Lento»: sube la velocidad cuando salgan 8 de 10.",
     },
     plataforma: {
       titulo: "🕹️ Plataformas",
@@ -2218,6 +2243,7 @@
         grupo("Tónica", "tonica", tonicas),
         grupo("Octava", "octava", [["exacta", "Exacta"], ["cualquiera", "Cualquiera"]]),
         grupo("Nota guía", "guia", [["si", "Sí"], ["no", "No"]]),
+        grupo("Orden", "orden", [["azar", "🎲 Al azar"], ["1", "Nivel 1"], ["2", "Nivel 2"], ["3", "Nivel 3"], ["4", "Nivel 4"], ["5", "Nivel 5"]]),
         entrada
       );
     } else if (config.juego === "plataforma") {

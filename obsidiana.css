@@ -424,3 +424,23 @@ input[type="range"]::-moz-range-thumb {
 
 /* Cifrado: el botón de cada línea es solo ▶ / ⏸. */
 .boton-repro-linea { min-width: 44px; padding: 0 0.7rem; font-size: 1.05rem; justify-content: center; }
+
+/* Todo botón con el contenido (icono + texto) centrado en ambos ejes. */
+.boton, .chip, .paso, .ayuda-btn, .boton-tema, .nav-mas {
+  display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: 0.45rem;
+}
+.boton svg, .chip svg { flex: none; }
+/* Tarjetas del inicio: el icono siempre a la misma altura, aunque el texto ocupe 1 o 2 líneas. */
+.hub-tarjeta, .hub-tarjeta.destacada { justify-content: flex-start; }
+
+/* Selector de nivel: botones numerados (perillas.js). El actual en carmesí, los superados con un punto de luz. */
+.niveles { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.35rem 0; }
+.nivel-boton {
+  appearance: none; min-width: 2.5rem; height: 2.5rem; padding: 0; border-radius: 10px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 700 0.95rem var(--font-body); font-variant-numeric: tabular-nums; color: var(--bone-dim);
+  background: var(--o-boton); border: 1px solid var(--o-borde); box-shadow: var(--o-boton-luz);
+}
+.nivel-boton:hover { border-color: rgba(192, 34, 65, 0.6); color: var(--bone); }
+.nivel-boton.superado { color: var(--bone); border-color: rgba(192, 34, 65, 0.35); }
+.nivel-boton.activo { background: linear-gradient(180deg, var(--crimson-bright), var(--crimson)); border-color: var(--crimson-bright); color: #fff; box-shadow: 0 0 10px rgba(192, 34, 65, 0.5); }

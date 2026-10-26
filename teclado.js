@@ -193,6 +193,13 @@ function desconectarMidi(btn) {
   pintarBotonMidi(btn, false);
 }
 let midiManejarNota = null;
+const CLAVE_MIDI_FONDO = "aleran-piano-midi-fondo";
+let midiEnFondo = false;
+try {
+  midiEnFondo = localStorage.getItem(CLAVE_MIDI_FONDO) === "1";
+} catch {
+  /* sin consecuencias */
+}
 let midiEntradas = []; // todas las entradas MIDI activas (un teclado suele exponer 2 puertos)
 
 function configurarMidi(manejarClic) {
@@ -208,6 +215,30 @@ function configurarMidi(manejarClic) {
   btn.innerHTML = '<span class="punto"></span><span class="midi-texto">MIDI apagado</span>';
   const dock = document.getElementById("dockHerramientas");
   (dock || filaZoom).appendChild(btn);
+
+  // Interruptor: ¿sigue sonando el piano con el MIDI si cambias de pestaña?
+  const btnFondo = document.createElement("button");
+  btnFondo.type = "button";
+  btnFondo.className = "chip-dock midi-fondo-boton";
+  const pintarFondo = () => {
+    btnFondo.classList.toggle("activo", midiEnFondo);
+    btnFondo.setAttribute("aria-pressed", String(midiEnFondo));
+    btnFondo.innerHTML = `<span class="punto"></span><span>${midiEnFondo ? "Suena en otra pestaña" : "Calla en otra pestaña"}</span>`;
+    btnFondo.title = midiEnFondo
+      ? "El piano sigue sonando con tu MIDI aunque estés en otra pestaña. Toca para que calle."
+      : "El piano calla si estás en otra pestaña (así el MIDI es solo para esa otra pestaña). Toca para que siga sonando.";
+  };
+  btnFondo.addEventListener("click", () => {
+    midiEnFondo = !midiEnFondo;
+    try {
+      localStorage.setItem(CLAVE_MIDI_FONDO, midiEnFondo ? "1" : "0");
+    } catch {
+      /* sin consecuencias */
+    }
+    pintarFondo();
+  });
+  pintarFondo();
+  (dock || filaZoom).appendChild(btnFondo);
 
   if (!navigator.requestMIDIAccess) {
     btn.addEventListener("click", () => {
@@ -318,8 +349,8 @@ function intentarReconectarMidiGuardado(btn) {
 // mandan así). Un Note On toca/escribe; el Note Off suelta la nota (igual que
 // soltar el dedo en pantalla), así que un acorde mantenido suena entero.
 function manejarMensajeMidi(evento) {
-  // Con la pestaña en segundo plano el controlador se usa para otra cosa: que no suene el piano.
-  if (document.hidden) return;
+  // Con la pestaña en segundo plano suena o no según el interruptor «Fondo» de la barra.
+  if (document.hidden && !midiEnFondo) return;
   const [estado, notaMidi, velocidad] = evento.data;
   const tipo = estado & 0xf0;
   if (tipo === 0x90 && velocidad > 0) {

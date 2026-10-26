@@ -8,8 +8,10 @@
   "use strict";
   const IDS = [
     "volumen", "metroFlotVolumen", "numNotas", "bpmSlider", "duracionNota", "pausa",
-    "twangSensibilidad", "intervalosNivel", "acordesNivel", "ritmoNivel", "cifradoZoom",
+    "twangSensibilidad", "cifradoZoom",
   ];
+  // Los niveles no son un volumen: se eligen con una fila de botones numerados (1, 2, 3…), uno por nivel.
+  const IDS_NIVELES = ["intervalosNivel", "acordesNivel", "ritmoNivel"];
   // Cómo se enseña el valor: volúmenes y tamaños en % (0,85 → 85 %), el resto tal cual.
   const EN_PORCENTAJE = new Set(["volumen", "metroFlotVolumen", "cifradoZoom"]);
   const GIRO = 270; // grados de recorrido, de −135° a +135°
@@ -164,7 +166,65 @@
     pintar();
   }
 
+  function crearNiveles(input) {
+    if (input.dataset.perilla) return;
+    input.dataset.perilla = "1";
+    const min = parseInt(input.min || "1", 10);
+    const max = parseInt(input.max || "1", 10);
+    const fila = document.createElement("div");
+    fila.className = "niveles";
+    fila.setAttribute("role", "group");
+    fila.setAttribute("aria-label", "Nivel");
+    const botones = [];
+    for (let n = min; n <= max; n++) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "nivel-boton";
+      b.textContent = String(n);
+      b.setAttribute("aria-label", `Nivel ${n}`);
+      b.addEventListener("click", () => {
+        descriptorValor.set.call(input, String(n));
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        pintar();
+      });
+      botones.push(b);
+      fila.appendChild(b);
+    }
+    function pintar() {
+      const v = parseInt(descriptorValor.get.call(input), 10);
+      botones.forEach((b, i) => {
+        const n = min + i;
+        b.classList.toggle("activo", n === v);
+        b.classList.toggle("superado", n < v);
+        b.setAttribute("aria-pressed", String(n === v));
+      });
+    }
+    input.classList.add("perilla-oculta");
+    input.tabIndex = -1;
+    input.insertAdjacentElement("beforebegin", fila);
+    const label = input.closest("label");
+    if (label && label.classList.contains("campo")) label.classList.add("con-niveles");
+    Object.defineProperty(input, "value", {
+      configurable: true,
+      get() {
+        return descriptorValor.get.call(this);
+      },
+      set(v) {
+        descriptorValor.set.call(this, v);
+        pintar();
+      },
+    });
+    input.addEventListener("input", pintar);
+    input.addEventListener("change", pintar);
+    pintar();
+  }
+
   function iniciar() {
+    IDS_NIVELES.forEach((id) => {
+      const input = document.getElementById(id);
+      if (input && input.type === "range") crearNiveles(input);
+    });
     IDS.forEach((id) => {
       const input = document.getElementById(id);
       if (input && input.type === "range") crearPerilla(input);

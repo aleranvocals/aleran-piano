@@ -134,7 +134,7 @@
       <div class="cx-rueda-pos" style="left:340px;top:420px">${rueda(l, 200, 200, 196, 96)}</div>
       ${caja(ado, 40, 850, 300, 380)}
       ${caja(efe, 740, 850, 300, 380)}
-      ${caja(cui, 375, 1000, 330, 230)}
+      ${caja(cui, 375, 945, 330, 290)}
       ${pie(true)}`;
   }
 
