@@ -118,11 +118,21 @@ window.BETA_CLASES = {
  },
  "C013": {
   "titulo": "Postura de pie",
-  "herramientas": []
+  "herramientas": [
+   {
+    "nombre": "Respiración guiada",
+    "href": "respiracion.html"
+   }
+  ]
  },
  "C014": {
   "titulo": "Postura sentado",
-  "herramientas": []
+  "herramientas": [
+   {
+    "nombre": "Respiración guiada",
+    "href": "respiracion.html"
+   }
+  ]
  },
  "C015": {
   "titulo": "Respirar mal",
@@ -216,7 +226,12 @@ window.BETA_CLASES = {
  },
  "C025": {
   "titulo": "Vocal fry",
-  "herramientas": []
+  "herramientas": [
+   {
+    "nombre": "Entrena · Espectro y twang",
+    "href": "entrenamiento.html?tab=espectro"
+   }
+  ]
  },
  "C026": {
   "titulo": "Voz de silbido",
@@ -426,7 +441,12 @@ window.BETA_CLASES = {
  },
  "C048": {
   "titulo": "Fry como efecto",
-  "herramientas": []
+  "herramientas": [
+   {
+    "nombre": "Entrena · Espectro y twang",
+    "href": "entrenamiento.html?tab=espectro"
+   }
+  ]
  },
  "C049": {
   "titulo": "Volver a la voz normal",
