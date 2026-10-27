@@ -117,6 +117,30 @@ const GUIA_PROBLEMAS = [
       },
     ],
   },
+  {
+    icono: "🧪",
+    etiqueta: "Quiero probar las herramientas nuevas",
+    recomendaciones: [
+      {
+        pagina: "semaforo.html",
+        paginaNombre: "Beta",
+        herramienta: "Semáforo vocal",
+        razon: "Tres preguntas antes de practicar: te dice si hoy toca cantar, descansar o consultar.",
+      },
+      {
+        pagina: "color.html",
+        paginaNombre: "Beta",
+        herramienta: "Medidor de color",
+        razon: "Compara si tu voz suena más clara u oscura que tu voz central.",
+      },
+      {
+        pagina: "beta.html",
+        paginaNombre: "Beta",
+        herramienta: "Todas las herramientas beta",
+        razon: "Respiración guiada, trémolo, aire en la voz, transportador, horario de práctica y más, en prueba.",
+      },
+    ],
+  },
 ];
 
 function renderizarOpcionesGuia() {

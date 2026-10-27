@@ -490,11 +490,23 @@
     document.querySelectorAll("select").forEach(mejorarSelect);
   }
 
+  // ---------------------------------------------------------------- botón «Herramientas beta» al pie de cada página
+  function botonBetaAlPie() {
+    const pie = document.querySelector(".pie");
+    if (!pie || pie.querySelector(".boton-beta") || paginaActual() === "beta.html") return;
+    const p = crear("p", "pie-beta");
+    const a = crear("a", "boton boton-beta", "🧪 Herramientas beta");
+    a.href = "beta.html";
+    p.appendChild(a);
+    pie.insertBefore(p, pie.firstChild);
+  }
+
   // ---------------------------------------------------------------- arranque
   const nav = construirMenu();
   construirDock(nav);
 
   function alCargar() {
+    botonBetaAlPie();
     mejorarTodosLosSelects();
     // Primera visita: una sola pregunta, saltable, para que todas las herramientas partan de tu rango.
     if (!estado.elegido && document.getElementById("piano") && !sessionStorage.getItem("aleran-rango-saltado")) {

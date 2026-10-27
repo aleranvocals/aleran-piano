@@ -1,0 +1,5 @@
+Ejemplos para «Adivina el efecto».
+Graba clips cortos (1-3 s), unos 5 por efecto, y guárdalos en esta carpeta (mp3).
+Luego escribe sus nombres en manifest.json, por ejemplo:
+  "distorsion": ["distorsion-01.mp3", "distorsion-02.mp3"]
+La herramienta no se activa hasta que haya clips de al menos dos efectos.

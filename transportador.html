@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Transportador — Áleran Vocals</title>
+<meta name="description" content="Transporta una canción del Cifrado medio tono arriba o abajo y comprueba si cabe en tu rango." />
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css?v=34" />
+<link rel="stylesheet" href="rediseno.css?v=15" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="obsidiana.css?v=14" />
+<link rel="stylesheet" href="beta.css?v=1" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#93172c" />
+<link rel="icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🔼 Transportador</h1>
+    <p class="subtitulo">Sube o baja tu canción medio tono y mira si te cabe.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <div class="nav-fila">
+      <a href="index.html">🏠 Inicio</a>
+      <a href="guia.html">🧭 Guía</a>
+    </div>
+    <div class="nav-fila">
+      <a href="piano.html" class="destacado">🎹 Solfeo</a>
+      <a href="entrenamiento.html" class="destacado">🎤 Entrena</a>
+      <a href="oido.html" class="destacado">🧠 Oído</a>
+      <a href="ritmo.html" class="destacado">🥁 Ritmo</a>
+    </div>
+    <div class="nav-fila">
+      <a href="rutina.html">📋 Rutina</a>
+      <a href="catalogo.html">🎼 Catálogo</a>
+      <a href="progreso.html">📈 Progreso</a>
+      <a href="juegos.html">🎮 Juegos</a>
+    </div>
+    <div class="nav-fila">
+      <a href="glosario.html">📖 Glosario</a>
+      <a href="codex.html">🖼 Láminas</a>
+      <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+      <a href="cifrado.html">🎵 Cifrado</a>
+      <a href="beta.html" class="activo">🧪 Beta</a>
+    </div>
+  </nav>
+
+  <section class="panel">
+    <p class="descripcion">Usa la canción que tienes en el Cifrado. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Mueve todas las notas la misma distancia. Bajar o subir el tono no es rendirse: muchas bandas lo hacen en gira. El rango que se compara es el que elegiste arriba (🎙). La versión guardada se abre en el Cifrado.">?</button></p>
+    <div id="trVacio" hidden>
+      <p class="descripcion">Aún no hay una canción en tu Cifrado. <a href="cifrado.html">Haz una en el Cifrado →</a> o abre un archivo guardado:</p>
+      <label class="boton" for="trArchivo">Abrir archivo del Cifrado</label>
+      <input type="file" id="trArchivo" accept=".json,application/json" hidden />
+      <p class="estado" id="trError" aria-live="polite"></p>
+    </div>
+    <div id="trPanel" hidden>
+      <div class="beta-fila">
+        <button class="boton" id="trMenos" type="button">−½</button>
+        <strong class="beta-gran" id="trValor">Original</strong>
+        <button class="boton" id="trMas" type="button">+½</button>
+        <button class="boton" id="trReset" type="button">Original</button>
+      </div>
+      <p class="lectura" id="trRango"></p>
+      <p class="aviso-vivo" id="trCabe"></p>
+      <div class="cancion-notas" id="trNotas"></div>
+      <div class="acciones">
+        <button class="boton" id="trOir" type="button">▶ Escuchar con piano</button>
+        <button class="boton principal" id="trGuardar" type="button">⬇ Guardar esta versión</button>
+      </div>
+      <p class="estado" id="trEstado" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <div class="cta-clases">
+    <p>¿Quieres pasar de practicar solo a progresar con feedback real de un vocal coach? <a href="https://agenda.aleranvocals.es/reservar" target="_blank" rel="noopener">Reserva tu primera clase →</a></p>
+  </div>
+
+  <footer class="pie">
+    <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
+    <p>Tu canción no sale de este navegador.</p>
+    <p><a href="privacidad.html">Política de privacidad</a></p>
+  </footer>
+</div>
+
+<script src="smplr.iife.js"></script>
+<script src="pitchy.iife.js"></script>
+<script src="escalas.js?v=9"></script>
+<script src="app-shell.js?v=8"></script>
+<script src="audio.js?v=14"></script>
+<script src="transportador.js?v=1"></script>
+<script src="beta-clases.js?v=1"></script>
+<script src="beta-comun.js?v=1"></script>
+<script src="tema.js?v=1"></script>
+<script src="iconos.js?v=7"></script>
+<script src="pwa.js?v=1"></script>
+</body>
+</html>

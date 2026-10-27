@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Escucha con las cuatro capas — Áleran Vocals</title>
+<meta name="description" content="Guía para escuchar una toma separando mecanismo, colocación, adornos y efectos." />
+<meta name="robots" content="noindex" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css?v=34" />
+<link rel="stylesheet" href="rediseno.css?v=15" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="obsidiana.css?v=14" />
+<link rel="stylesheet" href="beta.css?v=1" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#93172c" />
+<link rel="icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🔬 Escucha con las cuatro capas</h1>
+    <p class="subtitulo">Escucha una voz como un profesor: capa por capa.</p>
+  </header>
+
+  <nav class="nav-principal">
+    <div class="nav-fila">
+      <a href="index.html">🏠 Inicio</a>
+      <a href="guia.html">🧭 Guía</a>
+    </div>
+    <div class="nav-fila">
+      <a href="piano.html" class="destacado">🎹 Solfeo</a>
+      <a href="entrenamiento.html" class="destacado">🎤 Entrena</a>
+      <a href="oido.html" class="destacado">🧠 Oído</a>
+      <a href="ritmo.html" class="destacado">🥁 Ritmo</a>
+    </div>
+    <div class="nav-fila">
+      <a href="rutina.html">📋 Rutina</a>
+      <a href="catalogo.html">🎼 Catálogo</a>
+      <a href="progreso.html">📈 Progreso</a>
+      <a href="juegos.html">🎮 Juegos</a>
+    </div>
+    <div class="nav-fila">
+      <a href="glosario.html">📖 Glosario</a>
+      <a href="codex.html">🖼 Láminas</a>
+      <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+      <a href="cifrado.html">🎵 Cifrado</a>
+      <a href="beta.html" class="activo">🧪 Beta</a>
+    </div>
+  </nav>
+
+  <section class="panel">
+    <p class="descripcion">Elige una toma y ábrelas una a una. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="En cada capa: lo que oyes, si te gusta y si te serviría. Son tres cosas distintas. Esta herramienta no analiza el audio: guía tu escucha. No es un diagnóstico.">?</button></p>
+    <div id="capasTomaCaja"></div>
+  </section>
+  <section class="panel">
+    <div id="capasLista"></div>
+    <div id="capasResumen" hidden>
+      <h3>Tu escucha</h3>
+      <pre class="beta-texto" id="capasTexto" style="white-space:pre-wrap"></pre>
+      <div class="acciones">
+        <button class="boton principal" id="capasDescargar" type="button">⬇ Descargar</button>
+        <button class="boton" id="capasCopiar" type="button">Copiar</button>
+        <button class="boton" id="capasOtra" type="button">Otra escucha</button>
+      </div>
+      <p class="estado" id="capasEstado" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <div class="cta-clases">
+    <p>¿Quieres pasar de practicar solo a progresar con feedback real de un vocal coach? <a href="https://agenda.aleranvocals.es/reservar" target="_blank" rel="noopener">Reserva tu primera clase →</a></p>
+  </div>
+
+  <footer class="pie">
+    <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
+    <p>Tu grabación no sale de este navegador.</p>
+    <p><a href="privacidad.html">Política de privacidad</a></p>
+  </footer>
+</div>
+
+<script src="app-shell.js?v=8"></script>
+<script src="beta-toma.js?v=1"></script>
+<script src="capas.js?v=1"></script>
+<script src="beta-clases.js?v=1"></script>
+<script src="beta-comun.js?v=1"></script>
+<script src="tema.js?v=1"></script>
+<script src="iconos.js?v=7"></script>
+<script src="pwa.js?v=1"></script>
+</body>
+</html>
