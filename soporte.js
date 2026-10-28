@@ -54,7 +54,7 @@ function inicializarSoporte() {
       const detalle = detalleEl.value.trim();
       avisarSoporte("fallo", detalle || "(Reportó por email sin escribir el detalle aquí primero.)");
       const cuerpo = detalle ? detalle : "Herramienta: \nDispositivo/navegador: \nQué pasó: ";
-      window.location.href = `mailto:aleranvocals@gmail.com?subject=${encodeURIComponent(
+      window.location.href = `mailto:contacto@aleranvocals.es?subject=${encodeURIComponent(
         "Fallo en herramientas de práctica"
       )}&body=${encodeURIComponent(cuerpo)}`;
     });
