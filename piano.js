@@ -1352,6 +1352,21 @@ function inicializar() {
     el("descripcionGiro").textContent = patron.descripcion + nota;
   }
   el("girosPatron").addEventListener("change", actualizarDescripcionGiro);
+
+  // «Sonar al tocar un giro»: elegir un giro (o una de sus variantes) lo reproduce sin pulsar «Escuchar».
+  const casillaSonar = el("girosSonarAlTocar");
+  try {
+    if (localStorage.getItem("aleran-piano-giros-sonar") === "0") casillaSonar.checked = false;
+  } catch {}
+  casillaSonar.addEventListener("change", () => {
+    try {
+      localStorage.setItem("aleran-piano-giros-sonar", casillaSonar.checked ? "1" : "0");
+    } catch {}
+  });
+  const sonarGiro = () => {
+    if (casillaSonar.checked) el("btnEscuchar").click();
+  };
+  el("girosPatron").addEventListener("change", sonarGiro);
   el("girosEscala").addEventListener("change", () => {
     if (el("girosEscala").value !== "personalizado") {
       escalaGiroBase = el("girosEscala").value;
@@ -1397,6 +1412,7 @@ function inicializar() {
         actualizarDescripcionGiro();
         invalidarSecuencia();
         cerrarMenuGiro();
+        sonarGiro();
       });
       menuGiro.appendChild(b);
     }
