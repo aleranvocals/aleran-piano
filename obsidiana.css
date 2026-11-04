@@ -451,3 +451,8 @@ input[type="range"]::-moz-range-thumb {
 .menu-giro button { text-align: left; padding: 8px 12px; border-radius: 8px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .menu-giro button:hover, .menu-giro button:focus-visible { background: rgba(255, 255, 255, .08); outline: none; }
 .menu-giro button.activo { background: var(--crimson, #b21f3a); color: #fff; }
+
+/* Quien pide «reducir movimiento» no ve animaciones ni transiciones */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
