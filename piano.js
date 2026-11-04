@@ -831,6 +831,7 @@ function generarResultadoInterno() {
   if (modoActual === "giros") {
     const tonica = el("girosTonica").value;
     const patronClave = el("girosPatron").value;
+    const escalaGiro = el("girosEscala").value;
     // Reutiliza el mismo motor que "Escala vocal" con una nota inicial fija
     // (nunca escalera) -- ya valida que el giro (incluidas sus notas por
     // debajo de la tónica, 7'/5') quepa en el piano.
@@ -842,8 +843,9 @@ function generarResultadoInterno() {
       soloSubida: false,
       duracionNota,
       pausa,
+      escalaGiro,
     });
-    return { ...resultado, info: `Giro (${tonica} = 1) · ${PATRONES[patronClave].nombre}` };
+    return { ...resultado, info: `Giro (${tonica} = 1) · ${PATRONES[patronClave].nombre} · ${ESCALAS_GIRO[escalaGiro].nombre}` };
   }
 
   if (esGlissando()) {
@@ -1302,7 +1304,7 @@ function inicializar() {
 
   [
     "semilla", "voz", "notaInicial", "pasoSemitonos", "soloSubida", "notasPersonalizadas",
-    "solfeoTonica", "solfeoPatron", "girosTonica", "girosPatron",
+    "solfeoTonica", "solfeoPatron", "girosTonica", "girosPatron", "girosEscala",
   ].forEach((id) => {
     el(id).addEventListener("input", invalidarSecuencia);
     el(id).addEventListener("change", invalidarSecuencia);
@@ -1325,9 +1327,12 @@ function inicializar() {
 
   function actualizarDescripcionGiro() {
     const patron = PATRONES[el("girosPatron").value];
-    el("descripcionGiro").textContent = patron.descripcion;
+    const escala = el("girosEscala").value;
+    const nota = escala === "mayor" ? "" : ` En ${ESCALAS_GIRO[escala].nombre.toLowerCase()}: el 3º${escala === "menor_melodica" ? " baja y el 6º y el 7º suben al ascender (y bajan al descender)" : escala === "menor_armonica" ? " y el 6º bajan; el 7º se queda sensible" : ", el 6º y el 7º bajan un semitono"}.`;
+    el("descripcionGiro").textContent = patron.descripcion + nota;
   }
   el("girosPatron").addEventListener("change", actualizarDescripcionGiro);
+  el("girosEscala").addEventListener("change", actualizarDescripcionGiro);
 
   el("btnEscuchar").addEventListener("click", () => {
     let resultado;

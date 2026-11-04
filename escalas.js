@@ -683,9 +683,33 @@ function eventosModoAleatorio({ numNotas, duracionNota, pausa, semilla }) {
   return { eventos, info };
 }
 
-function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida, duracionNota, pausa }) {
+// Los giros están escritos sobre la escala mayor. Para cantarlos en menor, cada grado cambia de semitonos:
+// el 3º, el 6º y el 7º bajan según la variante (la melódica sube el 6º y el 7º al subir y los deja naturales al bajar).
+const ESCALAS_GIRO = {
+  mayor: { nombre: "Mayor", subida: [0, 2, 4, 5, 7, 9, 11], bajada: [0, 2, 4, 5, 7, 9, 11] },
+  menor_natural: { nombre: "Menor natural", subida: [0, 2, 3, 5, 7, 8, 10], bajada: [0, 2, 3, 5, 7, 8, 10] },
+  menor_melodica: { nombre: "Menor melódica", subida: [0, 2, 3, 5, 7, 9, 11], bajada: [0, 2, 3, 5, 7, 8, 10] },
+  menor_armonica: { nombre: "Menor armónica", subida: [0, 2, 3, 5, 7, 8, 11], bajada: [0, 2, 3, 5, 7, 8, 11] },
+};
+const GRADOS_MAYOR = [0, 2, 4, 5, 7, 9, 11];
+
+function semitonosGiroEnEscala(semitonos, escala) {
+  const info = ESCALAS_GIRO[escala];
+  if (!info || escala === "mayor") return semitonos;
+  return semitonos.map((st, i) => {
+    const octava = Math.floor(st / 12);
+    const grado = GRADOS_MAYOR.indexOf(((st % 12) + 12) % 12);
+    if (grado < 0) return st;
+    // Dirección del movimiento hacia esta nota (la primera mira hacia la siguiente): melódica = subida o bajada.
+    const dir = i > 0 ? st - semitonos[i - 1] : (semitonos[1] ?? st) - st;
+    const tabla = dir < 0 ? info.bajada : info.subida;
+    return tabla[grado] + octava * 12;
+  });
+}
+
+function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida, duracionNota, pausa, escalaGiro }) {
   const infoPatron = PATRONES[patron];
-  const semitonos = infoPatron.semitonos;
+  const semitonos = escalaGiro ? semitonosGiroEnEscala(infoPatron.semitonos, escalaGiro) : infoPatron.semitonos;
   const techoPatron = Math.max(...semitonos);
   const pisoPatron = Math.min(0, ...semitonos); // <= 0 -- ver Giros melódicos (7'/5')
   const infoVoz = VOCES[voz];
