@@ -533,6 +533,7 @@ const PATRONES = {
     descripcion: "Misma célula que 4-5-1, pero resolviendo arriba, en la octava.",
   },
   giro_6_5_1: {
+    menor: true,
     nombre: "Giro 6-5-1",
     categoria: "giros",
     semitonos: [9, 7, 0],
@@ -547,6 +548,7 @@ const PATRONES = {
     descripcion: "Igual que 6-5-1, resolviendo en la octava en vez de en la tónica grave.",
   },
   giro_6_7_8: {
+    menor: true,
     nombre: "Giro 6-7-8",
     categoria: "giros",
     semitonos: [9, 11, 12],
@@ -554,6 +556,7 @@ const PATRONES = {
     descripcion: "Sensible por grados conjuntos (6º-7º) hasta resolver en la octava.",
   },
   giro_3_2_1: {
+    menor: true,
     nombre: "Giro 3-2-1",
     categoria: "giros",
     semitonos: [4, 2, 0],
@@ -561,6 +564,7 @@ const PATRONES = {
     descripcion: "Descenso por grados conjuntos desde el 3º hasta la tónica.",
   },
   giro_3_7b_1: {
+    menor: true,
     nombre: "Giro 3-7'-1",
     categoria: "giros",
     semitonos: [4, -1, 0],
@@ -589,6 +593,7 @@ const PATRONES = {
     descripcion: "Del 2º grado salta al 5º grave (5') antes de resolver en la tónica.",
   },
   giro_7b_4_3: {
+    menor: true,
     nombre: "Giro 7'-4-3",
     categoria: "giros",
     semitonos: [-1, 5, 4],
@@ -615,6 +620,22 @@ const PATRONES = {
     semitonos: [5, -5, 0],
     tecnicas: ["agilidad", "afinacion"],
     descripcion: "Del 4º salta abajo al 5º grave (5') y resuelve subiendo a la tónica.",
+  },
+  giro_5_6_7_8: {
+    nombre: "Giro 5-6-7-8",
+    categoria: "giros",
+    menor: true,
+    semitonos: [7, 9, 11, 12],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Subida por grados conjuntos del 5º a la octava.",
+  },
+  giro_8_7_6_5: {
+    nombre: "Giro 8-7-6-5",
+    categoria: "giros",
+    menor: true,
+    semitonos: [12, 11, 9, 7],
+    tecnicas: ["agilidad", "afinacion"],
+    descripcion: "Bajada por grados conjuntos desde la octava hasta el 5º.",
   },
 };
 
@@ -683,8 +704,9 @@ function eventosModoAleatorio({ numNotas, duracionNota, pausa, semilla }) {
   return { eventos, info };
 }
 
-// Los giros están escritos sobre la escala mayor. Para cantarlos en menor, cada grado cambia de semitonos:
-// el 3º, el 6º y el 7º bajan según la variante (la melódica sube el 6º y el 7º al subir y los deja naturales al bajar).
+// Los giros están escritos sobre la escala mayor. En menor solo cambian los giros marcados con `menor: true`
+// (los demás se cantan «normales»): el 3º, el 6º y el 7º bajan según la variante (la melódica sube el 6º y el 7º
+// al subir y los deja naturales al bajar). El 7' (sensible grave) se queda natural: resuelve a la tónica por semitono.
 const ESCALAS_GIRO = {
   mayor: { nombre: "Mayor", subida: [0, 2, 4, 5, 7, 9, 11], bajada: [0, 2, 4, 5, 7, 9, 11] },
   menor_natural: { nombre: "Menor natural", subida: [0, 2, 3, 5, 7, 8, 10], bajada: [0, 2, 3, 5, 7, 8, 10] },
@@ -697,6 +719,7 @@ function semitonosGiroEnEscala(semitonos, escala) {
   const info = ESCALAS_GIRO[escala];
   if (!info || escala === "mayor") return semitonos;
   return semitonos.map((st, i) => {
+    if (st < 0) return st; // 7' / 5' graves: sin cambio
     const octava = Math.floor(st / 12);
     const grado = GRADOS_MAYOR.indexOf(((st % 12) + 12) % 12);
     if (grado < 0) return st;
@@ -707,9 +730,39 @@ function semitonosGiroEnEscala(semitonos, escala) {
   });
 }
 
-function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida, duracionNota, pausa, escalaGiro }) {
+/** Qué notas del giro se pueden bajar un semitono: el 3º, el 6º y el 7º (también el 7' grave). */
+function indicesAlterablesGiro(semitonos) {
+  return semitonos.map((st, i) => ([4, 9, 11].includes(((st % 12) + 12) % 12) ? i : -1)).filter((i) => i >= 0);
+}
+
+/** Bemoles que lleva un giro por defecto en una escala: solo los giros marcados `menor`. */
+function bemolesGiroPorDefecto(clave, escala) {
+  const base = PATRONES[clave].semitonos;
+  if (!PATRONES[clave].menor || escala === "mayor") return base.map(() => false);
+  const convertido = semitonosGiroEnEscala(base, escala);
+  return base.map((st, i) => convertido[i] !== st);
+}
+
+function semitonosGiroConBemoles(clave, bemoles) {
+  return PATRONES[clave].semitonos.map((st, i) => (bemoles && bemoles[i] ? st - 1 : st));
+}
+
+const NOMBRE_GRADO = { 0: "1", 1: "b2", 2: "2", 3: "b3", 4: "3", 5: "4", 6: "b5", 7: "5", 8: "b6", 9: "6", 10: "b7", 11: "7" };
+
+/** «b6-5-1», «3-7'-1»…: los grados con bemol; el ' marca la octava de abajo y el 8 la de arriba. */
+function etiquetaGiro(semitonos) {
+  return semitonos
+    .map((st) => {
+      if (st === 12) return "8";
+      const grado = NOMBRE_GRADO[((st % 12) + 12) % 12];
+      return st < 0 ? grado + "'" : grado;
+    })
+    .join("-");
+}
+
+function eventosModoEscala({ voz, patron, notaInicial, pasoSemitonos, soloSubida, duracionNota, pausa, semitonosGiro }) {
   const infoPatron = PATRONES[patron];
-  const semitonos = escalaGiro ? semitonosGiroEnEscala(infoPatron.semitonos, escalaGiro) : infoPatron.semitonos;
+  const semitonos = semitonosGiro || infoPatron.semitonos;
   const techoPatron = Math.max(...semitonos);
   const pisoPatron = Math.min(0, ...semitonos); // <= 0 -- ver Giros melódicos (7'/5')
   const infoVoz = VOCES[voz];

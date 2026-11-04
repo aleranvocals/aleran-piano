@@ -24,6 +24,24 @@ let solfeoTonicaMidi = nombreAMidi("Do3");
 // puntillo?, ligadura?, tresillo? }]. midi === null es un silencio (sin
 // sonido, sí ocupa el tiempo de su figura). Los tres campos opcionales solo
 // los pone/usa el Modo Músico -- en Modo Simple simplemente no existen.
+// --- Giros: variantes con bemoles (clic derecho en un giro) ---------------
+// variantesGiro[clave] = [bool por nota]: true = esa nota baja un semitono. Sin entrada, manda la escala elegida.
+let variantesGiro = {};
+
+function bemolesGiro(clave) {
+  return variantesGiro[clave] || bemolesGiroPorDefecto(clave, el("girosEscala").value);
+}
+
+function semitonosGiroActual(clave) {
+  return semitonosGiroConBemoles(clave, bemolesGiro(clave));
+}
+
+function refrescarEtiquetasGiros() {
+  for (const opt of el("girosPatron").options) {
+    opt.textContent = "Giro " + etiquetaGiro(semitonosGiroActual(opt.value));
+  }
+}
+
 let unidadesPersonalizadas = [];
 // Si esta melodía llegó desde una línea de Cifrado, el id de esa línea --
 // así "Guardar y volver" sabe a dónde mandar el resultado.
@@ -265,7 +283,7 @@ function poblarSelects() {
     if (patron.categoria !== "giros") continue;
     const opt = document.createElement("option");
     opt.value = clave;
-    opt.textContent = patron.nombre;
+    opt.textContent = "Giro " + etiquetaGiro(patron.semitonos);
     selectGirosPatron.appendChild(opt);
   }
 }
@@ -831,7 +849,6 @@ function generarResultadoInterno() {
   if (modoActual === "giros") {
     const tonica = el("girosTonica").value;
     const patronClave = el("girosPatron").value;
-    const escalaGiro = el("girosEscala").value;
     // Reutiliza el mismo motor que "Escala vocal" con una nota inicial fija
     // (nunca escalera) -- ya valida que el giro (incluidas sus notas por
     // debajo de la tónica, 7'/5') quepa en el piano.
@@ -843,9 +860,9 @@ function generarResultadoInterno() {
       soloSubida: false,
       duracionNota,
       pausa,
-      escalaGiro,
+      semitonosGiro: semitonosGiroActual(patronClave),
     });
-    return { ...resultado, info: `Giro (${tonica} = 1) · ${PATRONES[patronClave].nombre} · ${ESCALAS_GIRO[escalaGiro].nombre}` };
+    return { ...resultado, info: `Giro (${tonica} = 1) · ${etiquetaGiro(semitonosGiroActual(patronClave))}` };
   }
 
   if (esGlissando()) {
@@ -1326,13 +1343,83 @@ function inicializar() {
   actualizarLabelSolfeo();
 
   function actualizarDescripcionGiro() {
-    const patron = PATRONES[el("girosPatron").value];
-    const escala = el("girosEscala").value;
-    const nota = escala === "mayor" ? "" : ` En ${ESCALAS_GIRO[escala].nombre.toLowerCase()}: el 3º${escala === "menor_melodica" ? " baja y el 6º y el 7º suben al ascender (y bajan al descender)" : escala === "menor_armonica" ? " y el 6º bajan; el 7º se queda sensible" : ", el 6º y el 7º bajan un semitono"}.`;
+    const clave = el("girosPatron").value;
+    const patron = PATRONES[clave];
+    const base = etiquetaGiro(patron.semitonos);
+    const actual = etiquetaGiro(semitonosGiroActual(clave));
+    const nota = actual !== base ? ` Se canta como ${actual}.` : "";
     el("descripcionGiro").textContent = patron.descripcion + nota;
   }
   el("girosPatron").addEventListener("change", actualizarDescripcionGiro);
-  el("girosEscala").addEventListener("change", actualizarDescripcionGiro);
+  el("girosEscala").addEventListener("change", () => {
+    variantesGiro = {}; // cambiar de escala reinicia las variantes elegidas a mano
+    refrescarEtiquetasGiros();
+    actualizarDescripcionGiro();
+  });
+  refrescarEtiquetasGiros();
+
+  // Clic derecho (o mantener pulsado en el móvil) sobre un giro: elegir con qué bemoles se canta.
+  let menuGiro = null;
+  function cerrarMenuGiro() {
+    if (menuGiro) menuGiro.remove();
+    menuGiro = null;
+  }
+  function abrirMenuGiro(clave, x, y) {
+    cerrarMenuGiro();
+    const base = PATRONES[clave].semitonos;
+    const alterables = indicesAlterablesGiro(base);
+    if (alterables.length === 0) return false;
+    const actual = bemolesGiro(clave).join();
+    menuGiro = document.createElement("div");
+    menuGiro.className = "menu-giro";
+    menuGiro.setAttribute("role", "menu");
+    const titulo = document.createElement("div");
+    titulo.className = "menu-giro-titulo";
+    titulo.textContent = "Variantes de " + etiquetaGiro(base);
+    menuGiro.appendChild(titulo);
+    for (let m = 0; m < 1 << alterables.length; m++) {
+      const banderas = base.map(() => false);
+      alterables.forEach((idx, j) => { banderas[idx] = Boolean(m & (1 << j)); });
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "menuitem");
+      b.textContent = etiquetaGiro(semitonosGiroConBemoles(clave, banderas));
+      if (banderas.join() === actual) b.classList.add("activo");
+      b.addEventListener("click", () => {
+        variantesGiro[clave] = banderas;
+        el("girosPatron").value = clave;
+        refrescarEtiquetasGiros();
+        actualizarDescripcionGiro();
+        invalidarSecuencia();
+        cerrarMenuGiro();
+      });
+      menuGiro.appendChild(b);
+    }
+    document.body.appendChild(menuGiro);
+    const r = menuGiro.getBoundingClientRect();
+    menuGiro.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + "px";
+    menuGiro.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + "px";
+    return true;
+  }
+  function claveDeChipGiro(chip) {
+    const cont = chip && chip.parentElement;
+    return cont && cont.previousElementSibling === el("girosPatron") ? chip.dataset.valor : null;
+  }
+  document.addEventListener("contextmenu", (e) => {
+    const chip = e.target.closest && e.target.closest(".chip");
+    const clave = claveDeChipGiro(chip);
+    if (clave && abrirMenuGiro(clave, e.clientX, e.clientY)) e.preventDefault();
+  });
+  let pulsacionLarga = null;
+  document.addEventListener("pointerdown", (e) => {
+    clearTimeout(pulsacionLarga);
+    const chip = e.target.closest && e.target.closest(".chip");
+    const clave = e.pointerType === "touch" ? claveDeChipGiro(chip) : null;
+    if (clave) pulsacionLarga = setTimeout(() => abrirMenuGiro(clave, e.clientX, e.clientY), 550);
+    if (menuGiro && !e.target.closest(".menu-giro")) cerrarMenuGiro();
+  });
+  ["pointerup", "pointermove", "pointercancel"].forEach((t) => document.addEventListener(t, () => clearTimeout(pulsacionLarga)));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenuGiro(); });
 
   el("btnEscuchar").addEventListener("click", () => {
     let resultado;

@@ -444,3 +444,10 @@ input[type="range"]::-moz-range-thumb {
 .nivel-boton:hover { border-color: rgba(192, 34, 65, 0.6); color: var(--bone); }
 .nivel-boton.superado { color: var(--bone); border-color: rgba(192, 34, 65, 0.35); }
 .nivel-boton.activo { background: linear-gradient(180deg, var(--crimson-bright), var(--crimson)); border-color: var(--crimson-bright); color: #fff; box-shadow: 0 0 10px rgba(192, 34, 65, 0.5); }
+
+/* Menú de variantes de un giro (clic derecho / pulsación larga) */
+.menu-giro { position: fixed; z-index: 1000; min-width: 150px; padding: 6px; display: flex; flex-direction: column; gap: 3px; background: var(--panel-2); border: 1px solid var(--line, #3a2a2a); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.menu-giro-titulo { padding: 4px 10px 6px; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; opacity: .65; }
+.menu-giro button { text-align: left; padding: 8px 12px; border-radius: 8px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.menu-giro button:hover, .menu-giro button:focus-visible { background: rgba(255, 255, 255, .08); outline: none; }
+.menu-giro button.activo { background: var(--crimson, #b21f3a); color: #fff; }
