@@ -27,9 +27,10 @@ let solfeoTonicaMidi = nombreAMidi("Do3");
 // --- Giros: variantes con bemoles (clic derecho en un giro) ---------------
 // variantesGiro[clave] = [bool por nota]: true = esa nota baja un semitono. Sin entrada, manda la escala elegida.
 let variantesGiro = {};
+let escalaGiroBase = "mayor"; // la última escala elegida de verdad (el botón «Personalizado» no cuenta)
 
 function bemolesGiro(clave) {
-  return variantesGiro[clave] || bemolesGiroPorDefecto(clave, el("girosEscala").value);
+  return variantesGiro[clave] || bemolesGiroPorDefecto(clave, escalaGiroBase);
 }
 
 function semitonosGiroActual(clave) {
@@ -1352,7 +1353,10 @@ function inicializar() {
   }
   el("girosPatron").addEventListener("change", actualizarDescripcionGiro);
   el("girosEscala").addEventListener("change", () => {
-    variantesGiro = {}; // cambiar de escala reinicia las variantes elegidas a mano
+    if (el("girosEscala").value !== "personalizado") {
+      escalaGiroBase = el("girosEscala").value;
+      variantesGiro = {}; // elegir una escala reinicia las variantes hechas a mano
+    }
     refrescarEtiquetasGiros();
     actualizarDescripcionGiro();
   });
@@ -1387,6 +1391,7 @@ function inicializar() {
       if (banderas.join() === actual) b.classList.add("activo");
       b.addEventListener("click", () => {
         variantesGiro[clave] = banderas;
+        el("girosEscala").value = "personalizado";
         el("girosPatron").value = clave;
         refrescarEtiquetasGiros();
         actualizarDescripcionGiro();
