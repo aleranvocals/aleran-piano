@@ -1349,7 +1349,9 @@ function inicializar() {
     const base = etiquetaGiro(patron.semitonos);
     const actual = etiquetaGiro(semitonosGiroActual(clave));
     const nota = actual !== base ? ` Se canta como ${actual}.` : "";
-    el("descripcionGiro").textContent = patron.descripcion + nota;
+    el("ayudaGiros").dataset.ayuda =
+      patron.descripcion + nota +
+      " Toca un giro para oírlo. Clic derecho (o mantén pulsado) para cambiar sus bemoles. El 7' y el 5' son ese grado en la octava de abajo.";
   }
   el("girosPatron").addEventListener("change", actualizarDescripcionGiro);
 
