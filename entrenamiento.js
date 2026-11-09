@@ -34,6 +34,54 @@ function cambiarSubmodoEntrenamiento(modo) {
   el("panel-grabadora").hidden = modo !== "grabadora";
   el("estadoEntrenamiento").textContent = "";
   actualizarAfinadorSostenida(modo === "sostenida");
+  if (modo !== "sostenida") detenerMetronomoSostenida();
+}
+
+// Metrónomo sencillo de «Sostener»: un botón, el tempo con − y +, y un punto que late. Usa el mismo motor que la pestaña
+// Metrónomo de Solfeo. Con auriculares, para que el clic no entre en el micrófono.
+let sostenidaMetroBpm = 80;
+let sostenidaMetroActivo = false;
+const SOSTENIDA_METRO_MIN = 40;
+const SOSTENIDA_METRO_MAX = 220;
+
+function pintarMetronomoSostenida() {
+  const boton = el("btnSostenidaMetro");
+  if (!boton) return;
+  boton.textContent = sostenidaMetroActivo ? "⏹ Metrónomo" : "▶ Metrónomo";
+  boton.setAttribute("aria-pressed", String(sostenidaMetroActivo));
+  boton.classList.toggle("principal", sostenidaMetroActivo);
+  el("sostenidaBpmValor").textContent = String(sostenidaMetroBpm);
+}
+
+function detenerMetronomoSostenida() {
+  if (!sostenidaMetroActivo) return;
+  sostenidaMetroActivo = false;
+  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  pintarMetronomoSostenida();
+}
+
+function alternarMetronomoSostenida() {
+  if (!window.MetronomoEngine) return;
+  if (sostenidaMetroActivo) {
+    detenerMetronomoSostenida();
+    return;
+  }
+  sostenidaMetroActivo = true;
+  window.MetronomoEngine.ajustarVolumen(0.7);
+  window.MetronomoEngine.iniciar(sostenidaMetroBpm, 0, () => {
+    const punto = el("sostenidaMetroPunto");
+    if (!punto) return;
+    punto.classList.remove("pulso");
+    void punto.offsetWidth; // reinicia la animación en cada pulso
+    punto.classList.add("pulso");
+  });
+  pintarMetronomoSostenida();
+}
+
+function cambiarBpmSostenida(delta) {
+  sostenidaMetroBpm = Math.max(SOSTENIDA_METRO_MIN, Math.min(SOSTENIDA_METRO_MAX, sostenidaMetroBpm + delta));
+  if (sostenidaMetroActivo && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(sostenidaMetroBpm);
+  pintarMetronomoSostenida();
 }
 
 // «Sostener»: el afinador queda fijo dentro del propio panel (sin saltos ni capas flotantes), pegado al medidor de
@@ -1545,6 +1593,9 @@ function inicializarEntrenamiento() {
   document.querySelectorAll(".subtab").forEach((btn) => {
     btn.addEventListener("click", () => cambiarSubmodoEntrenamiento(btn.dataset.entren));
   });
+  el("btnSostenidaMetro").addEventListener("click", alternarMetronomoSostenida);
+  el("sostenidaBpmMenos").addEventListener("click", () => cambiarBpmSostenida(-5));
+  el("sostenidaBpmMas").addEventListener("click", () => cambiarBpmSostenida(5));
   el("btnRangoIniciar").addEventListener("click", iniciarRango);
   el("btnRangoDetener").addEventListener("click", detenerRango);
   el("btnSovtIniciar").addEventListener("click", iniciarSovt);

@@ -466,3 +466,10 @@ input[type="range"]::-moz-range-thumb {
 #panel-sostenida .nota-grande { font-size: 2rem; padding: 0.1rem 0; }
 #panel-sostenida > .marcador { min-height: 1.3em; margin-bottom: 0.3rem; text-align: center; }
 #sostenidaGrafico { height: 92px; }
+
+/* Metrónomo sencillo de «Sostener» */
+.metro-mini { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin: 0.5rem 0 0.4rem; }
+.metro-mini .boton { white-space: nowrap; }
+.metro-mini-punto { width: 16px; height: 16px; border-radius: 50%; background: var(--line); flex: none; }
+.metro-mini-punto.pulso { animation: metroMiniPulso 0.2s ease-out; }
+@keyframes metroMiniPulso { 0% { background: var(--crimson-bright, #c02241); transform: scale(1.35); } 100% { background: var(--line); transform: scale(1); } }

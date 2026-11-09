@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="style.css?v=34" />
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="obsidiana.css?v=17" />
+<link rel="stylesheet" href="obsidiana.css?v=18" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -124,6 +124,15 @@
     <div class="nota-grande" id="sostenidaTiempo">0.0s</div>
     <p class="marcador" id="sostenidaVibratoEnVivo"></p>
     <canvas id="sostenidaGrafico" width="600" height="120" class="grafico-pitch" role="img" aria-label="Gráfico en vivo de la estabilidad de tu afinación mientras sostienes la nota"></canvas>
+    <div class="metro-mini" id="sostenidaMetro">
+      <button type="button" id="btnSostenidaMetro" class="boton" aria-pressed="false">▶ Metrónomo</button>
+      <div class="stepper" role="group" aria-label="Tempo">
+        <button type="button" class="paso" id="sostenidaBpmMenos" aria-label="Bajar el tempo">−</button>
+        <strong class="paso-valor" id="sostenidaBpmValor">80</strong>
+        <button type="button" class="paso" id="sostenidaBpmMas" aria-label="Subir el tempo">+</button>
+      </div>
+      <i class="metro-mini-punto" id="sostenidaMetroPunto" aria-hidden="true"></i>
+    </div>
     <p class="descripcion" id="sostenidaResultado"></p>
     <div class="acciones">
       <button id="btnSostenidaIniciar" class="boton principal">🎤 Empezar</button>
@@ -286,7 +295,7 @@
 <script src="progreso-nube.js?v=1"></script>
 <script src="teclado.js?v=14"></script>
 <script src="twang.js?v=5"></script>
-<script src="entrenamiento.js?v=18"></script>
+<script src="entrenamiento.js?v=19"></script>
 <script src="grabadora.js?v=4"></script>
 <script src="tema.js?v=1"></script>
 <script src="iconos.js?v=7"></script>
