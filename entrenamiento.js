@@ -33,6 +33,26 @@ function cambiarSubmodoEntrenamiento(modo) {
   }
   el("panel-grabadora").hidden = modo !== "grabadora";
   el("estadoEntrenamiento").textContent = "";
+  actualizarAfinadorSostenida(modo === "sostenida");
+}
+
+// «Sostener»: el afinador queda fijo dentro del propio panel (sin saltos ni capas flotantes), pegado al medidor de
+// vibrato. En las demás pestañas vuelve a su sitio de siempre y solo aparece mientras suena el micrófono.
+let afinadorOrigen = null;
+function actualizarAfinadorSostenida(activo) {
+  const cont = el("afinometro");
+  const hueco = el("sostenidaAfinadorSlot");
+  if (!cont || !hueco) return;
+  if (activo) {
+    if (!afinadorOrigen) afinadorOrigen = { padre: cont.parentNode, siguiente: cont.nextSibling };
+    hueco.appendChild(cont);
+    mostrarAfinometro(true, sostenidaObjetivoMidi ?? undefined); // construye el afinador si hace falta
+    cont.classList.add("afinometro-en-panel");
+  } else if (afinadorOrigen && cont.parentNode === hueco) {
+    mostrarAfinometro(false);
+    cont.classList.remove("afinometro-en-panel");
+    afinadorOrigen.padre.insertBefore(cont, afinadorOrigen.siguiente);
+  }
 }
 
 // --- Rango vocal ----------------------------------------------------------
@@ -258,6 +278,7 @@ function manejarClicPianoEntrenamiento(midi) {
     sostenidaObjetivoMidi === null
       ? "Sin nota objetivo: se mide la primera nota que cantes."
       : `🎯 Nota objetivo: ${midiANombre(midi)}. Pulsa Empezar y canta esa nota.`;
+  mostrarAfinometro(true, sostenidaObjetivoMidi ?? undefined); // el afinador enseña la nota elegida
 }
 
 function dibujarGraficoPitch(canvas, muestras) {
@@ -328,7 +349,7 @@ async function iniciarSostenida() {
     return;
   }
 
-  mostrarAfinometro(true);
+  mostrarAfinometro(true, sostenidaObjetivoMidi ?? undefined);
   sostenidaTemporizadorId = setInterval(revisarSilencioSostenida, 100);
 
   window.MicrofonoEngine.escucharContinuo((lectura) => {
@@ -398,7 +419,8 @@ function detenerSostenida() {
 
 function finalizarSostenida(mostrarResultado) {
   entrenEnCurso = false;
-  mostrarAfinometro(false);
+  if (entrenModoActual === "sostenida") mostrarAfinometro(true, sostenidaObjetivoMidi ?? undefined); // fijo, en reposo
+  else mostrarAfinometro(false);
   if (sostenidaTemporizadorId) {
     clearInterval(sostenidaTemporizadorId);
     sostenidaTemporizadorId = null;

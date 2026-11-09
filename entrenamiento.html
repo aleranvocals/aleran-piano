@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="style.css?v=34" />
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="obsidiana.css?v=16" />
+<link rel="stylesheet" href="obsidiana.css?v=17" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -120,6 +120,7 @@
 
   <section id="panel-sostenida" class="panel" hidden>
     <p class="descripcion">Sostén una nota lo más estable y largo que puedas. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Elige una nota en el piano de arriba (opcional). Si no eliges ninguna, se mide la primera nota que cantes.">?</button></p>
+    <div id="sostenidaAfinadorSlot"></div>
     <div class="nota-grande" id="sostenidaTiempo">0.0s</div>
     <p class="marcador" id="sostenidaVibratoEnVivo"></p>
     <canvas id="sostenidaGrafico" width="600" height="120" class="grafico-pitch" role="img" aria-label="Gráfico en vivo de la estabilidad de tu afinación mientras sostienes la nota"></canvas>
@@ -285,7 +286,7 @@
 <script src="progreso-nube.js?v=1"></script>
 <script src="teclado.js?v=14"></script>
 <script src="twang.js?v=5"></script>
-<script src="entrenamiento.js?v=17"></script>
+<script src="entrenamiento.js?v=18"></script>
 <script src="grabadora.js?v=4"></script>
 <script src="tema.js?v=1"></script>
 <script src="iconos.js?v=7"></script>
