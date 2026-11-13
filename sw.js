@@ -5,7 +5,7 @@
  * dejar a nadie con JS/CSS viejo después de un despliegue); la caché solo
  * entra como respaldo cuando no hay red.
  */
-const CACHE_NAME = "aleran-piano-v1";
+const CACHE_NAME = "aleran-piano-v2"; // v2: se vacía la caché vieja, que guardaba también otros dominios
 const NUCLEO = ["index.html", "style.css"];
 
 self.addEventListener("install", (event) => {
@@ -22,11 +22,16 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // Solo archivos de esta web. Lo de otros dominios (API de Maestro con el código del alumno, muestras de
+  // piano, fuentes) lo gestiona el navegador: no debe quedar copiado aquí ni servirse viejo sin conexión.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(
     fetch(event.request)
       .then((respuesta) => {
-        const copia = respuesta.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copia));
+        if (respuesta.ok) {
+          const copia = respuesta.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copia));
+        }
         return respuesta;
       })
       .catch(() => caches.match(event.request))
