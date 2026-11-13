@@ -1244,6 +1244,10 @@ function inicializarMetronomo() {
 
   metroFlotVolumen.addEventListener("input", () => fijarVolumenMetronomo(parseFloat(metroFlotVolumen.value)));
 
+  // Arranca con el último tempo que el alumno eligió en cualquier metrónomo de la web (barra, Ritmo, Rutina...).
+  const elegido = window.MetronomoEngine && window.MetronomoEngine.bpmElegido ? window.MetronomoEngine.bpmElegido() : null;
+  if (elegido !== null) fijarBpm(elegido, true);
+
   function iniciar() {
     if (!window.MetronomoEngine || metronomoEnMarcha) return;
     window.MetronomoEngine.ajustarVolumen(parseFloat(metroFlotVolumen.value));

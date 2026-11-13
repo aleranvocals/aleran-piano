@@ -182,6 +182,8 @@ function inicializarMetronomoFlotante() {
       pintarToggle();
       if (e.motivo === "bpm" && String(e.bpmCompartido) !== String(bpm.value)) aplicarBpm(e.bpmCompartido, true);
     });
+    // Arranca con el último tempo que el alumno eligió en cualquier metrónomo de la web.
+    if (motor.bpmElegido && motor.bpmElegido() !== null) aplicarBpm(motor.bpmElegido(), true);
   }
 
   function aplicarBpm(valor, desdeFuera) {

@@ -1887,7 +1887,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key !== "Tab" || e.ctrlKey || e.altKey || e.metaKey) return;
   const enNota = e.target.closest ? e.target.closest(".celda-nota") : null;
   const seleccionadaViva = celdaNotaSeleccionada && document.body.contains(celdaNotaSeleccionada);
-  const desdeFuera = !enNota && seleccionadaViva && (e.target === document.body || Boolean(e.target.closest(".piano-flotante")));
+  const desdeFuera = !enNota && seleccionadaViva && (e.target === document.body || Boolean(e.target.closest(".piano-flotante, .barra-comun")));
   if (!enNota && !desdeFuera) return;
 
   const celdas = Array.from(document.querySelectorAll(".celda-nota"));
@@ -1915,7 +1915,7 @@ document.addEventListener("click", (e) => {
   // deseleccionar. Cualquier otro click de la página sí.
   // El botón de unir/separar sílabas tampoco deselecciona (ver crearEslabon:
   // conserva la casilla seleccionada aunque el verso se redibuje).
-  if (e.target.closest(".celda-nota") || e.target.closest(".piano-flotante") || e.target.closest(".cifrado-eslabon")) return;
+  if (e.target.closest(".celda-nota") || e.target.closest(".piano-flotante, .barra-comun") || e.target.closest(".cifrado-eslabon")) return;
   deseleccionarCeldaNota();
 });
 
@@ -1963,7 +1963,9 @@ function asegurarCeldaSeleccionadaVisible() {
   const vv = window.visualViewport;
   if (!vv || !celdaNotaSeleccionada) return;
   const rect = celdaNotaSeleccionada.getBoundingClientRect();
-  const techoPiano = vv.offsetTop + vv.height - pianoFlotanteEl.offsetHeight;
+  // Con la barra común, el piano vive dentro de ella: lo que tapa abajo es la barra entera.
+  const tapaAbajo = document.getElementById("barraComun") || pianoFlotanteEl;
+  const techoPiano = vv.offsetTop + vv.height - tapaAbajo.offsetHeight;
   const exceso = rect.bottom - (techoPiano - 12);
   if (exceso > 0) window.scrollBy(0, exceso);
 }

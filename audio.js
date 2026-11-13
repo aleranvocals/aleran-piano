@@ -593,9 +593,13 @@ const DUENOS_EJERCICIO = new Set(["cifrado", "ritmo-ruleta"]);
 // BPM compartido: el último tempo elegido en cualquier metrónomo libre (barra, Solfeo, Ritmo, Rutina, Sostener).
 const CLAVE_BPM_COMPARTIDO = "aleran-metronomo-bpm";
 let bpmCompartido = 100;
+let bpmCompartidoElegido = false; // hasta que alguien elige un tempo, cada página conserva su tempo de partida
 try {
   const g = parseInt(localStorage.getItem(CLAVE_BPM_COMPARTIDO), 10);
-  if (g >= 40 && g <= 350) bpmCompartido = g;
+  if (g >= 40 && g <= 350) {
+    bpmCompartido = g;
+    bpmCompartidoElegido = true;
+  }
 } catch {
   /* sin localStorage: 100 por defecto */
 }
@@ -623,6 +627,7 @@ function fijarBpmCompartido(bpm) {
     metronomoBpm = v;
     cambio = true;
   }
+  bpmCompartidoElegido = true;
   if (!cambio) return;
   bpmCompartido = v;
   try {
@@ -1024,6 +1029,8 @@ window.MetronomoEngine = {
   alCambiar: (fn) => escuchasMetronomo.push(fn),
   alPulso: (fn) => escuchasPulso.push(fn),
   bpmCompartido: () => bpmCompartido,
+  // El tempo compartido solo si alguien lo eligió alguna vez (si no, null: la página usa su tempo de siempre).
+  bpmElegido: () => (bpmCompartidoElegido ? bpmCompartido : null),
   fijarBpmCompartido,
   ajustarBpm: ajustarBpmMetronomo,
   ajustarAcento: ajustarAcentoMetronomo,

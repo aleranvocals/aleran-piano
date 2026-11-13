@@ -505,6 +505,15 @@
   const nav = construirMenu();
   construirDock(nav);
 
+  // Barra fija de abajo (nota de referencia, afinador, metrónomo y piano): común a todas las páginas, en barra.js.
+  (function cargarBarra() {
+    if (document.getElementById("scriptBarra")) return;
+    const s = document.createElement("script");
+    s.id = "scriptBarra";
+    s.src = "barra.js?v=1";
+    document.head.appendChild(s);
+  })();
+
   function alCargar() {
     botonBetaAlPie();
     mejorarTodosLosSelects();

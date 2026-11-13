@@ -486,3 +486,81 @@ input[type="range"]::-moz-range-thumb {
 .nube-confirmar-cuenta.malo { color: var(--crimson-bright); }
 .nube-confirmar-aviso { margin: 0 0 0.8rem; padding: 0.5rem 0.7rem; border-left: 3px solid #f08a24; background: rgba(240, 138, 36, 0.1); border-radius: 6px; font-size: 0.88rem; }
 .nube-confirmar-botones { display: flex; gap: 0.6rem; justify-content: flex-end; flex-wrap: wrap; }
+
+/* =====================================================================
+   Barra común de abajo (barra.js): Nota · Afinador · Metrónomo · Piano
+   ===================================================================== */
+body.con-barra { padding-bottom: calc(var(--barra-h, 0px) + 8px); }
+.barra-comun { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; pointer-events: none; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.barra-comun > * { pointer-events: auto; }
+.barra-comun:not(.abierta) .barra-fila, .barra-comun:not(.abierta) .barra-paneles { display: none; }
+.barra-comun.abierta .barra-asa { display: none; }
+.barra-comun.abierta { background: var(--panel); border-top: 1px solid var(--o-borde); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.barra-fila { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) 40px; gap: 6px; max-width: 760px; margin: 0 auto; padding: 6px 10px; }
+.barra-boton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; padding: 4px 2px; border-radius: 10px; background: var(--o-boton); border: 1px solid var(--o-borde); box-shadow: var(--o-boton-luz); color: var(--bone); font: 600 0.72rem var(--font-body); cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.barra-boton:hover { border-color: rgba(192, 34, 65, 0.6); }
+.barra-boton.activo, .barra-boton.sonando { background: var(--o-activo); border-color: var(--crimson-bright); box-shadow: 0 0 10px var(--o-brillo); }
+.barra-boton:focus-visible, .barra-plegar:focus-visible, .barra-asa:focus-visible { outline: 2px solid var(--crimson-bright); outline-offset: 2px; }
+.barra-ico { position: relative; display: inline-flex; line-height: 0; color: var(--crimson-bright); }
+.barra-ico svg { width: 20px; height: 20px; }
+.barra-rotulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.barra-plegar { border: 1px solid var(--o-borde); background: transparent; color: var(--bone-dim); border-radius: 10px; font-size: 1rem; cursor: pointer; }
+.barra-asa { position: absolute; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: inline-flex; align-items: center; gap: 0.4rem; min-height: 40px; padding: 0 0.85rem; border-radius: 999px; background: var(--o-vidrio); border: 1px solid var(--crimson); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); color: var(--bone); font: 600 0.8rem var(--font-body); cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.barra-asa-ico { display: inline-flex; line-height: 0; color: var(--crimson-bright); }
+.barra-asa-ico svg { width: 18px; height: 18px; }
+.barra-punto { display: none; width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.barra-ico .barra-punto { position: absolute; top: -2px; right: -8px; }
+.barra-comun.met-en-marcha .barra-punto { display: inline-block; background: var(--crimson); }
+.barra-punto.late, .barra-met-punto.late { animation: barraLatido 0.22s ease-out; }
+@keyframes barraLatido { 0% { background: var(--crimson-bright); transform: scale(1.5); box-shadow: 0 0 10px var(--crimson-bright); } 100% { transform: scale(1); } }
+.barra-paneles { max-width: 760px; margin: 0 auto; padding: 0 10px; max-height: 60vh; overflow: auto; }
+.barra-panel { padding: 10px 2px 2px; }
+
+/* Afinador */
+.barra-afi { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "dial lectura" "msg msg"; align-items: center; gap: 0 12px; max-width: 460px; margin: 0 auto; }
+.barra-afi-dial { grid-area: dial; width: 100%; max-width: 240px; height: auto; justify-self: center; }
+.barra-afi-lectura { grid-area: lectura; display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+.barra-afi-nota { font: 700 2rem var(--font-display); line-height: 1; }
+.barra-afi-cents { font: 600 0.85rem var(--font-mono); color: var(--bone-dim); min-height: 1.2em; }
+.barra-afi-msg { grid-area: msg; margin: 0; text-align: center; font-weight: 600; font-size: 0.9rem; color: var(--bone-dim); }
+.barra-afi[data-nivel="bien"] .barra-afi-msg, .barra-afi[data-nivel="bien"] .barra-afi-nota { color: #3ecf6e; }
+.barra-afi[data-nivel="casi"] .barra-afi-msg { color: #f08a24; }
+.barra-afi[data-nivel="lejos"] .barra-afi-msg { color: #ff3b4e; }
+
+/* Metrónomo */
+.barra-met { display: flex; align-items: center; justify-content: center; gap: 0.7rem; flex-wrap: wrap; }
+.barra-met-toggle { min-width: 56px; font-size: 1.1rem; }
+.barra-met-pasos { display: inline-flex; align-items: center; gap: 0.3rem; }
+.barra-met-bpm { min-width: 3ch; text-align: center; font: 700 1.3rem var(--font-mono); }
+.barra-met-unidad { font-size: 0.75rem; color: var(--muted); margin-left: -0.4rem; }
+.barra-met-punto { width: 18px; height: 18px; border-radius: 50%; background: var(--line); flex: none; }
+.barra-met-dueno { margin: 0.3rem 0 0; text-align: center; font-size: 0.78rem; color: var(--muted); min-height: 0; }
+.barra-met-dueno:empty { display: none; }
+
+/* Piano de 2 octavas */
+.barra-teclado { display: flex; height: 110px; margin: 0 auto 4px; max-width: 640px; touch-action: none; -webkit-user-select: none; user-select: none; }
+.barra-tecla.blanca { position: relative; flex: 1 1 0; min-width: 0; background: linear-gradient(180deg, #f6efe9, #e6dcd4); border: 1px solid #2a1f1f; border-radius: 0 0 6px 6px; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
+.barra-tecla.negra { position: absolute; z-index: 2; top: 0; right: -30%; width: 60%; height: 62%; background: linear-gradient(180deg, #2a1f1f, #0c0808); border: 1px solid #000; border-radius: 0 0 4px 4px; cursor: pointer; }
+.barra-tecla.pulsada.blanca { background: linear-gradient(180deg, #f3c9d1, #e79aab); }
+.barra-tecla.negra.pulsada { background: linear-gradient(180deg, var(--crimson-bright), var(--crimson)); }
+.barra-tecla.inicio-rango { box-shadow: inset 0 -4px 0 var(--crimson-bright); }
+.barra-tecla-nombre { font: 600 0.62rem var(--font-body); color: #5b4a42; margin-bottom: 6px; pointer-events: none; }
+
+/* Cifrado: su piano flotante vive dentro de la barra (sin duplicarse) */
+body.barra-piano-pagina #pianoFlotante { display: none; }
+.barra-comun .piano-flotante-cuerpo { padding: 8px 0 4px; }
+.barra-comun .piano-flotante-cuerpo .piano-contenedor { margin-bottom: 0.4rem; }
+.barra-comun.compacta .piano-flotante-ayuda, .barra-comun.compacta .piano-zoom { display: none; }
+.barra-comun.compacta .barra-fila { padding-top: 3px; padding-bottom: 3px; }
+.barra-comun.compacta .barra-boton { min-height: 40px; }
+@media (max-width: 600px) {
+  .barra-comun .piano-flotante-cuerpo .piano-zoom { display: none; }
+  .barra-comun .piano-flotante-cuerpo .piano { height: 84px; }
+}
+@media (max-width: 420px) {
+  .barra-fila { gap: 4px; padding: 5px 8px; grid-template-columns: repeat(4, minmax(0, 1fr)) 34px; }
+  .barra-boton { min-height: 48px; font-size: 0.68rem; }
+  .barra-afi-nota { font-size: 1.7rem; }
+  .barra-teclado { height: 96px; }
+}
+@media print { .barra-comun, .aviso-metronomo { display: none !important; } body.con-barra { padding-bottom: 0; } }
