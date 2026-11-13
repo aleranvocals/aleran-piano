@@ -92,6 +92,7 @@
   }
 
   function cambiar(d) {
+    if (!original) return; // sin canción no hay nada que mover
     if (fueraDeLimites(desp + d)) { el("trEstado").textContent = "Más allá de eso las notas salen del piano."; return; }
     el("trEstado").textContent = "";
     desp += d;
