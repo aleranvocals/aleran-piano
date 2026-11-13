@@ -571,7 +571,7 @@ function inicializarOido() {
   // esa pestaña de entrada -- si no hay parámetro o no coincide con ninguna
   // pestaña real, se queda en "intervalos" (la que ya marca el HTML por defecto).
   const tabPedida = new URLSearchParams(window.location.search).get("tab");
-  if (tabPedida && document.querySelector(`.subtab[data-oido="${tabPedida}"]`)) {
+  if (tabPedida && document.querySelector(`.subtab[data-oido="${CSS.escape(tabPedida)}"]`)) {
     cambiarSubmodoOido(tabPedida);
   }
 }

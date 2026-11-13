@@ -1623,7 +1623,7 @@ function inicializarEntrenamiento() {
   // pestaña real, se queda en "rango" (la que ya marca el HTML por defecto).
   const tabPedida = new URLSearchParams(window.location.search).get("tab");
   const tabReal = tabPedida === "twang" ? "espectro" : tabPedida;
-  if (tabReal && document.querySelector(`.subtab[data-entren="${tabReal}"]`)) {
+  if (tabReal && document.querySelector(`.subtab[data-entren="${CSS.escape(tabReal)}"]`)) {
     cambiarSubmodoEntrenamiento(tabReal);
     // ?tab=twang es el enlace directo al detector: baja hasta el medidor, no se queda arriba del panel
     if (tabPedida === "twang") {

@@ -1185,10 +1185,25 @@ function descargarCancionJson() {
 
 async function abrirCancionDesdeArchivo(archivo) {
   const texto = await archivo.text();
-  const datos = JSON.parse(texto);
-  if (!Array.isArray(datos.cancion)) throw new Error("El archivo no tiene el formato esperado");
-  aplicarDatosCancion(datos);
-  renderCancion();
+  const errorFormato = new Error("no es una canción guardada desde Cifrado");
+  let datos;
+  try {
+    datos = JSON.parse(texto);
+  } catch {
+    throw errorFormato;
+  }
+  if (!datos || !Array.isArray(datos.cancion)) throw errorFormato;
+  // Un archivo con forma rara (de otra versión, editado a mano...) no debe dejar la canción
+  // actual rota en memoria ni pasar al autoguardado: si algo falla, se vuelve a la de antes.
+  const anterior = datosCancionActual();
+  try {
+    aplicarDatosCancion(datos);
+    renderCancion();
+  } catch {
+    aplicarDatosCancion(anterior);
+    renderCancion();
+    throw errorFormato;
+  }
   guardarCancionAutoguardado();
 }
 
@@ -2030,7 +2045,18 @@ document.addEventListener("keydown", (e) => {
 // editor haya dejado esperando.
 if (restaurarCancionAutoguardada()) {
   aplicarResultadosDeRitmoPendientes();
-  renderCancion();
+  try {
+    renderCancion();
+  } catch {
+    // Autoguardado corrupto: sin esto la página se quedaba rota en cada recarga.
+    cancion = [];
+    renderCancion();
+    try {
+      localStorage.removeItem(CLAVE_AUTOGUARDADO);
+    } catch {
+      /* nada más que hacer */
+    }
+  }
 }
 
 // Punto de partida del historial -- sin esto, el primer Ctrl+Z después de

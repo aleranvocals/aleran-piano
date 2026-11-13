@@ -702,6 +702,25 @@ function micDispositivoGuardado() {
   }
 }
 
+// El navegador da errores en inglés y técnicos («Permission denied»): aquí se traducen a algo que un alumno
+// entienda y sepa resolver. Todas las páginas muestran err.message tal cual.
+function errorMicrofonoLegible(err) {
+  const nombre = err && err.name;
+  let texto;
+  if (nombre === "NotAllowedError" || nombre === "SecurityError") {
+    texto = "el permiso está bloqueado. Toca el candado junto a la dirección de la web, permite el micrófono y recarga la página.";
+  } else if (nombre === "NotFoundError" || nombre === "OverconstrainedError") {
+    texto = "no encuentro ningún micrófono conectado.";
+  } else if (nombre === "NotReadableError" || nombre === "AbortError") {
+    texto = "otro programa está usando el micrófono. Ciérralo y vuelve a intentarlo.";
+  } else {
+    return err;
+  }
+  const e = new Error(texto);
+  e.name = nombre;
+  return e;
+}
+
 async function iniciarMicrofono() {
   if (streamMicrofono) return;
   if (!microfonoDisponible()) {
@@ -716,9 +735,13 @@ async function iniciarMicrofono() {
   } catch (err) {
     // El micrófono elegido ya no está conectado: se usa el predeterminado en vez de fallar.
     if (guardado && (err.name === "OverconstrainedError" || err.name === "NotFoundError")) {
-      streamMicrofono = await navigator.mediaDevices.getUserMedia({ audio: base });
+      try {
+        streamMicrofono = await navigator.mediaDevices.getUserMedia({ audio: base });
+      } catch (err2) {
+        throw errorMicrofonoLegible(err2);
+      }
     } else {
-      throw err;
+      throw errorMicrofonoLegible(err);
     }
   }
   const ctx = obtenerContexto();
@@ -869,6 +892,7 @@ window.MicrofonoEngine = {
   escucharYPuntuar,
   escucharContinuo,
   detenerContinuo: detenerEscuchaContinua,
+  errorLegible: errorMicrofonoLegible,
   // Da acceso al AnalyserNode crudo (para el espectrograma en vivo); no hace
   // falta crear un segundo analizador, el mismo sirve para pitch y espectro.
   obtenerAnalizador: () => analizadorMicrofono,

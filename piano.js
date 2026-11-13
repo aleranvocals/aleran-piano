@@ -1270,7 +1270,7 @@ function inicializar() {
   // esa pestaña de entrada -- si no hay parámetro o no coincide con ninguna
   // pestaña real, se queda en "individual" como siempre.
   const tabPedida = new URLSearchParams(window.location.search).get("tab");
-  cambiarModo(tabPedida && document.querySelector(`.tab[data-modo="${tabPedida}"]`) ? tabPedida : "individual");
+  cambiarModo(tabPedida && document.querySelector(`.tab[data-modo="${CSS.escape(tabPedida)}"]`) ? tabPedida : "individual");
   cargarPersonalizadaDesdeCifradoSiHaceFalta();
 
   document.querySelectorAll(".tab").forEach((btn) => {

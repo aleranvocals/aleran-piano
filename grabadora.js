@@ -209,7 +209,8 @@ async function iniciarGrabacion() {
       grabadoraStream = await navigator.mediaDevices.getUserMedia({ audio: true }); // el elegido ya no está
     }
   } catch (err) {
-    el("estadoEntrenamiento").textContent = `No se pudo acceder al micrófono: ${err.message}`;
+    const legible = window.MicrofonoEngine && window.MicrofonoEngine.errorLegible ? window.MicrofonoEngine.errorLegible(err) : err;
+    el("estadoEntrenamiento").textContent = `No se pudo acceder al micrófono: ${legible.message}`;
     el("btnGrabarIniciar").disabled = false;
     return;
   }

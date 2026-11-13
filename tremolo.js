@@ -80,7 +80,7 @@
       el("trmParar").hidden = false;
       tic = setInterval(paso, Math.round(1000 / FPS));
     }).catch(function (e) {
-      est.textContent = "No pude usar el micrófono: " + (e && e.message ? e.message : "permiso denegado") + ".";
+      est.textContent = ("No pude usar el micrófono: " + (e && e.message ? e.message : "permiso denegado")).replace(/\.?$/, ".");
     });
   }
 

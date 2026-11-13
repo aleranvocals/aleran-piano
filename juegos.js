@@ -2371,7 +2371,7 @@
   function iniciarPagina() {
     // Enlace directo desde Maestro / la guía: juegos.html?tab=pasillo | plataforma | ritmo
     const pedido = new URLSearchParams(window.location.search).get("tab");
-    if (pedido && DESCRIPCIONES[pedido]) config.juego = pedido;
+    if (pedido && Object.prototype.hasOwnProperty.call(DESCRIPCIONES, pedido)) config.juego = pedido;
     document.querySelectorAll("[data-juego]").forEach((b) => b.addEventListener("click", () => elegirJuego(b.dataset.juego)));
     $("btnJugar").addEventListener("click", jugar);
     const acc = document.querySelector(".acciones");

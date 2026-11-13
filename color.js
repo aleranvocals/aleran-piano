@@ -105,7 +105,7 @@
       est.textContent = "Listo. La marca blanca es tu voz central.";
       empezarMedir();
     }).catch(function (e) {
-      est.textContent = "No pude usar el micrófono: " + (e && e.message ? e.message : "permiso denegado") + ".";
+      est.textContent = ("No pude usar el micrófono: " + (e && e.message ? e.message : "permiso denegado")).replace(/\.?$/, ".");
     });
   }
 
