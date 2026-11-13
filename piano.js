@@ -321,21 +321,36 @@ function invalidarSecuencia() {
   secuenciaActual = null;
 }
 
+function pintarMetronomoSolfeo() {
+  el("btnMetronomoIniciar").disabled = metronomoEnMarcha;
+  el("btnMetronomoDetener").disabled = !metronomoEnMarcha;
+  el("metroFlotToggle").textContent = metronomoEnMarcha ? "⏹" : "▶";
+  el("metroFlotToggle").classList.toggle("en-marcha", metronomoEnMarcha);
+}
+
 function detenerMetronomoSiHaceFalta() {
   if (!metronomoEnMarcha) return;
-  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  if (window.MetronomoEngine) window.MetronomoEngine.detener("solfeo");
   metronomoEnMarcha = false;
-  el("btnMetronomoIniciar").disabled = false;
-  el("btnMetronomoDetener").disabled = true;
-  el("metroFlotToggle").textContent = "▶";
-  el("metroFlotToggle").classList.remove("en-marcha");
+  pintarMetronomoSolfeo();
+}
+
+// Un solo metrónomo en toda la web: si lo arranca/para otro sitio (la barra de abajo, el aviso al cambiar de
+// pestaña), los botones de Solfeo lo reflejan; y si el tempo cambia en la barra, aquí también.
+if (window.MetronomoEngine && window.MetronomoEngine.alCambiar) {
+  window.MetronomoEngine.alCambiar((e) => {
+    metronomoEnMarcha = e.activo && e.dueno === "solfeo";
+    if (el("metroFlotToggle")) pintarMetronomoSolfeo();
+    if (e.motivo === "bpm" && el("bpmSlider") && String(e.bpmCompartido) !== el("bpmSlider").value) fijarBpm(e.bpmCompartido, true);
+  });
 }
 
 /** Aplica un BPM nuevo a los dos sitios donde se puede tocar (la pestaña
  * detallada y la barra compacta), al motor si está sonando, y a la
  * duración de nota si está vinculada al tempo. */
-function fijarBpm(bpm) {
+function fijarBpm(bpm, desdeFuera) {
   bpm = Math.max(50, Math.min(350, bpm || 100));
+  if (!desdeFuera && window.MetronomoEngine && window.MetronomoEngine.fijarBpmCompartido) window.MetronomoEngine.fijarBpmCompartido(bpm);
   el("bpmSlider").value = bpm;
   el("bpmNumero").value = bpm;
   el("metroFlotBpm").value = bpm;
@@ -762,7 +777,7 @@ function inicializarPersonalizada() {
       const datos = JSON.parse(texto);
       if (!Array.isArray(datos.unidades)) throw new Error("El archivo no tiene el formato esperado");
       unidadesPersonalizadas = datos.unidades;
-      if (datos.bpm) fijarBpm(datos.bpm);
+      if (datos.bpm) fijarBpm(datos.bpm, true);
       if (datos.metrica) {
         personalizadaMetrica = datos.metrica;
         el("personalizadaMetrica").value = datos.metrica;
@@ -1231,11 +1246,6 @@ function inicializarMetronomo() {
 
   function iniciar() {
     if (!window.MetronomoEngine || metronomoEnMarcha) return;
-    metronomoEnMarcha = true;
-    btnIniciar.disabled = true;
-    btnDetener.disabled = false;
-    metroFlotToggle.textContent = "⏹";
-    metroFlotToggle.classList.add("en-marcha");
     window.MetronomoEngine.ajustarVolumen(parseFloat(metroFlotVolumen.value));
     window.MetronomoEngine.iniciar(parseInt(bpmSlider.value, 10), parseInt(acentoSelect.value, 10), (acento) => {
       [punto, puntoMini].forEach((p) => {
@@ -1244,7 +1254,9 @@ function inicializarMetronomo() {
         p.classList.add("pulso");
         if (acento) p.classList.add("acento");
       });
-    });
+    }, "solfeo");
+    metronomoEnMarcha = true;
+    pintarMetronomoSolfeo();
   }
 
   btnIniciar.addEventListener("click", iniciar);
@@ -1288,7 +1300,7 @@ function inicializar() {
       // patrón, no cada vez que cambia algo -- después se puede ajustar a mano.
       el("sincronizarTempo").checked = true;
       el("figuraRitmica").value = "0.25";
-      fijarBpm(200);
+      fijarBpm(200, true); // tempo propio del glissando: no cambia el tempo compartido del metrónomo
       actualizarVisibilidadDuracion();
     }
     invalidarSecuencia();

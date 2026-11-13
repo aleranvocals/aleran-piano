@@ -578,15 +578,75 @@ function reproducirClicMetronomo(ctx, tiempo, acento) {
   osc.stop(tiempo + 0.06);
 }
 
+// Estado único del metrónomo en toda la web: solo hay un motor, y cada sitio que lo arranca (la barra de abajo,
+// Solfeo, Ritmo, Rutina, Sostener, Cifrado...) se identifica como «dueño». Así cada página sabe si el que suena es
+// el suyo (y pinta su botón como corresponde) y nadie para por error el metrónomo que arrancó otro.
+let metronomoDueno = null;
+let metronomoOnPulso = null;
+let metronomoGeneracion = 0;
+const escuchasMetronomo = [];
+const escuchasPulso = [];
+// Dueños cuyo metrónomo es parte de un ejercicio (no un metrónomo «libre»): su tempo no se toca desde fuera y, al
+// volver de otra pestaña, no se ofrece reanudarlos (el ejercicio ya no va por donde iba).
+const DUENOS_EJERCICIO = new Set(["cifrado", "ritmo-ruleta"]);
+
+// BPM compartido: el último tempo elegido en cualquier metrónomo libre (barra, Solfeo, Ritmo, Rutina, Sostener).
+const CLAVE_BPM_COMPARTIDO = "aleran-metronomo-bpm";
+let bpmCompartido = 100;
+try {
+  const g = parseInt(localStorage.getItem(CLAVE_BPM_COMPARTIDO), 10);
+  if (g >= 40 && g <= 350) bpmCompartido = g;
+} catch {
+  /* sin localStorage: 100 por defecto */
+}
+
+function estadoMetronomo(motivo, extra) {
+  return { activo: metronomoActivo, bpm: metronomoBpm, acento: metronomoAcentoCada, dueno: metronomoActivo ? metronomoDueno : null, bpmCompartido, motivo, ...extra };
+}
+
+function avisarMetronomo(motivo, extra) {
+  const e = estadoMetronomo(motivo, extra);
+  escuchasMetronomo.slice().forEach((fn) => {
+    try {
+      fn(e);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+}
+
+/** Cambia el tempo compartido (lo recuerda este navegador). Si suena un metrónomo libre, cambia en caliente. */
+function fijarBpmCompartido(bpm) {
+  const v = Math.max(40, Math.min(350, Math.round(bpm) || 100));
+  let cambio = v !== bpmCompartido;
+  if (metronomoActivo && !DUENOS_EJERCICIO.has(metronomoDueno) && metronomoBpm !== v) {
+    metronomoBpm = v;
+    cambio = true;
+  }
+  if (!cambio) return;
+  bpmCompartido = v;
+  try {
+    localStorage.setItem(CLAVE_BPM_COMPARTIDO, String(v));
+  } catch {
+    /* vale para esta visita */
+  }
+  avisarMetronomo("bpm");
+}
+
 // No se conecta a un piano ni depende de qué pestaña esté abierta -- una vez
 // iniciado, sigue sonando (mezclado con lo que sea que suene en el piano)
 // aunque el alumno cambie de modo/pestaña dentro de la página.
-function iniciarMetronomo(bpm, acentoCada, onPulso) {
-  detenerMetronomo();
+// `dueno`: quién lo arranca (ver metronomoDueno). Si ya sonaba otro, se para y este ocupa su lugar.
+function iniciarMetronomo(bpm, acentoCada, onPulso, dueno = "pagina") {
+  detenerMetronomo(undefined, true);
+  cerrarAvisoMetronomo();
+  metronomoPausadoOculto = null;
   const ctx = obtenerContexto();
   metronomoBpm = bpm;
   metronomoAcentoCada = acentoCada;
   metronomoActivo = true;
+  metronomoDueno = dueno;
+  metronomoOnPulso = onPulso || null;
   metronomoContadorPulso = 0;
   // Si ya hay una nota/secuencia sonando cuando se arranca el metrónomo, no
   // empezar a destiempo: esperar a que termine el evento actual (nota o
@@ -594,31 +654,109 @@ function iniciarMetronomo(bpm, acentoCada, onPulso) {
   // siguiente, en vez de caer en medio de una nota ya sonando.
   const limiteNota = proximoLimiteNotaCtx();
   metronomoSiguienteTiempo = limiteNota !== null && limiteNota > ctx.currentTime ? limiteNota : ctx.currentTime + 0.05;
+  const miGeneracion = ++metronomoGeneracion;
 
   function programar() {
-    if (!metronomoActivo) return;
+    if (!metronomoActivo || miGeneracion !== metronomoGeneracion) return;
     while (metronomoSiguienteTiempo < ctx.currentTime + METRONOMO_ANTICIPO_S) {
       const acento = metronomoAcentoCada > 0 && metronomoContadorPulso % metronomoAcentoCada === 0;
       reproducirClicMetronomo(ctx, metronomoSiguienteTiempo, acento);
-      if (onPulso) {
-        const retrasoMs = Math.max(0, (metronomoSiguienteTiempo - ctx.currentTime) * 1000);
-        setTimeout(() => {
-          if (metronomoActivo) onPulso(acento);
-        }, retrasoMs);
-      }
+      const retrasoMs = Math.max(0, (metronomoSiguienteTiempo - ctx.currentTime) * 1000);
+      setTimeout(() => {
+        if (!metronomoActivo || miGeneracion !== metronomoGeneracion) return;
+        if (onPulso) onPulso(acento);
+        escuchasPulso.forEach((fn) => {
+          try {
+            fn(acento);
+          } catch (err) {
+            console.error(err);
+          }
+        });
+      }, retrasoMs);
       metronomoSiguienteTiempo += 60 / metronomoBpm;
       metronomoContadorPulso++;
     }
     metronomoTimerId = setTimeout(programar, METRONOMO_INTERVALO_MS);
   }
   programar();
+  avisarMetronomo("iniciar");
 }
 
-function detenerMetronomo() {
+/** Para el metrónomo. Con `dueno`, solo lo para si es el suyo (así el final de una frase de Cifrado no corta el
+ * metrónomo que el alumno encendió después en la barra). */
+function detenerMetronomo(dueno, sinAviso) {
+  if (dueno !== undefined && dueno !== null && (!metronomoActivo || metronomoDueno !== dueno)) return;
+  const estaba = metronomoActivo;
+  const duenoAnterior = metronomoDueno;
   metronomoActivo = false;
+  metronomoGeneracion++;
   if (metronomoTimerId) clearTimeout(metronomoTimerId);
   metronomoTimerId = null;
+  metronomoDueno = null;
+  metronomoOnPulso = null;
+  if (estaba && !sinAviso) avisarMetronomo("detener", { duenoAnterior });
 }
+
+// --- Al ocultar la pestaña, el metrónomo se para ------------------------
+// En segundo plano el navegador frena los temporizadores y el clic se desordena (o sigue sonando sin que se vea).
+// Se para del todo y, al volver, un aviso breve deja reanudarlo con el mismo tempo.
+let metronomoPausadoOculto = null;
+let avisoMetronomoEl = null;
+
+function cerrarAvisoMetronomo() {
+  if (avisoMetronomoEl) avisoMetronomoEl.remove();
+  avisoMetronomoEl = null;
+}
+
+function mostrarAvisoMetronomo(pausado) {
+  cerrarAvisoMetronomo();
+  if (!document.body) return;
+  const caja = document.createElement("div");
+  caja.className = "aviso-metronomo";
+  caja.setAttribute("role", "status");
+  const texto = document.createElement("span");
+  texto.textContent = "El metrónomo se paró al cambiar de pestaña";
+  caja.appendChild(texto);
+  if (pausado && !DUENOS_EJERCICIO.has(pausado.dueno)) {
+    const reanudar = document.createElement("button");
+    reanudar.type = "button";
+    reanudar.className = "boton principal";
+    reanudar.textContent = "Reanudar";
+    reanudar.addEventListener("click", () => {
+      cerrarAvisoMetronomo();
+      iniciarMetronomo(pausado.bpm, pausado.acento, pausado.onPulso, pausado.dueno);
+    });
+    caja.appendChild(reanudar);
+  }
+  const cerrar = document.createElement("button");
+  cerrar.type = "button";
+  cerrar.className = "aviso-metronomo-cerrar";
+  cerrar.setAttribute("aria-label", "Cerrar aviso");
+  cerrar.textContent = "✕";
+  cerrar.addEventListener("click", cerrarAvisoMetronomo);
+  caja.appendChild(cerrar);
+  document.body.appendChild(caja);
+  avisoMetronomoEl = caja;
+  setTimeout(() => {
+    if (avisoMetronomoEl === caja) cerrarAvisoMetronomo();
+  }, 12000);
+}
+
+function metronomoAlCambiarVisibilidad() {
+  if (document.hidden) {
+    if (!metronomoActivo) return;
+    metronomoPausadoOculto = { bpm: metronomoBpm, acento: metronomoAcentoCada, onPulso: metronomoOnPulso, dueno: metronomoDueno };
+    detenerMetronomo(undefined, true);
+    avisarMetronomo("oculto", { duenoAnterior: metronomoPausadoOculto.dueno });
+    return;
+  }
+  if (metronomoPausadoOculto) {
+    const pausado = metronomoPausadoOculto;
+    metronomoPausadoOculto = null;
+    if (!metronomoActivo) mostrarAvisoMetronomo(pausado);
+  }
+}
+document.addEventListener("visibilitychange", metronomoAlCambiarVisibilidad);
 
 function metronomoEnMarchaMotor() {
   return metronomoActivo;
@@ -879,8 +1017,14 @@ window.PianoEngine = {
 };
 window.MetronomoEngine = {
   iniciar: iniciarMetronomo,
-  detener: detenerMetronomo,
+  detener: (dueno) => detenerMetronomo(dueno),
   enMarcha: metronomoEnMarchaMotor,
+  estado: () => estadoMetronomo("consulta"),
+  dueno: () => (metronomoActivo ? metronomoDueno : null),
+  alCambiar: (fn) => escuchasMetronomo.push(fn),
+  alPulso: (fn) => escuchasPulso.push(fn),
+  bpmCompartido: () => bpmCompartido,
+  fijarBpmCompartido,
   ajustarBpm: ajustarBpmMetronomo,
   ajustarAcento: ajustarAcentoMetronomo,
   ajustarVolumen: ajustarVolumenMetronomo,

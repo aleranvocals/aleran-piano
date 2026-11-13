@@ -56,8 +56,20 @@ function pintarMetronomoSostenida() {
 function detenerMetronomoSostenida() {
   if (!sostenidaMetroActivo) return;
   sostenidaMetroActivo = false;
-  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  if (window.MetronomoEngine) window.MetronomoEngine.detener("sostener");
   pintarMetronomoSostenida();
+}
+
+// Un solo metrónomo en toda la web (mismo tempo que la barra de abajo): si otro sitio lo arranca o lo para, o
+// cambia el tempo, este botón lo refleja.
+if (window.MetronomoEngine && window.MetronomoEngine.alCambiar) {
+  const ajustarAlCompartido = (v) => Math.max(SOSTENIDA_METRO_MIN, Math.min(SOSTENIDA_METRO_MAX, v));
+  sostenidaMetroBpm = ajustarAlCompartido(window.MetronomoEngine.bpmCompartido());
+  window.MetronomoEngine.alCambiar((e) => {
+    sostenidaMetroActivo = e.activo && e.dueno === "sostener";
+    if (e.motivo === "bpm" || sostenidaMetroActivo) sostenidaMetroBpm = ajustarAlCompartido(sostenidaMetroActivo ? e.bpm : e.bpmCompartido);
+    pintarMetronomoSostenida();
+  });
 }
 
 function alternarMetronomoSostenida() {
@@ -66,7 +78,6 @@ function alternarMetronomoSostenida() {
     detenerMetronomoSostenida();
     return;
   }
-  sostenidaMetroActivo = true;
   window.MetronomoEngine.ajustarVolumen(0.7);
   window.MetronomoEngine.iniciar(sostenidaMetroBpm, 0, () => {
     const punto = el("sostenidaMetroPunto");
@@ -74,13 +85,15 @@ function alternarMetronomoSostenida() {
     punto.classList.remove("pulso");
     void punto.offsetWidth; // reinicia la animación en cada pulso
     punto.classList.add("pulso");
-  });
+  }, "sostener");
+  sostenidaMetroActivo = true;
   pintarMetronomoSostenida();
 }
 
 function cambiarBpmSostenida(delta) {
   sostenidaMetroBpm = Math.max(SOSTENIDA_METRO_MIN, Math.min(SOSTENIDA_METRO_MAX, sostenidaMetroBpm + delta));
   if (sostenidaMetroActivo && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(sostenidaMetroBpm);
+  if (window.MetronomoEngine && window.MetronomoEngine.fijarBpmCompartido) window.MetronomoEngine.fijarBpmCompartido(sostenidaMetroBpm);
   pintarMetronomoSostenida();
 }
 
@@ -1596,6 +1609,7 @@ function inicializarEntrenamiento() {
   el("btnSostenidaMetro").addEventListener("click", alternarMetronomoSostenida);
   el("sostenidaBpmMenos").addEventListener("click", () => cambiarBpmSostenida(-5));
   el("sostenidaBpmMas").addEventListener("click", () => cambiarBpmSostenida(5));
+  pintarMetronomoSostenida(); // arranca con el tempo compartido de la web
   el("btnRangoIniciar").addEventListener("click", iniciarRango);
   el("btnRangoDetener").addEventListener("click", detenerRango);
   el("btnSovtIniciar").addEventListener("click", iniciarSovt);

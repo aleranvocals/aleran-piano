@@ -168,11 +168,27 @@ function inicializarMetronomoFlotante() {
   const volumen = el("metroFlotVolumen");
   const punto = el("metronomoPuntoMini");
   let enMarcha = false;
+  const motor = window.MetronomoEngine;
 
-  function aplicarBpm(valor) {
+  function pintarToggle() {
+    toggle.textContent = enMarcha ? "⏹" : "▶";
+    toggle.classList.toggle("en-marcha", enMarcha);
+  }
+  // Un solo metrónomo en toda la web: si lo arranca/para otro sitio (la barra, el aviso de pestaña), este botón lo
+  // refleja; y si el tempo cambia en la barra, aquí también.
+  if (motor && motor.alCambiar) {
+    motor.alCambiar((e) => {
+      enMarcha = e.activo && e.dueno === "rutina";
+      pintarToggle();
+      if (e.motivo === "bpm" && String(e.bpmCompartido) !== String(bpm.value)) aplicarBpm(e.bpmCompartido, true);
+    });
+  }
+
+  function aplicarBpm(valor, desdeFuera) {
     valor = Math.max(50, Math.min(350, parseInt(valor, 10) || 100));
     bpm.value = valor;
     bpmNumero.value = valor;
+    if (!desdeFuera && motor && motor.fijarBpmCompartido) motor.fijarBpmCompartido(valor);
     if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(valor);
     // Un ejercicio ya agendó TODAS sus notas de una vez al tempo de cuando
     // arrancó (ver reproducirSecuencia en audio.js) -- cambiar el BPM a
@@ -199,21 +215,19 @@ function inicializarMetronomoFlotante() {
   toggle.addEventListener("click", () => {
     if (!window.MetronomoEngine) return;
     if (enMarcha) {
-      window.MetronomoEngine.detener();
+      window.MetronomoEngine.detener("rutina");
       enMarcha = false;
-      toggle.textContent = "▶";
-      toggle.classList.remove("en-marcha");
+      pintarToggle();
       return;
     }
-    enMarcha = true;
-    toggle.textContent = "⏹";
-    toggle.classList.add("en-marcha");
     window.MetronomoEngine.ajustarVolumen(parseFloat(volumen.value));
     window.MetronomoEngine.iniciar(parseInt(bpm.value, 10), parseInt(acento.value, 10), () => {
       punto.classList.remove("pulso");
       void punto.offsetWidth; // fuerza reflow para reiniciar la animación en cada pulso
       punto.classList.add("pulso");
-    });
+    }, "rutina");
+    enMarcha = true;
+    pintarToggle();
   });
 }
 

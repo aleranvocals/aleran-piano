@@ -397,6 +397,7 @@ const RULETA_FASES = [
   { id: "turno", texto: "¡Tu turno!" },
 ];
 let ruletaEnCurso = false;
+let ruletaResolver = null; // la promesa de tocarPatronRuleta: se resuelve también si la ruleta se corta desde fuera
 
 function iconosPatron(unidades, alto) {
   const ancho = (alto * 24) / 34;
@@ -446,8 +447,21 @@ function pintarFaseRuleta(fase, pulso) {
 function detenerRuleta() {
   if (!ruletaEnCurso) return;
   ruletaEnCurso = false;
-  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  if (window.MetronomoEngine) window.MetronomoEngine.detener("ritmo-ruleta");
   if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+  const r = ruletaResolver;
+  ruletaResolver = null;
+  if (r) r();
+}
+
+// Si otro metrónomo (la barra de abajo, o el aviso al cambiar de pestaña) corta el de la ruleta, la ruleta se cierra
+// limpia: sin quedarse a medias con los botones bloqueados.
+if (window.MetronomoEngine && window.MetronomoEngine.alCambiar) {
+  window.MetronomoEngine.alCambiar((e) => {
+    if (!ruletaEnCurso || (e.activo && e.dueno === "ritmo-ruleta")) return;
+    detenerRuleta();
+    pintarFaseRuleta("fin", -1);
+  });
 }
 
 // -- Rueda sincronizada con la secuencia (tira larga) -------------------
@@ -548,11 +562,12 @@ function tocarPatronRuleta(celda) {
   patron.textContent = "";
   patron.appendChild(iconosPatron(celda.unidades, 70));
   el("ruletaNombre").textContent = celda.nombre;
-  ruletaEnCurso = true;
   // Si el metrónomo de arriba estaba sonando, se para: la ruleta lleva su propio pulso.
   if (el("metroFlotToggle") && el("metroFlotToggle").classList.contains("en-marcha")) el("metroFlotToggle").click();
   if (window.MetronomoEngine.ajustarVolumen) window.MetronomoEngine.ajustarVolumen(parseFloat(el("metroFlotVolumen").value));
+  ruletaEnCurso = true;
   return new Promise((resolver) => {
+    ruletaResolver = resolver;
     let n = -1;
     window.MetronomoEngine.iniciar(bpm, 4, () => {
       if (!ruletaEnCurso) return;
@@ -569,7 +584,7 @@ function tocarPatronRuleta(celda) {
         const unaVez = unidadesRitmoAEventos(celda.unidades, bpm);
         window.PianoEngine.reproducirRitmo([...unaVez, ...unaVez, ...unaVez, ...unaVez], 0.8, {});
       }
-    });
+    }, "ritmo-ruleta");
   });
 }
 
@@ -638,14 +653,31 @@ function inicializarMetronomoFlotanteRitmo() {
   const volumen = el("metroFlotVolumen");
   const punto = el("metronomoPuntoMini");
   let enMarcha = false;
+  const motor = window.MetronomoEngine;
 
-  function aplicarBpm(valor) {
+  function pintarToggle() {
+    toggle.textContent = enMarcha ? "⏹" : "▶";
+    toggle.classList.toggle("en-marcha", enMarcha);
+  }
+
+  function aplicarBpm(valor, desdeFuera) {
     valor = Math.max(50, Math.min(350, parseInt(valor, 10) || 100));
+    const cambia = String(valor) !== String(bpm.value);
     bpm.value = valor;
     bpmNumero.value = valor;
-    if (enMarcha && window.MetronomoEngine) window.MetronomoEngine.ajustarBpm(valor);
+    if (enMarcha && motor) motor.ajustarBpm(valor);
     actualizarInfoMetronomoRitmo();
-    if (ritmoReproduciendo) detenerRitmoUI();
+    if (cambia && ritmoReproduciendo) detenerRitmoUI();
+    // Tempo compartido con la barra de abajo y el resto de metrónomos de la web.
+    if (!desdeFuera && motor && motor.fijarBpmCompartido) motor.fijarBpmCompartido(valor);
+  }
+  // Un solo metrónomo en toda la web: si lo arranca/para otro sitio (la barra, el aviso de pestaña), este botón lo refleja.
+  if (motor && motor.alCambiar) {
+    motor.alCambiar((e) => {
+      enMarcha = e.activo && e.dueno === "ritmo";
+      pintarToggle();
+      if (e.motivo === "bpm" && String(e.bpmCompartido) !== String(bpm.value)) aplicarBpm(e.bpmCompartido, true);
+    });
   }
   bpm.addEventListener("input", () => aplicarBpm(bpm.value));
   // "change" (al salir del campo o Enter), no "input" (cada tecleo) -- si no,
@@ -670,22 +702,20 @@ function inicializarMetronomoFlotanteRitmo() {
   toggle.addEventListener("click", () => {
     if (!window.MetronomoEngine) return;
     if (enMarcha) {
-      window.MetronomoEngine.detener();
+      window.MetronomoEngine.detener("ritmo");
       enMarcha = false;
-      toggle.textContent = "▶";
-      toggle.classList.remove("en-marcha");
+      pintarToggle();
       return;
     }
-    enMarcha = true;
-    toggle.textContent = "⏹";
-    toggle.classList.add("en-marcha");
     window.MetronomoEngine.ajustarVolumen(parseFloat(volumen.value));
     window.MetronomoEngine.iniciar(parseInt(bpm.value, 10), parseInt(acento.value, 10), (acento2) => {
       punto.classList.remove("pulso", "acento");
       void punto.offsetWidth; // fuerza reflow para reiniciar la animación en cada pulso
       punto.classList.add("pulso");
       if (acento2) punto.classList.add("acento");
-    });
+    }, "ritmo");
+    enMarcha = true;
+    pintarToggle();
   });
 }
 

@@ -1340,7 +1340,7 @@ async function lanzarRepro(r, desde) {
   r.estado = "sonando";
   textoBotonRepro(r);
   actualizarBotonDetener();
-  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(r.bpm, r.metrica);
+  if (window.MetronomoEngine) window.MetronomoEngine.iniciar(r.bpm, r.metrica, null, "cifrado");
   try {
     await window.PianoEngine.reproducirSecuencia(r.eventos.slice(desde), 0.8, {
       onEventoInicio: (i) => {
@@ -1354,7 +1354,7 @@ async function lanzarRepro(r, desde) {
   } catch (err) {
     elEstado.textContent = `Error de audio: ${err.message}`;
   } finally {
-    if (window.MetronomoEngine) window.MetronomoEngine.detener();
+    if (window.MetronomoEngine) window.MetronomoEngine.detener("cifrado");
     if (r.estado === "sonando") {
       // Terminó solo (no fue pausa ni detener).
       r.estado = "fin";
@@ -1366,6 +1366,19 @@ async function lanzarRepro(r, desde) {
   }
 }
 
+// Al cambiar de pestaña el metrónomo se para (audio.js): la frase que sonaba se pone en pausa con él, para que al
+// volver «Continuar» siga desde la misma nota y no suene sin pulso.
+if (window.MetronomoEngine && window.MetronomoEngine.alCambiar) {
+  window.MetronomoEngine.alCambiar((e) => {
+    if (e.motivo !== "oculto" || e.duenoAnterior !== "cifrado" || !repro || repro.estado !== "sonando") return;
+    repro.estado = "pausa";
+    if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
+    limpiarResaltadoSonando();
+    textoBotonRepro(repro);
+    elEstado.textContent = "En pausa: «Continuar» sigue desde la nota donde ibas.";
+  });
+}
+
 function detenerRepro() {
   const r = repro;
   repro = null;
@@ -1374,7 +1387,7 @@ function detenerRepro() {
     textoBotonRepro(r);
   }
   if (window.PianoEngine) window.PianoEngine.detenerReproduccion();
-  if (window.MetronomoEngine) window.MetronomoEngine.detener();
+  if (window.MetronomoEngine) window.MetronomoEngine.detener("cifrado");
   limpiarResaltadoSonando();
   actualizarBotonDetener();
 }
@@ -1388,7 +1401,7 @@ function alternarRepro(nueva) {
     if (repro.estado === "sonando") {
       repro.estado = "pausa";
       window.PianoEngine.detenerReproduccion();
-      if (window.MetronomoEngine) window.MetronomoEngine.detener();
+      if (window.MetronomoEngine) window.MetronomoEngine.detener("cifrado");
       limpiarResaltadoSonando();
       textoBotonRepro(repro);
       elEstado.textContent = "En pausa: «Continuar» sigue desde la nota donde ibas.";
