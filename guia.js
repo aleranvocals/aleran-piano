@@ -12,7 +12,7 @@ const GUIA_PROBLEMAS = [
     recomendaciones: [
       {
         pagina: "piano.html",
-        paginaNombre: "Solfeo",
+        paginaNombre: "Toca notas",
         herramienta: "Cantar y calificar",
         razon: "El piano toca una nota y tú la cantas de vuelta; te califica en cents con una aguja de afinación en vivo.",
         modo: "individual",
@@ -39,7 +39,7 @@ const GUIA_PROBLEMAS = [
       },
       {
         pagina: "piano.html",
-        paginaNombre: "Solfeo",
+        paginaNombre: "Toca notas",
         herramienta: "Escala vocal → Voz mixta / passaggio",
         razon: "Patrones pensados específicamente para trabajar el paso de registro (passaggio).",
         modo: "escala",
@@ -98,7 +98,7 @@ const GUIA_PROBLEMAS = [
       },
       {
         pagina: "piano.html",
-        paginaNombre: "Solfeo",
+        paginaNombre: "Toca notas",
         herramienta: "Metrónomo",
         razon: "Practica a un tempo fijo, de 50 a 350 BPM, con la duración de las notas vinculada al tempo si quieres.",
         modo: "metronomo",

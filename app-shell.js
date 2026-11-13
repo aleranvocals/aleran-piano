@@ -116,16 +116,16 @@
 
   // ---------------------------------------------------------------- menú simplificado
   const PRINCIPALES = [
-    { href: "piano.html", texto: "🎹 Solfeo" },
+    { href: "piano.html", texto: "🎹 Toca notas" },
     { href: "entrenamiento.html", texto: "🎤 Entrena" },
     { href: "oido.html", texto: "🧠 Oído" },
     { href: "ritmo.html", texto: "🥁 Ritmo" },
-    { href: "cifrado.html", texto: "🎵 Cifrado" },
+    { href: "cifrado.html", texto: "🎵 Letra con notas" },
   ];
   const MAS = [
     { href: "guia.html", texto: "🧭 Guía" },
     { href: "rutina.html", texto: "📋 Rutina" },
-    { href: "catalogo.html", texto: "🎼 Catálogo" },
+    { href: "catalogo.html", texto: "🎼 Ejercicios" },
     { href: "progreso.html", texto: "📈 Progreso" },
     { href: "juegos.html", texto: "🎮 Juegos" },
     { href: "mapa-vocal.html", texto: "🗺️ Mapa vocal" },

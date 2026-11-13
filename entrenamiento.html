@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="style.css?v=34" />
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="obsidiana.css?v=22" />
+<link rel="stylesheet" href="obsidiana.css?v=23" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -42,14 +42,14 @@
       <a href="guia.html">🧭 Guía</a>
     </div>
     <div class="nav-fila">
-      <a href="piano.html" class="destacado">🎹 Solfeo</a>
+      <a href="piano.html" class="destacado">🎹 Toca notas</a>
       <a href="entrenamiento.html" class="activo destacado">🎤 Entrena</a>
       <a href="oido.html" class="destacado">🧠 Oído</a>
       <a href="ritmo.html" class="destacado">🥁 Ritmo</a>
     </div>
     <div class="nav-fila">
       <a href="rutina.html">📋 Rutina</a>
-      <a href="catalogo.html">🎼 Catálogo</a>
+      <a href="catalogo.html">🎼 Ejercicios</a>
       <a href="progreso.html">📈 Progreso</a>
       <a href="juegos.html">🎮 Juegos</a>
     </div>
@@ -57,7 +57,7 @@
       <a href="glosario.html">📖 Glosario</a>
       <a href="codex.html">🖼 Láminas</a>
       <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
-      <a href="cifrado.html">🎵 Cifrado</a>
+      <a href="cifrado.html">🎵 Letra con notas</a>
     </div>
   </nav>
 
@@ -85,7 +85,7 @@
     <button class="subtab" data-entren="sostenida" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">⏳</span><span>Sostener</span></button>
     <button class="subtab" data-entren="messa" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🎈</span><span>Crescendo</span></button>
     <button class="subtab" data-entren="aire" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">💨</span><span>Aire</span></button>
-    <button class="subtab" data-entren="espectro" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">📊</span><span>Espectro y Twang</span></button>
+    <button class="subtab" data-entren="espectro" title="Espectro y twang" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">📊</span><span>Brillo de la voz</span></button>
     <button class="subtab" data-entren="grabadora" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🔴</span><span>Grabar</span></button>
   </div>
 
@@ -162,7 +162,7 @@
   </section>
 
   <section id="panel-espectro" class="panel" hidden>
-    <p class="descripcion">Tu voz en vivo: qué nota cantas, cuánto twang tiene y qué frecuencias suenan. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Arriba, la nota que cantas (con cuántos cents te desvías) y el twang: cuántos dB brilla tu voz sobre tu voz normal. Calibra una vez: 4 s con tu voz normal y 4 s con twang, con la vocal que vas a practicar y moviendo un poco la nota. La marca blanca queda entre las dos y al pasarla cuenta como twang; mantén la racha lo más larga que puedas. Debajo, el espectrograma (0 a 4000 Hz) y la curva de este instante: guarda una toma y compárala con otra. El twang es el «ping» que concentra energía entre 2.500 y 4.000 Hz. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes. Es una ayuda, no un diagnóstico; desactiva la «mejora de voz» del sistema si la tienes.">?</button></p>
+    <p class="descripcion">Tu voz en vivo: qué nota cantas, cuánto twang tiene y qué frecuencias suenan. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Nombre técnico: espectro y twang. Arriba, la nota que cantas (con cuántos cents te desvías) y el twang: cuántos dB brilla tu voz sobre tu voz normal. Calibra una vez: 4 s con tu voz normal y 4 s con twang, con la vocal que vas a practicar y moviendo un poco la nota. La marca blanca queda entre las dos y al pasarla cuenta como twang; mantén la racha lo más larga que puedas. Debajo, el espectrograma (0 a 4000 Hz) y la curva de este instante: guarda una toma y compárala con otra. El twang es el «ping» que concentra energía entre 2.500 y 4.000 Hz. Cada micrófono realza o recorta esas frecuencias, así que elige el tuyo en los ajustes. Es una ayuda, no un diagnóstico; desactiva la «mejora de voz» del sistema si la tienes.">?</button></p>
 
     <div class="lecturas-espectro">
       <div class="lectura-nota">
@@ -289,7 +289,7 @@
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=9"></script>
-<script src="app-shell.js?v=9"></script>
+<script src="app-shell.js?v=10"></script>
 <script src="audio.js?v=17"></script>
 <script src="progreso.js?v=1"></script>
 <script src="progreso-nube.js?v=1"></script>

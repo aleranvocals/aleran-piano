@@ -210,7 +210,7 @@ window.BETA_CLASES = {
   "titulo": "Sonidos de la vida",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -228,7 +228,7 @@ window.BETA_CLASES = {
   "titulo": "Vocal fry",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -246,7 +246,7 @@ window.BETA_CLASES = {
   "titulo": "Voces difónicas",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -295,7 +295,7 @@ window.BETA_CLASES = {
   "titulo": "Twang oral",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -304,7 +304,7 @@ window.BETA_CLASES = {
   "titulo": "Cómo se hace el twang oral",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -313,7 +313,7 @@ window.BETA_CLASES = {
   "titulo": "Twang nasal",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -322,7 +322,7 @@ window.BETA_CLASES = {
   "titulo": "Cómo se hace el twang nasal",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -367,7 +367,7 @@ window.BETA_CLASES = {
   "titulo": "Bostezo",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -380,7 +380,7 @@ window.BETA_CLASES = {
     "href": "color.html"
    },
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -407,7 +407,7 @@ window.BETA_CLASES = {
   "titulo": "Distorsión",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -416,7 +416,7 @@ window.BETA_CLASES = {
   "titulo": "Voz raspada",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -443,7 +443,7 @@ window.BETA_CLASES = {
   "titulo": "Fry como efecto",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -553,7 +553,7 @@ window.BETA_CLASES = {
   "titulo": "La canción como excusa",
   "herramientas": [
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    }
   ]
@@ -562,7 +562,7 @@ window.BETA_CLASES = {
   "titulo": "Una melodía, una sílaba",
   "herramientas": [
    {
-    "nombre": "Solfeo",
+    "nombre": "Toca notas",
     "href": "piano.html"
    }
   ]
@@ -580,7 +580,7 @@ window.BETA_CLASES = {
   "titulo": "Quitar consonantes",
   "herramientas": [
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    }
   ]
@@ -589,7 +589,7 @@ window.BETA_CLASES = {
   "titulo": "Devolver la letra",
   "herramientas": [
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    }
   ]
@@ -661,11 +661,11 @@ window.BETA_CLASES = {
   "titulo": "La escala sin cambiar de mecanismo",
   "herramientas": [
    {
-    "nombre": "Catálogo",
+    "nombre": "Ejercicios",
     "href": "catalogo.html"
    },
    {
-    "nombre": "Solfeo",
+    "nombre": "Toca notas",
     "href": "piano.html"
    }
   ]
@@ -678,7 +678,7 @@ window.BETA_CLASES = {
     "href": "piano.html#practicaVoz"
    },
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    }
   ]
@@ -704,7 +704,7 @@ window.BETA_CLASES = {
     "href": "codex.html"
    },
    {
-    "nombre": "Solfeo",
+    "nombre": "Toca notas",
     "href": "piano.html"
    }
   ]
@@ -722,7 +722,7 @@ window.BETA_CLASES = {
   "titulo": "Apoyatura",
   "herramientas": [
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    }
   ]
@@ -731,11 +731,11 @@ window.BETA_CLASES = {
   "titulo": "Melisma",
   "herramientas": [
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    },
    {
-    "nombre": "Solfeo",
+    "nombre": "Toca notas",
     "href": "piano.html"
    }
   ]
@@ -753,7 +753,7 @@ window.BETA_CLASES = {
   "titulo": "Mordente",
   "herramientas": [
    {
-    "nombre": "Solfeo",
+    "nombre": "Toca notas",
     "href": "piano.html"
    }
   ]
@@ -807,7 +807,7 @@ window.BETA_CLASES = {
   "titulo": "Trae una frase tuya",
   "herramientas": [
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    }
   ]
@@ -834,7 +834,7 @@ window.BETA_CLASES = {
   "titulo": "Si lleva efecto, cuál y cuánto",
   "herramientas": [
    {
-    "nombre": "Entrena · Espectro y twang",
+    "nombre": "Entrena · Brillo de la voz",
     "href": "entrenamiento.html?tab=espectro"
    }
   ]
@@ -874,7 +874,7 @@ window.BETA_CLASES = {
     "href": "entrenamiento.html?tab=grabadora"
    },
    {
-    "nombre": "Cifrado",
+    "nombre": "Letra con notas",
     "href": "cifrado.html"
    }
   ]

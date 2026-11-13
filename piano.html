@@ -4,13 +4,13 @@
 <meta charset="utf-8" />
 <script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Piano — Áleran Vocals</title>
+<title>Toca notas (Solfeo) — Áleran Vocals</title>
 <meta name="description" content="Piano real (Do1–Do7): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Piano — Áleran Vocals" />
+<meta property="og:title" content="Toca notas (Solfeo) — Áleran Vocals" />
 <meta property="og:description" content="Piano real (Do1–Do7): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
 <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="Piano — Áleran Vocals" />
+<meta name="twitter:title" content="Toca notas (Solfeo) — Áleran Vocals" />
 <meta name="twitter:description" content="Piano real (Do1–Do7): nota individual, notas aleatorias, más de 25 escalas vocales, notas propias, metrónomo y 'cantar y calificar' con el micrófono." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Music&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="obsidiana.css?v=22" />
+<link rel="stylesheet" href="obsidiana.css?v=23" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -32,8 +32,8 @@
 <body>
 <div class="app">
   <header class="cabecera">
-    <h1>🎹 Solfeo</h1>
-    <p class="subtitulo">Escalas, notas y giros para entonar.</p>
+    <h1>🎹 Toca notas</h1>
+    <p class="subtitulo">Solfeo · escalas, notas y adornos para entonar.</p>
   </header>
   <main id="contenido">
 
@@ -43,14 +43,14 @@
       <a href="guia.html">🧭 Guía</a>
     </div>
     <div class="nav-fila">
-      <a href="piano.html" class="activo destacado">🎹 Solfeo</a>
+      <a href="piano.html" class="activo destacado">🎹 Toca notas</a>
       <a href="entrenamiento.html" class="destacado">🎤 Entrena</a>
       <a href="oido.html" class="destacado">🧠 Oído</a>
       <a href="ritmo.html" class="destacado">🥁 Ritmo</a>
     </div>
     <div class="nav-fila">
       <a href="rutina.html">📋 Rutina</a>
-      <a href="catalogo.html">🎼 Catálogo</a>
+      <a href="catalogo.html">🎼 Ejercicios</a>
       <a href="progreso.html">📈 Progreso</a>
       <a href="juegos.html">🎮 Juegos</a>
     </div>
@@ -58,7 +58,7 @@
       <a href="glosario.html">📖 Glosario</a>
       <a href="codex.html">🖼 Láminas</a>
       <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
-      <a href="cifrado.html">🎵 Cifrado</a>
+      <a href="cifrado.html">🎵 Letra con notas</a>
     </div>
   </nav>
 
@@ -83,7 +83,7 @@
     <button class="tab" data-modo="escala" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🪜</span><span>Escalas</span></button>
     <button class="tab" data-modo="personalizada" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">✍️</span><span>Mi melodía</span></button>
     <button class="tab" data-modo="solfeo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🔤</span><span>Do-Re-Mi</span></button>
-    <button class="tab" data-modo="giros" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🌀</span><span>Giros</span></button>
+    <button class="tab" data-modo="giros" title="Giros" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">🌀</span><span>Adornos</span></button>
     <button class="tab" data-modo="metronomo" role="tab" aria-selected="false"><span class="ficha-icono" aria-hidden="true">⏱</span><span>Metrónomo</span></button>
   </div>
 
@@ -197,7 +197,7 @@
     </label>
     <div id="personalizadaLista" class="cifrado-linea"></div>
     <p id="personalizadaCompasesAviso" class="descripcion" hidden></p>
-    <p id="personalizadaVacio" class="descripcion">Aún no hay notas: escríbelas abajo o mándalas desde Cifrado.</p>
+    <p id="personalizadaVacio" class="descripcion">Aún no hay notas: escríbelas abajo o mándalas desde Letra con notas.</p>
 
     <label class="campo">
       <span>Añadir notas (como negras)</span>
@@ -214,7 +214,7 @@
       <input type="file" id="inputAbrirMelodia" accept="application/json" hidden />
     </div>
     <div class="acciones" id="accionesVolverCifrado" hidden>
-      <button id="btnGuardarYVolver" class="boton principal" type="button">💾 Guardar y volver al Cifrado</button>
+      <button id="btnGuardarYVolver" class="boton principal" type="button">💾 Guardar y volver a Letra con notas</button>
     </div>
     <!-- Aviso propio de este panel: el #estado compartido de más abajo queda
          demasiado lejos de estos botones (varias secciones de por medio), así
@@ -239,6 +239,7 @@
   </section>
 
   <section id="panel-giros" class="panel" hidden>
+    <p class="descripcion">Giros: adornos cortos alrededor de una nota, como los de los cantantes.</p>
     <label class="campo">
       <span>Nota de partida (el «1»)</span>
       <select id="girosTonica"></select>
@@ -348,7 +349,7 @@
 <script src="smplr.iife.js"></script>
 <script src="pitchy.iife.js"></script>
 <script src="escalas.js?v=11"></script>
-<script src="app-shell.js?v=9"></script>
+<script src="app-shell.js?v=10"></script>
 <script src="audio.js?v=17"></script>
 <script src="progreso.js?v=1"></script>
 <script src="progreso-nube.js?v=1"></script>

@@ -564,3 +564,9 @@ body.barra-piano-pagina #pianoFlotante { display: none; }
   .barra-teclado { height: 96px; }
 }
 @media print { .barra-comun, .aviso-metronomo { display: none !important; } body.con-barra { padding-bottom: 0; } }
+
+/* Menú en el móvil: el icono encima del nombre, para que los nombres sencillos («Letra con notas») quepan sin partirse en tres líneas */
+@media (max-width: 480px) {
+  .nav-principal:not(.nav-compacto) a { flex-direction: column; gap: 2px; padding: 0.4rem 0.2rem; font-size: 0.78rem; line-height: 1.15; }
+  .nav-principal:not(.nav-compacto) a .ico-l { margin-right: 0; }
+}
