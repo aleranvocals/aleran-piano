@@ -17,7 +17,7 @@
     } catch (e) { return null; }
   }
 
-  function lineas(datos) { return datos.cancion.filter(function (b) { return b.tipo === "linea" && Array.isArray(b.silabas); }); }
+  function lineas(datos) { return datos.cancion.filter(function (b) { return b && b.tipo === "linea" && Array.isArray(b.silabas); }); }
 
   // Todas las notas válidas (en orden) de una canción.
   function midis(datos) {
@@ -124,7 +124,14 @@
 
   function arrancar() {
     var d = cargarAutoguardado();
-    if (d && lineas(d).length) aplicar(d); else el("trVacio").hidden = false;
+    // Un autoguardado con forma rara no debe dejar la página sin botones.
+    try {
+      if (d && lineas(d).length) aplicar(d); else el("trVacio").hidden = false;
+    } catch (e) {
+      original = null;
+      el("trPanel").hidden = true;
+      el("trVacio").hidden = false;
+    }
     el("trMenos").addEventListener("click", function () { cambiar(-1); });
     el("trMas").addEventListener("click", function () { cambiar(1); });
     el("trReset").addEventListener("click", function () { desp = 0; el("trEstado").textContent = ""; pintar(); });
