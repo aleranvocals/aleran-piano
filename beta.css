@@ -73,3 +73,12 @@
 
 /* Botón al pie de todas las páginas */
 .pie-beta { margin: 0.6rem 0; }
+
+/* Respiración: la palabra (Entra / Sale) no encoge con el círculo */
+.resp-escenario { position: relative; }
+.resp-fase { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 80%; text-align: center; pointer-events: none; font: 600 1.15rem var(--font-display); letter-spacing: 0.06em; color: var(--bone); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6); }
+.beta-fila .chip:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Adivina el efecto, mientras no hay clips */
+.efectos-lista { text-align: left; max-width: 34rem; margin: 0.6rem auto; display: grid; gap: 0.4rem; }
+.efectos-lista p { margin: 0; padding: 0.55rem 0.8rem; border: 1px solid var(--line); border-radius: var(--radio); background: var(--o-pozo); font-size: 0.9rem; }
+@media (max-width: 420px) { .resp-escenario { height: 220px; } .resp-circulo { width: 170px; height: 170px; } }

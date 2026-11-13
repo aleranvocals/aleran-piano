@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="obsidiana.css?v=23" />
-<link rel="stylesheet" href="beta.css?v=1" />
+<link rel="stylesheet" href="beta.css?v=3" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -35,6 +35,7 @@
     <div class="nav-fila">
       <a href="index.html">🏠 Inicio</a>
       <a href="guia.html">🧭 Guía</a>
+      <a href="beta.html" class="activo">🧪 Beta</a>
     </div>
     <div class="nav-fila">
       <a href="piano.html" class="destacado">🎹 Toca notas</a>
@@ -53,13 +54,12 @@
       <a href="codex.html">🖼 Láminas</a>
       <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
       <a href="cifrado.html">🎵 Letra con notas</a>
-      <a href="beta.html" class="activo">🧪 Beta</a>
     </div>
   </nav>
 
   <section class="panel beta-centro">
     <p class="descripcion">Entra por la nariz, sale despacio. Nota cómo se abren un poco las costillas. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Si te mareas, paras y respiras normal. Aquí nunca se retiene el aire: solo entra y sale, cómodo. Es una ayuda para el oído, no un diagnóstico. ">?</button></p>
-    <div class="resp-escenario"><div class="resp-circulo" id="respCirculo">Listo</div></div>
+    <div class="resp-escenario"><div class="resp-circulo" id="respCirculo"></div><span class="resp-fase" id="respFase" aria-live="polite">Listo</span></div>
     <p class="lectura" id="respCiclos">0 / 5</p>
     <p class="barra-etiqueta">Ritmo (entra – sale)</p>
     <div class="beta-fila" id="respRitmos"></div>
@@ -84,7 +84,7 @@
 </div>
 
 <script src="app-shell.js?v=10"></script>
-<script src="respiracion.js?v=1"></script>
+<script src="respiracion.js?v=3"></script>
 <script src="beta-clases.js?v=2"></script>
 <script src="beta-comun.js?v=1"></script>
 <script src="tema.js?v=1"></script>

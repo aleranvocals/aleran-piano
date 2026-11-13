@@ -41,8 +41,13 @@
     tic = null;
     el("respIniciar").hidden = false;
     el("respParar").hidden = true;
-    el("respCirculo").textContent = mensaje || "Listo";
+    el("respFase").textContent = mensaje || "Listo";
     escala(MIN);
+    bloquearOpciones(false);
+  }
+
+  function bloquearOpciones(si) {
+    document.querySelectorAll("#respRitmos .chip, #respCiclosOpc .chip").forEach(function (b) { b.disabled = si; });
   }
 
   function iniciar() {
@@ -50,6 +55,7 @@
     corriendo = true;
     el("respIniciar").hidden = true;
     el("respParar").hidden = false;
+    bloquearOpciones(true);
     var t0 = performance.now();
     var dur = (ritmo[0] + ritmo[1]) * 1000;
     pintarCiclos(0);
@@ -62,7 +68,8 @@
       var entra = dentro < ritmo[0];
       var s = entra ? MIN + (MAX - MIN) * (dentro / ritmo[0]) : MAX - (MAX - MIN) * ((dentro - ritmo[0]) / ritmo[1]);
       escala(s);
-      el("respCirculo").textContent = entra ? "Entra" : "Sale";
+      var fase = entra ? "Entra" : "Sale";
+      if (el("respFase").textContent !== fase) el("respFase").textContent = fase;
       pintarCiclos(ciclo);
     }
     tic = setInterval(paso, 40);

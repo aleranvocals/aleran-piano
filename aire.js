@@ -38,7 +38,11 @@
     else aviso.textContent = "";
   }
 
+  var calibrando = false;
   function calibrar() {
+    if (calibrando) return; // doble toque: una sola calibración
+    calibrando = true;
+    el("aiCalibrar").disabled = true;
     var est = el("aiEstado");
     est.textContent = "Abriendo el micrófono…";
     if (tic) { clearInterval(tic); tic = null; }
@@ -59,6 +63,9 @@
       tic = setInterval(paso, 40);
     }).catch(function (e) {
       est.textContent = ("No pude usar el micrófono: " + (e && e.message ? e.message : "permiso denegado")).replace(/\.?$/, ".");
+    }).then(function () {
+      calibrando = false;
+      el("aiCalibrar").disabled = false;
     });
   }
 

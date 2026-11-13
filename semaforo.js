@@ -45,8 +45,15 @@
     } catch (e) { return null; }
   }
 
+  // Un «sí» en dolor o pérdida de voz ya es ROJO: no hace falta contestar el resto para verlo.
+  function rojoYa() {
+    return PREGUNTAS.some(function (p) { return p.rojo && respuestas[p.id] === true; });
+  }
+
+  var NOMBRE_COLOR = { verde: "verde", ambar: "ámbar", rojo: "rojo" };
+
   function pintar() {
-    var listo = completo();
+    var listo = completo() || rojoYa();
     var c = listo ? color() : null;
     ["verde", "ambar", "rojo"].forEach(function (k) {
       el("luz" + k.charAt(0).toUpperCase() + k.slice(1)).classList.toggle("on", c === k);
@@ -66,7 +73,7 @@
     var h = leerHoy();
     var p = el("semaforoHoy");
     p.hidden = !h;
-    if (h) p.textContent = "Hoy: " + h;
+    if (h) p.textContent = "Hoy te salió: " + (NOMBRE_COLOR[h] || h);
   }
 
   function construir() {
@@ -84,10 +91,12 @@
         b.type = "button";
         b.className = "chip";
         b.textContent = par[0];
+        b.setAttribute("aria-pressed", "false");
         b.addEventListener("click", function () {
           respuestas[p.id] = par[1];
-          Array.prototype.forEach.call(grupo.children, function (x) { x.classList.remove("activo"); });
+          Array.prototype.forEach.call(grupo.children, function (x) { x.classList.remove("activo"); x.setAttribute("aria-pressed", "false"); });
           b.classList.add("activo");
+          b.setAttribute("aria-pressed", "true");
           pintar();
         });
         grupo.appendChild(b);

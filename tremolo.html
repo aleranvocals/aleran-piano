@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="rediseno.css?v=15" />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="obsidiana.css?v=23" />
-<link rel="stylesheet" href="beta.css?v=1" />
+<link rel="stylesheet" href="beta.css?v=3" />
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#93172c" />
 <link rel="icon" href="favicon.ico" />
@@ -35,6 +35,7 @@
     <div class="nav-fila">
       <a href="index.html">🏠 Inicio</a>
       <a href="guia.html">🧭 Guía</a>
+      <a href="beta.html" class="activo">🧪 Beta</a>
     </div>
     <div class="nav-fila">
       <a href="piano.html" class="destacado">🎹 Toca notas</a>
@@ -53,12 +54,11 @@
       <a href="codex.html">🖼 Láminas</a>
       <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
       <a href="cifrado.html">🎵 Letra con notas</a>
-      <a href="beta.html" class="activo">🧪 Beta</a>
     </div>
   </nav>
 
   <section class="panel">
-    <p class="descripcion">Canta una nota larga y deja que oscile. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Si algo molesta, paras ahí; el cuerpo te dice cosas. Es una ayuda para el oído, no un diagnóstico. Trémolo: el volumen pulsa y la nota se queda quieta. Vibrato: la nota sube y baja un poco. Un vibrato real también mueve algo el volumen; aquí gana lo que más se mueve. Beta: se afinará con tus ejemplos.">?</button></p>
+    <p class="descripcion">Te dice si tu voz hace vibrato (se mueve la nota) o trémolo (pulsa el volumen). Canta una nota larga. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Si algo molesta, paras ahí; el cuerpo te dice cosas. Es una ayuda para el oído, no un diagnóstico. Trémolo: el volumen pulsa y la nota se queda quieta. Vibrato: la nota sube y baja un poco. Un vibrato real también mueve algo el volumen; aquí gana lo que más se mueve. Beta: se afinará con tus ejemplos.">?</button></p>
     <canvas class="beta-lienzo" id="trmLienzo" width="640" height="300"></canvas>
     <p class="beta-sub">Arriba la nota · abajo el volumen</p>
     <p class="lectura" id="trmVeredicto">—</p>
@@ -88,7 +88,7 @@
 <script src="app-shell.js?v=10"></script>
 <script src="audio.js?v=17"></script>
 <script src="beta-voz.js?v=1"></script>
-<script src="tremolo.js?v=2"></script>
+<script src="tremolo.js?v=4"></script>
 <script src="beta-clases.js?v=2"></script>
 <script src="beta-comun.js?v=1"></script>
 <script src="tema.js?v=1"></script>

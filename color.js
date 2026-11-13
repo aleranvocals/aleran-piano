@@ -24,6 +24,8 @@
       h1.textContent = "📐 Medidor de proyección";
       sub.textContent = "Que suba la presencia, no el volumen.";
       document.title = "Medidor de proyección — Áleran Vocals";
+      var desc = el("colDescripcion");
+      if (desc && desc.firstChild && desc.firstChild.nodeType === 3) desc.firstChild.nodeValue = "Te dice si tu voz llega más lejos sin subir el volumen. ";
     }
     el("colVistaColor").hidden = presencia;
     el("colVistaPresencia").hidden = !presencia;
@@ -86,7 +88,11 @@
     tic = setInterval(paso, 40);
   }
 
+  var calibrando = false;
   function calibrar() {
+    if (calibrando) return; // doble toque: una sola calibración
+    calibrando = true;
+    el("colCalibrar").disabled = true;
     var est = el("colEstado");
     est.textContent = "Abriendo el micrófono…";
     if (tic) { clearInterval(tic); tic = null; }
@@ -106,6 +112,9 @@
       empezarMedir();
     }).catch(function (e) {
       est.textContent = ("No pude usar el micrófono: " + (e && e.message ? e.message : "permiso denegado")).replace(/\.?$/, ".");
+    }).then(function () {
+      calibrando = false;
+      el("colCalibrar").disabled = false;
     });
   }
 

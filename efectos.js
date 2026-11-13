@@ -65,7 +65,20 @@
       (manifiesto[e.id] || []).forEach(function (f) { clips.push({ efecto: e.id, url: "efectos/" + f }); });
     });
     activos = EFECTOS.filter(function (e) { return clips.some(function (c) { return c.efecto === e.id; }); });
-    if (activos.length < 2) { el("efFalta").hidden = false; return; }
+    if (activos.length < 2) {
+      var lista = el("efLista");
+      if (lista) {
+        EFECTOS.forEach(function (e) {
+          var fila = document.createElement("p");
+          var n = document.createElement("strong");
+          n.textContent = e.nombre;
+          fila.append(n, document.createTextNode(": " + e.sirve.charAt(0).toLowerCase() + e.sirve.slice(1)));
+          lista.appendChild(fila);
+        });
+      }
+      el("efFalta").hidden = false;
+      return;
+    }
     el("efJuego").hidden = false;
     var cont = el("efBotones");
     activos.forEach(function (e) {

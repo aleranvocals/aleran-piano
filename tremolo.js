@@ -69,11 +69,16 @@
     evaluar();
   }
 
+  var abriendo = false;
   function iniciar() {
+    if (abriendo || tic) return; // doble toque: una sola escucha
+    abriendo = true;
+    el("trmIniciar").disabled = true;
     var est = el("trmEstado");
     est.textContent = "Abriendo el micrófono…";
     V.abrir().then(function (a) {
       an = a;
+      if (tic) clearInterval(tic);
       est.textContent = "Escuchando. Canta una nota larga.";
       pitch = []; vol = [];
       el("trmIniciar").hidden = true;
@@ -81,6 +86,9 @@
       tic = setInterval(paso, Math.round(1000 / FPS));
     }).catch(function (e) {
       est.textContent = ("No pude usar el micrófono: " + (e && e.message ? e.message : "permiso denegado")).replace(/\.?$/, ".");
+    }).then(function () {
+      abriendo = false;
+      el("trmIniciar").disabled = false;
     });
   }
 
@@ -95,6 +103,7 @@
   function arrancar() {
     el("trmIniciar").addEventListener("click", iniciar);
     el("trmParar").addEventListener("click", parar);
+    dibujar(); // el lienzo vacío ya muestra su línea central: no parece roto antes de empezar
     window.addEventListener("pagehide", parar);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", arrancar);

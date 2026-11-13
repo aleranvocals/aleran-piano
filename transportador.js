@@ -52,6 +52,7 @@
 
   function pintar() {
     var m = midis(original).map(function (x) { return x + desp; });
+    el("trReset").hidden = desp === 0; // «Original» ya se lee en el centro: el botón solo hace falta al moverla
     el("trValor").textContent = desp === 0 ? "Original" : (desp > 0 ? "+" : "−") + Math.abs(desp) + (Math.abs(desp) === 1 ? " semitono" : " semitonos");
     if (!m.length) {
       el("trRango").textContent = "No hay notas escritas en la canción.";
@@ -119,7 +120,7 @@
     a.click();
     a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-    el("trEstado").textContent = "Guardada aparte. Ábrela desde el Cifrado con «Abrir».";
+    el("trEstado").textContent = "Guardada aparte. Ábrela en Letra con notas con «Abrir archivo».";
   }
 
   function arrancar() {
@@ -140,11 +141,15 @@
     el("trArchivo").addEventListener("change", function () {
       var f = el("trArchivo").files && el("trArchivo").files[0];
       if (!f) return;
+      el("trError").textContent = "";
       f.text().then(function (t) {
         var j = JSON.parse(t);
-        if (!Array.isArray(j.cancion)) throw new Error("formato");
+        if (!Array.isArray(j.cancion) || !lineas(j).length) throw new Error("formato");
+        if (sonando && window.PianoEngine) { window.PianoEngine.detenerReproduccion(); sonando = false; el("trOir").textContent = "▶ Escuchar con piano"; }
         aplicar(j);
-      }).catch(function () { el("trError").textContent = "Ese archivo no parece del Cifrado."; });
+        el("trEstado").textContent = "Abierta: " + f.name;
+      }).catch(function () { el("trError").textContent = "Ese archivo no parece de Letra con notas."; })
+        .then(function () { el("trArchivo").value = ""; }); // así se puede volver a abrir el mismo archivo
     });
     window.addEventListener("rango-vocal-cambio", function () { if (original) pintar(); });
   }
