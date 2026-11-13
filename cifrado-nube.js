@@ -16,17 +16,110 @@
   if (!lista || !estado) return;
 
   let codigo = null;
+  // ?codigo=... ya no se vincula solo: antes se pide confirmación en la propia página (un enlace ajeno no debe
+  // cambiar en silencio a qué cuenta se guardan tus canciones y tu progreso).
+  let codigoPendiente = null;
+  try {
+    codigo = localStorage.getItem(CLAVE_CODIGO);
+  } catch {
+    codigo = null;
+  }
   try {
     const url = new URL(window.location.href);
     const deUrl = (url.searchParams.get("codigo") || "").trim();
     if (deUrl) {
-      localStorage.setItem(CLAVE_CODIGO, deUrl);
       url.searchParams.delete("codigo");
       window.history.replaceState(null, "", url);
+      if (deUrl !== codigo) codigoPendiente = deUrl.slice(0, 200);
     }
-    codigo = localStorage.getItem(CLAVE_CODIGO);
   } catch {
-    codigo = null;
+    /* sin URL utilizable: se queda como estaba */
+  }
+
+  // Solo se enseña el final del código: basta para reconocerlo sin dejarlo entero a la vista.
+  function codigoCorto(c) {
+    const s = String(c || "");
+    return s.length > 6 ? `…${s.slice(-6)}` : s;
+  }
+
+  function guardarCodigo(valor) {
+    codigo = valor;
+    try {
+      localStorage.setItem(CLAVE_CODIGO, codigo);
+    } catch {
+      /* sin almacenamiento: funciona en esta sesión */
+    }
+  }
+
+  function pedirConfirmacionCodigo(nuevo) {
+    const fondo = document.createElement("div");
+    fondo.className = "hoja-fondo";
+    const caja = document.createElement("div");
+    caja.className = "hoja nube-confirmar";
+    caja.setAttribute("role", "dialog");
+    caja.setAttribute("aria-modal", "true");
+    caja.setAttribute("aria-label", "Vincular tu cuenta");
+    const h = document.createElement("h2");
+    h.textContent = "¿Vincular tu cuenta?";
+    const texto = document.createElement("p");
+    texto.className = "hoja-texto";
+    texto.textContent = `Tus canciones de Cifrado y tu progreso se guardarán en la cuenta con código ${codigoCorto(nuevo)}.`;
+    const cuenta = document.createElement("p");
+    cuenta.className = "nube-confirmar-cuenta";
+    cuenta.textContent = "Comprobando la cuenta…";
+    caja.append(h, texto, cuenta);
+    if (codigo && codigo !== nuevo) {
+      const aviso = document.createElement("p");
+      aviso.className = "nube-confirmar-aviso";
+      aviso.textContent = `Ahora está vinculada otra cuenta (${codigoCorto(codigo)}). Si sigues, se cambia por esta.`;
+      caja.appendChild(aviso);
+    }
+    const botones = document.createElement("div");
+    botones.className = "nube-confirmar-botones";
+    const no = document.createElement("button");
+    no.type = "button";
+    no.className = "boton";
+    no.textContent = "Ahora no";
+    const si = document.createElement("button");
+    si.type = "button";
+    si.className = "boton principal";
+    si.textContent = "Vincular";
+    botones.append(no, si);
+    caja.appendChild(botones);
+    fondo.appendChild(caja);
+    document.body.appendChild(fondo);
+    si.focus();
+
+    const cerrar = () => {
+      fondo.remove();
+      document.removeEventListener("keydown", alTeclear);
+    };
+    const alTeclear = (e) => {
+      if (e.key === "Escape") cerrar();
+    };
+    document.addEventListener("keydown", alTeclear);
+    no.addEventListener("click", cerrar);
+    fondo.addEventListener("click", (e) => {
+      if (e.target === fondo) cerrar();
+    });
+    si.addEventListener("click", () => {
+      cerrar();
+      guardarCodigo(nuevo);
+      mostrarVinculado();
+      cargarLista();
+    });
+
+    // Dato de la cuenta, si lo hay: que el código existe y cuántas canciones tiene.
+    pedir(`${API}?token=${encodeURIComponent(nuevo)}`)
+      .then(({ canciones }) => {
+        const n = Array.isArray(canciones) ? canciones.length : 0;
+        cuenta.textContent = `Cuenta encontrada ✓ · ${n} canción${n === 1 ? "" : "es"} guardada${n === 1 ? "" : "s"}`;
+        cuenta.classList.add("ok");
+      })
+      .catch((e) => {
+        cuenta.textContent = e instanceof TypeError ? "No pude comprobar la cuenta ahora (¿sin conexión?)." : `${e.message}.`;
+        cuenta.classList.add("malo");
+      });
   }
 
   function mensaje(texto, malo) {
@@ -154,12 +247,7 @@
       mensaje("Escribe tu código primero.", true);
       return;
     }
-    codigo = valor;
-    try {
-      localStorage.setItem(CLAVE_CODIGO, codigo);
-    } catch {
-      /* sin almacenamiento: funciona en esta sesión */
-    }
+    guardarCodigo(valor);
     mostrarVinculado();
     cargarLista();
   }
@@ -184,5 +272,6 @@
   });
 
   mostrarVinculado();
+  if (codigoPendiente) pedirConfirmacionCodigo(codigoPendiente);
   cargarLista(); // al abrir la página se precarga la lista de canciones de la cuenta
 })();
