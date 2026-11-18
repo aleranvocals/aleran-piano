@@ -546,5 +546,26 @@
   // Los selects que rellenan las páginas en su propio DOMContentLoaded se recogen en una segunda pasada.
   window.addEventListener("load", mejorarTodosLosSelects);
 
+  // Contador anónimo de uso (18 nov 2026): solo «se abrió esta página/pestaña», sin cookies ni datos personales.
+  // Lo ve Áleran en la tarjeta «Uso de herramientas» del panel, para saber qué herramientas se usan de verdad.
+  const contarUso = (tab) => {
+    if (!/aleranvocals\.es$|aleran-piano\.vercel\.app$/.test(location.hostname)) return;
+    let pagina = paginaActual().toLowerCase();
+    if (!/\.[a-z0-9]+$/.test(pagina)) pagina += ".html";
+    const datos = JSON.stringify({ pagina, tab: (tab || "").toLowerCase().slice(0, 60) });
+    try {
+      if (navigator.sendBeacon) navigator.sendBeacon("https://panel.aleranvocals.es/api/uso", datos);
+      else fetch("https://panel.aleranvocals.es/api/uso", { method: "POST", body: datos, keepalive: true, mode: "cors" }).catch(() => {});
+    } catch {
+      /* es una estadística: si falla, nada */
+    }
+  };
+  contarUso(new URLSearchParams(location.search).get("tab") || "");
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest(".tab, .subtab");
+    const id = b && (b.dataset.modo || b.dataset.entren || b.dataset.oido || b.dataset.juego);
+    if (id) contarUso(id);
+  });
+
   window.AppShell = { dock: () => document.getElementById("dockHerramientas"), abrirRango: abrirHoja, abrirMic: abrirHojaMic, mejorarSelect };
 })();
