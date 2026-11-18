@@ -57,16 +57,21 @@
     });
   }
 
+  // salud-vocal.js lo carga app-shell.js y puede llegar un poco después que esta página: los botones se enganchan
+  // ya (un toque temprano no se pierde) y lo que necesita SaludVocal espera a que esté.
+  function cuandoEste(fn) { if (S()) fn(); else setTimeout(function () { cuandoEste(fn); }, 100); }
+
   function arrancar() {
-    if (!S()) { setTimeout(arrancar, 150); return; } // salud-vocal.js lo carga app-shell.js: puede llegar un poco después
-    pintar();
-    window.addEventListener("salud-vocal-cambio", pintar);
-    setInterval(pintar, 15000);
-    el("salProbarPausa").addEventListener("click", function () { S().probarPausa(); });
-    el("salProbarVol").addEventListener("click", function () { S().probarVolumen(); });
-    el("salProbar").addEventListener("click", medir);
+    el("salProbarPausa").addEventListener("click", function () { cuandoEste(function () { S().probarPausa(); }); });
+    el("salProbarVol").addEventListener("click", function () { cuandoEste(function () { S().probarVolumen(); }); });
+    el("salProbar").addEventListener("click", function () { cuandoEste(medir); });
     document.addEventListener("visibilitychange", function () { if (document.hidden && midiendo) medir(); });
     if (location.hash === "#volumen") { var v = el("volumen"); if (v) v.scrollIntoView(); }
+    cuandoEste(function () {
+      pintar();
+      window.addEventListener("salud-vocal-cambio", pintar);
+      setInterval(pintar, 15000);
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", arrancar);
