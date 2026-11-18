@@ -514,6 +514,15 @@
     document.head.appendChild(s);
   })();
 
+  // Avisos de salud vocal (pausa a los 20 min de práctica y volumen excesivo): en todas las páginas, en salud-vocal.js.
+  (function cargarSaludVocal() {
+    if (document.getElementById("scriptSaludVocal")) return;
+    const s = document.createElement("script");
+    s.id = "scriptSaludVocal";
+    s.src = "salud-vocal.js?v=1";
+    document.head.appendChild(s);
+  })();
+
   function alCargar() {
     botonBetaAlPie();
     mejorarTodosLosSelects();
