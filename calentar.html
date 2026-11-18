@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calentamiento de 5 minutos — Áleran Vocals</title>
+<meta name="description" content="Calentamiento guiado de cinco minutos con temporizador y notas de referencia dentro de tu rango." />
+<meta name="robots" content="noindex" />
+<link rel="stylesheet" href="fonts/fuentes.css?v=1" />
+<link rel="stylesheet" href="style.css?v=34" />
+<link rel="stylesheet" href="rediseno.css?v=15" />
+<link rel="stylesheet" href="obsidiana.css?v=23" />
+<link rel="stylesheet" href="beta.css?v=4" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#93172c" />
+<link rel="icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="canonical" href="https://www.aleranvocals.es/herramientas/calentar.html" />
+<meta property="og:url" content="https://www.aleranvocals.es/herramientas/calentar.html" />
+<meta property="og:image" content="https://www.aleranvocals.es/foto-alera-coach.webp" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🔥 Calentamiento de 5 minutos</h1>
+    <p class="subtitulo">Un botón. Cinco minutos. Voz despierta.</p>
+  </header>
+  <main id="contenido">
+
+  <nav class="nav-principal">
+    <div class="nav-fila">
+      <a href="index.html">🏠 Inicio</a>
+      <a href="guia.html">🧭 Guía</a>
+      <a href="beta.html" class="activo">🧪 Beta</a>
+    </div>
+    <div class="nav-fila">
+      <a href="piano.html" class="destacado">🎹 Toca notas</a>
+      <a href="entrenamiento.html" class="destacado">🎤 Entrena</a>
+      <a href="oido.html" class="destacado">🧠 Oído</a>
+      <a href="ritmo.html" class="destacado">🥁 Ritmo</a>
+    </div>
+    <div class="nav-fila">
+      <a href="rutina.html">📋 Rutina</a>
+      <a href="catalogo.html">🎼 Ejercicios</a>
+      <a href="progreso.html">📈 Progreso</a>
+      <a href="juegos.html">🎮 Juegos</a>
+    </div>
+    <div class="nav-fila">
+      <a href="glosario.html">📖 Glosario</a>
+      <a href="codex.html">🖼 Láminas</a>
+      <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+      <a href="cifrado.html">🎵 Letra con notas</a>
+    </div>
+  </nav>
+
+  <section class="panel beta-centro">
+    <p class="descripcion">Sin elegir nada: dale y sigue al piano. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="Ejercicios del calentamiento de Áleran: cuerpo, respiración (entra 4, sostén 4, sale 8), humming, vocal fry, lip roll, sirena con «A» y escala con «NEI». Todo sin peso: buscamos un 70, no un 100. El piano te da notas cómodas de tu rango (🎙). Si algo molesta, paras ahí; el cuerpo te dice cosas. Para una rutina más larga, ve a Rutina.">?</button></p>
+    <div class="cal-pasos" id="calPasos"></div>
+    <div id="calEnCurso" hidden>
+      <div class="cal-ahora">
+        <div class="cal-icono" id="calIcono"></div>
+        <p class="beta-gran" id="calNombre"></p>
+        <p class="cal-cuenta" id="calCuenta"></p>
+        <p class="cal-fase" id="calFase" aria-live="polite"></p>
+        <p id="calTexto"></p>
+      </div>
+    </div>
+    <div id="calFin" hidden>
+      <p class="beta-gran">Listo. Voz despierta.</p>
+      <div class="acciones"><a class="boton" href="repite.html">🦜 Repite después de mí</a><a class="boton" href="rutina.html">📋 Rutina</a></div>
+    </div>
+    <div class="progreso-fino"><i id="calBarra"></i></div>
+    <p class="beta-sub">Quedan <strong id="calTotal">5:00</strong></p>
+    <div class="acciones">
+      <button class="boton principal" id="calEmpezar" type="button">▶ Empezar</button>
+      <button class="boton principal" id="calPausa" type="button" hidden>⏸ Pausa</button>
+      <button class="boton" id="calSiguiente" type="button" hidden>⏭ Siguiente</button>
+      <button class="boton" id="calParar" type="button" aria-label="Parar" hidden>⏹</button>
+      <button class="boton" id="calPiano" type="button" aria-pressed="true">🔊 Piano</button>
+    </div>
+    <p class="beta-sub" id="calRango" hidden>Sin rango elegido: uso el de tenor. <a href="que-voz.html">Encuentra el tuyo →</a></p>
+    <p class="marcador" id="calHoy"></p>
+    <p class="estado" id="calEstado" aria-live="polite"></p>
+  </section>
+
+  <div class="cta-clases">
+    <p>¿Quieres pasar de practicar solo a progresar con feedback real de un vocal coach? <a href="https://agenda.aleranvocals.es/reservar" target="_blank" rel="noopener">Reserva tu primera clase →</a></p>
+  </div>
+
+  </main>
+  <footer class="pie">
+    <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
+    <p>Todo ocurre en tu navegador.</p>
+    <p><a href="privacidad.html">Política de privacidad</a></p>
+  </footer>
+</div>
+
+<script src="smplr.iife.js"></script>
+<script src="pitchy.iife.js"></script>
+<script src="escalas.js?v=9"></script>
+<script src="app-shell.js?v=12"></script>
+<script src="audio.js?v=17"></script>
+<script src="progreso.js?v=1"></script>
+<script src="beta-afina.js?v=1"></script>
+<script src="calentar.js?v=1"></script>
+<script src="beta-clases.js?v=2"></script>
+<script src="beta-comun.js?v=1"></script>
+<script src="tema.js?v=1"></script>
+<script src="iconos.js?v=7"></script>
+<script src="pwa.js?v=1"></script>
+</body>
+</html>

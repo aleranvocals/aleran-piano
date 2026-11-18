@@ -82,3 +82,64 @@
 .efectos-lista { text-align: left; max-width: 34rem; margin: 0.6rem auto; display: grid; gap: 0.4rem; }
 .efectos-lista p { margin: 0; padding: 0.55rem 0.8rem; border: 1px solid var(--line); border-radius: var(--radio); background: var(--o-pozo); font-size: 0.9rem; }
 @media (max-width: 420px) { .resp-escenario { height: 220px; } .resp-circulo { width: 170px; height: 170px; } }
+
+/* ---- Herramientas para empezar (18 nov 2026) ---- */
+.qv-hecho { border-color: #2f8f5b; }
+.qv-nota { font: 600 2.6rem var(--font-mono); text-align: center; margin: 0.4rem 0; min-height: 3.2rem; }
+.progreso-fino { height: 8px; border-radius: 4px; background: var(--o-pozo); border: 1px solid var(--line); overflow: hidden; margin: 0.6rem 0; }
+.progreso-fino > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--crimson), var(--crimson-bright)); transition: width 0.15s linear; }
+.qv-dato { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.6rem 0.9rem; border: 1px solid var(--line); border-radius: var(--radio); background: var(--o-pozo); margin: 0.45rem 0; }
+.qv-dato strong { font-family: var(--font-mono); }
+/* Repite después de mí */
+.rp-notas { display: flex; justify-content: center; gap: 0.8rem; min-height: 150px; margin: 0.6rem 0; }
+.rp-nota { width: 72px; height: 72px; flex: 0 0 auto; border-radius: 14px; border: 2px solid var(--line); background: var(--o-pozo); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: margin-top 0.2s, border-color 0.2s, box-shadow 0.2s; }
+.rp-nota b { font: 700 1.5rem var(--font-mono); }
+.rp-nota small { font-size: 0.72rem; color: var(--bone-dim); min-height: 1em; }
+.rp-nota.ahora { border-color: var(--crimson-bright); box-shadow: 0 0 16px var(--o-brillo); }
+.rp-nota.ok { border-color: #2f8f5b; background: rgba(47, 143, 91, 0.18); }
+.rp-nota.ok b { color: #6fcf97; }
+.rp-nota.no { border-color: var(--crimson-bright); background: rgba(192, 34, 65, 0.16); }
+.rp-racha { display: inline-flex; gap: 0.35rem; vertical-align: middle; margin-left: 0.5rem; }
+.rp-punto { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--bone-dim); }
+.rp-punto.lleno { background: #2f8f5b; border-color: #2f8f5b; }
+/* Calentamiento */
+.cal-pasos { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; margin: 0.5rem 0; }
+.cal-pasos .chip { font-size: 0.78rem; min-height: 32px; padding: 0.2rem 0.6rem; }
+.cal-ahora { text-align: center; padding: 0.6rem 0; }
+.cal-icono { font-size: 2.6rem; line-height: 1; }
+.cal-cuenta { font: 600 2.4rem var(--font-mono); margin: 0.2rem 0; }
+.cal-fase { font: 600 1.2rem var(--font-display); letter-spacing: 0.05em; min-height: 1.6rem; color: var(--crimson-bright); }
+/* Diario */
+.dia-comparar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem; margin: 0.6rem 0; }
+.dia-tarjeta { border: 1px solid var(--line); border-radius: var(--radio); padding: 0.6rem 0.8rem; background: var(--o-pozo); min-width: 0; }
+.dia-tarjeta.vacia { opacity: 0.6; }
+.dia-tarjeta audio { width: 100%; max-width: 100%; margin-top: 0.3rem; }
+.dia-lista { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; }
+/* Karaoke */
+.kar-escena { text-align: center; padding: 1rem 0.4rem; min-height: 9rem; position: relative; }
+.kar-seccion { font: 700 0.7rem var(--font-body); letter-spacing: 0.2em; text-transform: uppercase; color: var(--bone-dim); min-height: 1em; }
+.kar-actual { font: 600 1.6rem/1.5 var(--font-body); margin: 0.4rem 0; overflow-wrap: anywhere; }
+.kar-sil { color: var(--bone-dim); transition: color 0.08s, text-shadow 0.08s; white-space: pre-wrap; }
+.kar-sil.pasada { color: var(--bone); }
+.kar-sil.sonando { color: var(--crimson-bright); text-shadow: 0 0 14px var(--o-brillo); }
+.kar-siguiente { font-size: 1rem; color: var(--muted); min-height: 1.4em; overflow-wrap: anywhere; }
+.kar-cuenta { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 3.5rem var(--font-display); color: var(--crimson-bright); background: var(--o-vidrio); border-radius: var(--radio); }
+.kar-cuenta[hidden] { display: none; }
+.kar-tempo { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.kar-tempo strong { font: 600 1.1rem var(--font-mono); min-width: 3ch; text-align: center; }
+/* Salud */
+.sal-medidor { position: relative; height: 22px; border-radius: 11px; background: var(--o-pozo); border: 1px solid var(--line); overflow: hidden; margin: 0.5rem 0; }
+.sal-medidor > i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #2f8f5b, var(--crimson-bright)); transition: width 0.08s linear; }
+.sal-medidor > b { position: absolute; top: -2px; bottom: -2px; width: 3px; background: var(--bone); }
+.sal-bloque h2 { margin-top: 0; }
+/* Retos */
+.reto-tarjeta { border: 1px solid var(--crimson); border-radius: var(--radio); padding: 0.8rem 0.9rem; background: var(--o-pozo); box-shadow: inset 0 0 18px var(--o-brillo); }
+.reto-tarjeta.hecho { border-color: #2f8f5b; box-shadow: inset 0 0 18px rgba(47, 143, 91, 0.35); }
+.reto-texto { font-size: 1.05rem; margin: 0 0 0.3rem; text-align: center; }
+.reto-icono { font-size: 1.4rem; }
+.reto-pasado { margin: 0.3rem 0; padding: 0.45rem 0.7rem; border: 1px solid var(--line); border-radius: 10px; font-size: 0.88rem; color: var(--bone-dim); }
+.reto-pasado.hecho { color: var(--bone); border-color: #2f8f5b; }
+.reto-marca { display: inline-block; width: 1.2em; text-align: center; font-weight: 700; }
+.reto-pasado.hecho .reto-marca { color: #6fcf97; }
+@media (max-width: 420px) { .rp-nota { width: 64px; height: 64px; } .kar-actual { font-size: 1.35rem; } .qv-nota { font-size: 2.2rem; } }
+.rp-notas:empty { min-height: 40px; }

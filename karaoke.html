@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<script>(function(){try{if(localStorage.getItem("aleran-piano-tema")==="claro")document.documentElement.setAttribute("data-tema","claro");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Karaoke de tu canción — Áleran Vocals</title>
+<meta name="description" content="La letra de tu canción de Letra con notas se ilumina al tempo con una nota guía suave." />
+<meta name="robots" content="noindex" />
+<link rel="stylesheet" href="fonts/fuentes.css?v=1" />
+<link rel="stylesheet" href="style.css?v=34" />
+<link rel="stylesheet" href="rediseno.css?v=15" />
+<link rel="stylesheet" href="obsidiana.css?v=23" />
+<link rel="stylesheet" href="beta.css?v=4" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#93172c" />
+<link rel="icon" href="favicon.ico" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="canonical" href="https://www.aleranvocals.es/herramientas/karaoke.html" />
+<meta property="og:url" content="https://www.aleranvocals.es/herramientas/karaoke.html" />
+<meta property="og:image" content="https://www.aleranvocals.es/foto-alera-coach.webp" />
+</head>
+<body>
+<div class="app">
+  <header class="cabecera">
+    <h1>🎤 Karaoke de tu canción</h1>
+    <p class="subtitulo">Tu letra se ilumina al tempo, con nota guía.</p>
+  </header>
+  <main id="contenido">
+
+  <nav class="nav-principal">
+    <div class="nav-fila">
+      <a href="index.html">🏠 Inicio</a>
+      <a href="guia.html">🧭 Guía</a>
+      <a href="beta.html" class="activo">🧪 Beta</a>
+    </div>
+    <div class="nav-fila">
+      <a href="piano.html" class="destacado">🎹 Toca notas</a>
+      <a href="entrenamiento.html" class="destacado">🎤 Entrena</a>
+      <a href="oido.html" class="destacado">🧠 Oído</a>
+      <a href="ritmo.html" class="destacado">🥁 Ritmo</a>
+    </div>
+    <div class="nav-fila">
+      <a href="rutina.html">📋 Rutina</a>
+      <a href="catalogo.html">🎼 Ejercicios</a>
+      <a href="progreso.html">📈 Progreso</a>
+      <a href="juegos.html">🎮 Juegos</a>
+    </div>
+    <div class="nav-fila">
+      <a href="glosario.html">📖 Glosario</a>
+      <a href="codex.html">🖼 Láminas</a>
+      <a href="mapa-vocal.html">🗺️ Mapa vocal</a>
+      <a href="cifrado.html">🎵 Letra con notas</a>
+    </div>
+  </nav>
+
+  <section class="panel">
+    <p class="descripcion beta-centro">Tu canción de «Letra con notas», al tempo. <button type="button" class="ayuda-btn" aria-label="Ayuda" aria-expanded="false" data-ayuda="La letra se ilumina sílaba a sílaba al tempo. La nota guía suena suave para que no te pierdas; cuando ya te la sepas, quítala. Si un verso tiene ritmo del editor de ritmo, se usa; si no, cada sílaba dura un pulso, como en Letra con notas. Baja el tempo para aprender y súbelo cuando salga. Si te queda alta o baja, usa el Transportador.">?</button></p>
+    <div id="karVacio" class="beta-centro" hidden>
+      <p class="descripcion">Aún no hay canción. <a href="cifrado.html">Hazla en Letra con notas →</a></p>
+      <label class="boton" for="karArchivo">📂 Abrir archivo</label>
+      <input type="file" id="karArchivo" accept=".json,application/json" hidden />
+      <p class="estado" id="karError" aria-live="polite"></p>
+    </div>
+    <div id="karPanel" hidden>
+      <div class="kar-escena">
+        <p class="kar-seccion" id="karSeccion"></p>
+        <p class="kar-actual" id="karActual"></p>
+        <p class="kar-siguiente" id="karSiguiente"></p>
+        <div class="kar-cuenta" id="karCuenta" hidden></div>
+      </div>
+      <div class="acciones">
+        <button class="boton principal" id="karPlay" type="button">▶ Empezar</button>
+        <button class="boton" id="karParar" type="button" aria-label="Parar" hidden>⏹</button>
+        <button class="boton" id="karGuia" type="button" aria-pressed="true">🔊 Nota guía</button>
+      </div>
+      <div class="kar-tempo"><button class="paso" id="karMenos" type="button" aria-label="Más lento">−</button><strong id="karBpm">90</strong><span class="beta-sub">bpm</span><button class="paso" id="karMas" type="button" aria-label="Más rápido">+</button></div>
+      <div class="beta-fila">
+        <button class="chip" id="karCifrado" type="button">🎵 La de Letra con notas</button>
+        <label class="chip" for="karArchivo2">📂 Otro archivo</label>
+        <input type="file" id="karArchivo2" accept=".json,application/json" hidden />
+      </div>
+      <p class="estado" id="karEstado" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <div class="cta-clases">
+    <p>¿Quieres pasar de practicar solo a progresar con feedback real de un vocal coach? <a href="https://agenda.aleranvocals.es/reservar" target="_blank" rel="noopener">Reserva tu primera clase →</a></p>
+  </div>
+
+  </main>
+  <footer class="pie">
+    <p class="pie-soporte"><a href="soporte.html">💬 ¿Dudas o un fallo? →</a></p>
+    <p>Tu canción no sale de este navegador.</p>
+    <p><a href="privacidad.html">Política de privacidad</a></p>
+  </footer>
+</div>
+
+<script src="smplr.iife.js"></script>
+<script src="pitchy.iife.js"></script>
+<script src="escalas.js?v=9"></script>
+<script src="app-shell.js?v=12"></script>
+<script src="audio.js?v=17"></script>
+<script src="karaoke.js?v=1"></script>
+<script src="beta-clases.js?v=2"></script>
+<script src="beta-comun.js?v=1"></script>
+<script src="tema.js?v=1"></script>
+<script src="iconos.js?v=7"></script>
+<script src="pwa.js?v=1"></script>
+</body>
+</html>

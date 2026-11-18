@@ -1,6 +1,15 @@
 /* beta-catalogo.js — lista única de las «Herramientas beta». Alimenta el hub (beta.html) y el enlace por clase.
  * Si una herramienta cambia de nombre o de página, se cambia SOLO aquí (y en gen_beta_clases.py del curso). */
 window.HERRAMIENTAS_BETA = [
+  // Para quien empieza (18 nov 2026): van primero en el hub.
+  { id: "que-voz", nombre: "¿Qué voz tengo?", icono: "🗣", detalle: "Tu rango y tu cambio en 2 minutos", href: "que-voz.html", clases: [] },
+  { id: "calentar", nombre: "Calentamiento de 5 minutos", icono: "🔥", detalle: "Un botón y a calentar", href: "calentar.html", clases: [] },
+  { id: "repite", nombre: "Repite después de mí", icono: "🦜", detalle: "3 notas: escucha y canta", href: "repite.html", clases: [] },
+  { id: "diario", nombre: "Diario de voz", icono: "📔", detalle: "10 segundos al día para comparar", href: "diario.html", clases: [] },
+  { id: "karaoke", nombre: "Karaoke de tu canción", icono: "🎤", detalle: "Tu letra al tempo con nota guía", href: "karaoke.html", clases: [] },
+  { id: "retos", nombre: "Retos semanales", icono: "🎯", detalle: "Un reto nuevo cada lunes", href: "retos.html", clases: [] },
+  { id: "salud", nombre: "Pausa y salud vocal", icono: "💧", detalle: "Agua y descanso a los 20 minutos", href: "salud.html", clases: [] },
+  { id: "volumen", nombre: "Aviso de volumen", icono: "🔊", detalle: "Te avisa si cantas muy fuerte", href: "salud.html#volumen", clases: [] },
   { id: "semaforo", nombre: "Semáforo vocal", icono: "🚦", detalle: "Tres preguntas antes de practicar", href: "semaforo.html", clases: ["C012"] },
   { id: "respiracion", nombre: "Respiración guiada", icono: "🫁", detalle: "Un círculo que entra y sale", href: "respiracion.html", clases: ["C016"] },
   { id: "color", nombre: "Medidor de color", icono: "🌈", detalle: "¿Más clara u oscura que tu voz central?", href: "color.html", clases: ["C030", "C031", "C036", "C037", "C038", "C041", "C086"] },
